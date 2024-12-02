@@ -1,10 +1,10 @@
 'use client';
 
-import Link from 'next/link';
 import { Button } from '@/components/ui/button';
+import { gameActions } from '@/lib/supabase';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { gameActions } from '@/lib/supabase';
 
 export default function GameSelectPage() {
   const [games, setGames] = useState<string[]>([]);

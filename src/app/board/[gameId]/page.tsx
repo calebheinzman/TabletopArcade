@@ -1,10 +1,11 @@
 'use client';
 
-import { useRouter, useParams } from 'next/navigation';
-import { useEffect } from 'react';
+import { GameProvider, useGame } from '@/components/GameContext';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { GameProvider, useGame } from '@/components/GameContext';
+import { useParams, useRouter } from 'next/navigation';
+
+import { useEffect } from 'react';
 
 function BoardContent() {
   const router = useRouter();
