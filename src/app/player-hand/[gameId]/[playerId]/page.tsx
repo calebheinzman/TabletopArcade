@@ -1,32 +1,35 @@
-'use client'
+'use client';
 
-import { useParams, useRouter } from 'next/navigation'
-import { Button } from '@/components/ui/button'
-import { PlayerHand } from '@/components/player-hand'
-import { GameProvider, useGame } from '@/components/GameContext'
-import { useEffect } from 'react'
+import { GameProvider, useGame } from '@/components/GameContext';
+import { PlayerHand } from '@/components/player-hand';
+import { Button } from '@/components/ui/button';
+import { useParams, useRouter } from 'next/navigation';
+
+import { useEffect } from 'react';
 
 function PlayerHandContent() {
-  const router = useRouter()
-  const params = useParams()
+  const router = useRouter();
+  const params = useParams();
   const gameId = params.gameId;
   const playerId = params.playerId;
 
-  const { gameState, subscribeToGame, unsubscribeFromGame } = useGame()
+  const { gameState, subscribeToGame, unsubscribeFromGame } = useGame();
 
   useEffect(() => {
     if (gameId && playerId) {
-      subscribeToGame(gameId as string)
+      subscribeToGame(gameId as string);
     }
-    
-    return () => unsubscribeFromGame()
-  }, [gameId, playerId])
 
-  if (!gameState || !playerId) return <div>Loading...</div>
+    return () => unsubscribeFromGame();
+  }, [gameId, playerId, subscribeToGame, unsubscribeFromGame]);
+
+  if (!gameState || !playerId) return <div>Loading...</div>;
 
   // Find the current player from game state
-  const currentPlayer = gameState.players.find(player => player.id === playerId)
-  if (!currentPlayer) return <div>Player not found</div>
+  const currentPlayer = gameState.players.find(
+    (player) => player.id === playerId
+  );
+  if (!currentPlayer) return <div>Player not found</div>;
 
   return (
     <div className="flex flex-col min-h-screen bg-gray-100">
@@ -36,7 +39,7 @@ function PlayerHandContent() {
             Back
           </Button>
           <h1 className="text-xl sm:text-2xl font-bold">
-            {currentPlayer.username}'s Hand
+            {currentPlayer.username}&apos;s Hand
           </h1>
           <div className="w-[73px]"></div> {/* Spacer to balance the layout */}
         </div>
@@ -45,7 +48,7 @@ function PlayerHandContent() {
         <PlayerHand player_id={playerId as string} />
       </main>
     </div>
-  )
+  );
 }
 
 export default function PlayerHandPage() {
@@ -53,6 +56,5 @@ export default function PlayerHandPage() {
     <GameProvider>
       <PlayerHandContent />
     </GameProvider>
-  )
+  );
 }
-
