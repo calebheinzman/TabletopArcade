@@ -1,9 +1,9 @@
-import { createClient } from '@supabase/supabase-js'
+import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 interface CustomGameData {
   name: string;
@@ -42,68 +42,73 @@ export interface CardData {
 }
 
 export const gameActions = {
-  async createCustomGame(gameData: CustomGameData, decks: DeckData[], cards: CardData[][]) {
+  async createCustomGame(
+    gameData: CustomGameData,
+    decks: DeckData[],
+    cards: CardData[][]
+  ) {
     try {
       const { data: gameDataResult, error: gameError } = await supabase
         .from('game')
         .insert(gameData)
         .select('gameid')
-        .single()
+        .single();
 
-      if (gameError) throw gameError
+      if (gameError) throw gameError;
 
-      const gameId = gameDataResult.gameid
+      const gameId = gameDataResult.gameid;
 
       for (const deck of decks) {
         const { data: deckDataResult, error: deckError } = await supabase
           .from('deck')
-          .insert({ ...deck, gameid: gameId,num_cards:0 })
+          .insert({ ...deck, gameid: gameId, num_cards: 0 })
           .select('deckid, deckname')
-          .single()
-        console.log("DECK STUFF")
-        console.log(deck)
-        console.log(deckDataResult)
-        console.log('GAME STUFF')
-        console.log(gameId)
-        console.log(gameData)
-        console.log("CARDS")
-        console.log(cards)
-        if (deckError) throw deckError
+          .single();
+        console.log('DECK STUFF');
+        console.log(deck);
+        console.log(deckDataResult);
+        console.log('GAME STUFF');
+        console.log(gameId);
+        console.log(gameData);
+        console.log('CARDS');
+        console.log(cards);
+        if (deckError) throw deckError;
 
-        const deckName = deckDataResult.deckname
-        const deckId = deckDataResult.deckid
+        const deckName = deckDataResult.deckname;
+        const deckId = deckDataResult.deckid;
         if (cards.length > 0) {
-            const deckCards = cards.find(c => c[0].deckName === deckName)
-            if (deckCards) {
-            const { error: cardError } = await supabase
-                .from('card')
-                .insert(deckCards.map(({ deckName, ...card }) => ({ ...card, deckid: deckId })))
+          const deckCards = cards.find((c) => c[0].deckName === deckName);
+          if (deckCards) {
+            const { error: cardError } = await supabase.from('card').insert(
+              // eslint-disable-next-line @typescript-eslint/no-unused-vars
+              deckCards.map(({ deckName, ...card }) => ({
+                ...card,
+                deckid: deckId,
+              }))
+            );
 
-            if (cardError) throw cardError
-            }
+            if (cardError) throw cardError;
+          }
         }
       }
 
-      return { success: true, gameId }
+      return { success: true, gameId };
     } catch (error) {
-      console.error('Error creating custom game:', error)
-      return { success: false, error: 'Failed to create custom game' }
+      console.error('Error creating custom game:', error);
+      return { success: false, error: 'Failed to create custom game' };
     }
   },
 
   async fetchGameNames() {
     try {
-      const { data, error } = await supabase
-        .from('game')
-        .select('name')
+      const { data, error } = await supabase.from('game').select('name');
 
-      if (error) throw error
+      if (error) throw error;
 
-      return data.map(game => game.name)
+      return data.map((game) => game.name);
     } catch (error) {
-      console.error('Error fetching game names:', error)
-      return []
+      console.error('Error fetching game names:', error);
+      return [];
     }
-  }
-}
-
+  },
+};

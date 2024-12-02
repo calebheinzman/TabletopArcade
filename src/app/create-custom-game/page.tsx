@@ -1,16 +1,22 @@
-'use client'
+'use client';
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Textarea } from '@/components/ui/textarea'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Label } from '@/components/ui/label'
-import { Switch } from '@/components/ui/switch'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { X } from 'lucide-react'
-import { CardData, DeckData, gameActions } from '@/lib/supabase'
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { X } from 'lucide-react';
+import { CardData, DeckData, gameActions } from '@/lib/supabase';
 
 interface CustomCard {
   name: string;
@@ -24,49 +30,71 @@ interface Deck {
 }
 
 export default function CreateCustomGamePage() {
-  const router = useRouter()
-  const [decks, setDecks] = useState<Deck[]>([{ name: 'Default Deck' }])
-  const [newDeck, setNewDeck] = useState('')
-  const [cards, setCards] = useState<CustomCard[]>([])
-  const [newCard, setNewCard] = useState<CustomCard>({ name: '', count: 1, description: '', deckName: 'Default Deck' })
-  const [name, setName] = useState('Custom Game')
-  const [tokens, setTokens] = useState(0)
-  const [dice, setDice] = useState(0)
-  const [players, setPlayers] = useState(2)
-  const [startingCards, setStartingCards] = useState(2)
-  const [canDiscardCard, setCanDiscardCard] = useState(false)
-  const [canRevealCard, setCanRevealCard] = useState(false)
-  const [canGiveToken, setCanGiveToken] = useState(false)
-  const [canGiveCard, setCanGiveCard] = useState(false)
-  const [canDrawCard, setCanDrawCard] = useState(false)
-  const [canDrawToken, setCanDrawToken] = useState(false)
-  const [faceUpBoardDiscardPiles, setFaceUpBoardDiscardPiles] = useState({ rows: 1, columns: 1 })
-  const [faceDownBoardDiscardPiles, setFaceDownBoardDiscardPiles] = useState({ rows: 1, columns: 1 })
-  const [faceUpPlayerDiscardPiles, setFaceUpPlayerDiscardPiles] = useState({ rows: 1, columns: 1 })
-  const [faceDownPlayerDiscardPiles, setFaceDownPlayerDiscardPiles] = useState({ rows: 1, columns: 1 })
+  const router = useRouter();
+  const [decks, setDecks] = useState<Deck[]>([{ name: 'Default Deck' }]);
+  const [newDeck, setNewDeck] = useState('');
+  const [cards, setCards] = useState<CustomCard[]>([]);
+  const [newCard, setNewCard] = useState<CustomCard>({
+    name: '',
+    count: 1,
+    description: '',
+    deckName: 'Default Deck',
+  });
+  const [name, setName] = useState('Custom Game');
+  const [tokens, setTokens] = useState(0);
+  const [dice, setDice] = useState(0);
+  const [players, setPlayers] = useState(2);
+  const [startingCards, setStartingCards] = useState(2);
+  const [canDiscardCard, setCanDiscardCard] = useState(false);
+  const [canRevealCard, setCanRevealCard] = useState(false);
+  const [canGiveToken, setCanGiveToken] = useState(false);
+  const [canGiveCard, setCanGiveCard] = useState(false);
+  const [canDrawCard, setCanDrawCard] = useState(false);
+  const [canDrawToken, setCanDrawToken] = useState(false);
+  const [faceUpBoardDiscardPiles, setFaceUpBoardDiscardPiles] = useState({
+    rows: 1,
+    columns: 1,
+  });
+  const [faceDownBoardDiscardPiles, setFaceDownBoardDiscardPiles] = useState({
+    rows: 1,
+    columns: 1,
+  });
+  const [faceUpPlayerDiscardPiles, setFaceUpPlayerDiscardPiles] = useState({
+    rows: 1,
+    columns: 1,
+  });
+  const [faceDownPlayerDiscardPiles, setFaceDownPlayerDiscardPiles] = useState({
+    rows: 1,
+    columns: 1,
+  });
 
   const addDeck = () => {
     if (newDeck.trim()) {
-      setDecks([...decks, {name: newDeck.trim() }])
-      setNewDeck('')
+      setDecks([...decks, { name: newDeck.trim() }]);
+      setNewDeck('');
     }
-  }
+  };
 
   const deleteDeck = (deckName: string) => {
-    setDecks(decks.filter(deck => deckName !== deck.name))
-    setCards(cards.filter(card => card.deckName !== deckName))
-  }
+    setDecks(decks.filter((deck) => deckName !== deck.name));
+    setCards(cards.filter((card) => card.deckName !== deckName));
+  };
 
   const addCard = () => {
     if (newCard.name && newCard.count > 0) {
-      setCards([...cards, newCard])
-      setNewCard({ name: '', count: 1, description: '', deckName: newCard.deckName })
+      setCards([...cards, newCard]);
+      setNewCard({
+        name: '',
+        count: 1,
+        description: '',
+        deckName: newCard.deckName,
+      });
     }
-  }
+  };
 
   const deleteCard = (index: number) => {
-    setCards(cards.filter((_, i) => i !== index))
-  }
+    setCards(cards.filter((_, i) => i !== index));
+  };
 
   const createGame = async () => {
     const gameData = {
@@ -88,41 +116,52 @@ export default function CreateCustomGamePage() {
       face_up_player_discard_piles_row: faceUpPlayerDiscardPiles.rows,
       face_up_player_discard_piles_columbs: faceUpPlayerDiscardPiles.columns,
       face_down_player_discard_piles_row: faceDownPlayerDiscardPiles.rows,
-      face_down_player_discard_piles_columbs: faceDownPlayerDiscardPiles.columns
-    }
+      face_down_player_discard_piles_columbs:
+        faceDownPlayerDiscardPiles.columns,
+    };
 
-    const deckData : DeckData[] = decks.map(deck => ({
+    const deckData: DeckData[] = decks.map((deck) => ({
       deckname: deck.name,
-      num_cards: cards.filter(card => card.deckName === deck.name).reduce((sum, card) => sum + card.count, 0),
-      gameid: 0
-    }))
+      num_cards: cards
+        .filter((card) => card.deckName === deck.name)
+        .reduce((sum, card) => sum + card.count, 0),
+      gameid: 0,
+    }));
 
-    const cardData : CardData[][] = decks.map(deck => 
-      cards.filter(card => card.deckName === deck.name).map(card => ({
-        name: card.name,
-        count: card.count,
-        description: card.description,
-        deckName: deck.name
-      }))
-    )
+    const cardData: CardData[][] = decks.map((deck) =>
+      cards
+        .filter((card) => card.deckName === deck.name)
+        .map((card) => ({
+          name: card.name,
+          count: card.count,
+          description: card.description,
+          deckName: deck.name,
+        }))
+    );
 
     try {
-      const result = await gameActions.createCustomGame(gameData, deckData, cardData)
+      const result = await gameActions.createCustomGame(
+        gameData,
+        deckData,
+        cardData
+      );
       if (result.success) {
-        console.log('Game created successfully:', result.gameId)
-        router.push('/game-select')
+        console.log('Game created successfully:', result.gameId);
+        router.push('/game-select');
       } else {
-        throw new Error(result.error)
+        throw new Error(result.error);
       }
     } catch (error) {
-      console.error('Error creating game:', error)
-      alert('Failed to create game. Please try again.')
+      console.error('Error creating game:', error);
+      alert('Failed to create game. Please try again.');
     }
-  }
+  };
 
   return (
     <div className="flex flex-col items-center justify-start min-h-screen bg-gray-100 p-4">
-      <Button onClick={() => router.back()} className="absolute top-4 left-4">Back</Button>
+      <Button onClick={() => router.back()} className="absolute top-4 left-4">
+        Back
+      </Button>
       <h1 className="text-4xl font-bold mb-8">Create Custom Game</h1>
 
       <div className="w-full max-w-4xl space-y-8">
@@ -186,7 +225,9 @@ export default function CreateCustomGamePage() {
                 <Input
                   id="cardName"
                   value={newCard.name}
-                  onChange={(e) => setNewCard({...newCard, name: e.target.value})}
+                  onChange={(e) =>
+                    setNewCard({ ...newCard, name: e.target.value })
+                  }
                   placeholder="Enter card name"
                 />
               </div>
@@ -196,7 +237,9 @@ export default function CreateCustomGamePage() {
                   id="cardCount"
                   type="number"
                   value={newCard.count}
-                  onChange={(e) => setNewCard({...newCard, count: parseInt(e.target.value)})}
+                  onChange={(e) =>
+                    setNewCard({ ...newCard, count: parseInt(e.target.value) })
+                  }
                   min={1}
                 />
               </div>
@@ -205,7 +248,9 @@ export default function CreateCustomGamePage() {
                 <Textarea
                   id="cardDescription"
                   value={newCard.description}
-                  onChange={(e) => setNewCard({...newCard, description: e.target.value})}
+                  onChange={(e) =>
+                    setNewCard({ ...newCard, description: e.target.value })
+                  }
                   placeholder="Enter card description"
                 />
               </div>
@@ -213,7 +258,9 @@ export default function CreateCustomGamePage() {
                 <Label htmlFor="cardDeck">Deck</Label>
                 <Select
                   value={newCard.deckName}
-                  onValueChange={(value) => setNewCard({...newCard, deckName: value})}
+                  onValueChange={(value) =>
+                    setNewCard({ ...newCard, deckName: value })
+                  }
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Select a deck" />
@@ -228,7 +275,9 @@ export default function CreateCustomGamePage() {
                 </Select>
               </div>
             </div>
-            <Button onClick={addCard} className="mt-4">Add Card</Button>
+            <Button onClick={addCard} className="mt-4">
+              Add Card
+            </Button>
           </CardContent>
         </Card>
 
@@ -252,7 +301,9 @@ export default function CreateCustomGamePage() {
                     <h3 className="font-bold">{card.name}</h3>
                     <p>Count: {card.count}</p>
                     <p className="text-sm text-gray-600">{card.description}</p>
-                    <p className="text-sm text-gray-400">Deck: {card.deckName}</p>
+                    <p className="text-sm text-gray-400">
+                      Deck: {card.deckName}
+                    </p>
                   </CardContent>
                 </Card>
               ))}
@@ -355,77 +406,125 @@ export default function CreateCustomGamePage() {
                 <Label htmlFor="canDrawToken">Can Draw Token</Label>
               </div>
               <div>
-                <Label htmlFor="faceUpBoardDiscardPiles">Face-up Board Discard Piles (rows x columns)</Label>
+                <Label htmlFor="faceUpBoardDiscardPiles">
+                  Face-up Board Discard Piles (rows x columns)
+                </Label>
                 <div className="flex space-x-2">
                   <Input
                     id="faceUpBoardDiscardPilesRows"
                     type="number"
                     value={faceUpBoardDiscardPiles.rows}
-                    onChange={(e) => setFaceUpBoardDiscardPiles({...faceUpBoardDiscardPiles, rows: parseInt(e.target.value)})}
+                    onChange={(e) =>
+                      setFaceUpBoardDiscardPiles({
+                        ...faceUpBoardDiscardPiles,
+                        rows: parseInt(e.target.value),
+                      })
+                    }
                     min={1}
                   />
                   <Input
                     id="faceUpBoardDiscardPilesColumns"
                     type="number"
                     value={faceUpBoardDiscardPiles.columns}
-                    onChange={(e) => setFaceUpBoardDiscardPiles({...faceUpBoardDiscardPiles, columns: parseInt(e.target.value)})}
+                    onChange={(e) =>
+                      setFaceUpBoardDiscardPiles({
+                        ...faceUpBoardDiscardPiles,
+                        columns: parseInt(e.target.value),
+                      })
+                    }
                     min={1}
                   />
                 </div>
               </div>
               <div>
-                <Label htmlFor="faceDownBoardDiscardPiles">Face-down Board Discard Piles (rows x columns)</Label>
+                <Label htmlFor="faceDownBoardDiscardPiles">
+                  Face-down Board Discard Piles (rows x columns)
+                </Label>
                 <div className="flex space-x-2">
                   <Input
                     id="faceDownBoardDiscardPilesRows"
                     type="number"
                     value={faceDownBoardDiscardPiles.rows}
-                    onChange={(e) => setFaceDownBoardDiscardPiles({...faceDownBoardDiscardPiles, rows: parseInt(e.target.value)})}
+                    onChange={(e) =>
+                      setFaceDownBoardDiscardPiles({
+                        ...faceDownBoardDiscardPiles,
+                        rows: parseInt(e.target.value),
+                      })
+                    }
                     min={1}
                   />
                   <Input
                     id="faceDownBoardDiscardPilesColumns"
                     type="number"
                     value={faceDownBoardDiscardPiles.columns}
-                    onChange={(e) => setFaceDownBoardDiscardPiles({...faceDownBoardDiscardPiles, columns: parseInt(e.target.value)})}
+                    onChange={(e) =>
+                      setFaceDownBoardDiscardPiles({
+                        ...faceDownBoardDiscardPiles,
+                        columns: parseInt(e.target.value),
+                      })
+                    }
                     min={1}
                   />
                 </div>
               </div>
               <div>
-                <Label htmlFor="faceUpPlayerDiscardPiles">Face-up Player Discard Piles (rows x columns)</Label>
+                <Label htmlFor="faceUpPlayerDiscardPiles">
+                  Face-up Player Discard Piles (rows x columns)
+                </Label>
                 <div className="flex space-x-2">
                   <Input
                     id="faceUpPlayerDiscardPilesRows"
                     type="number"
                     value={faceUpPlayerDiscardPiles.rows}
-                    onChange={(e) => setFaceUpPlayerDiscardPiles({...faceUpPlayerDiscardPiles, rows: parseInt(e.target.value)})}
+                    onChange={(e) =>
+                      setFaceUpPlayerDiscardPiles({
+                        ...faceUpPlayerDiscardPiles,
+                        rows: parseInt(e.target.value),
+                      })
+                    }
                     min={1}
                   />
                   <Input
                     id="faceUpPlayerDiscardPilesColumns"
                     type="number"
                     value={faceUpPlayerDiscardPiles.columns}
-                    onChange={(e) => setFaceUpPlayerDiscardPiles({...faceUpPlayerDiscardPiles, columns: parseInt(e.target.value)})}
+                    onChange={(e) =>
+                      setFaceUpPlayerDiscardPiles({
+                        ...faceUpPlayerDiscardPiles,
+                        columns: parseInt(e.target.value),
+                      })
+                    }
                     min={1}
                   />
                 </div>
               </div>
               <div>
-                <Label htmlFor="faceDownPlayerDiscardPiles">Face-down Player Discard Piles (rows x columns)</Label>
+                <Label htmlFor="faceDownPlayerDiscardPiles">
+                  Face-down Player Discard Piles (rows x columns)
+                </Label>
                 <div className="flex space-x-2">
                   <Input
                     id="faceDownPlayerDiscardPilesRows"
                     type="number"
                     value={faceDownPlayerDiscardPiles.rows}
-                    onChange={(e) => setFaceDownPlayerDiscardPiles({...faceDownPlayerDiscardPiles, rows: parseInt(e.target.value)})}
+                    onChange={(e) =>
+                      setFaceDownPlayerDiscardPiles({
+                        ...faceDownPlayerDiscardPiles,
+                        rows: parseInt(e.target.value),
+                      })
+                    }
                     min={1}
                   />
                   <Input
                     id="faceDownPlayerDiscardPilesColumns"
                     type="number"
                     value={faceDownPlayerDiscardPiles.columns}
-                    onChange={(e) => setFaceDownPlayerDiscardPiles({...faceDownPlayerDiscardPiles, columns: parseInt(e.target.value)})}
+                    onChange={(e) =>
+                      setFaceDownPlayerDiscardPiles({
+                        ...faceDownPlayerDiscardPiles,
+                        columns: parseInt(e.target.value),
+                      })
+                    }
                     min={1}
                   />
                 </div>
@@ -434,9 +533,10 @@ export default function CreateCustomGamePage() {
           </CardContent>
         </Card>
 
-        <Button onClick={createGame} className="w-full">Create Game</Button>
+        <Button onClick={createGame} className="w-full">
+          Create Game
+        </Button>
       </div>
     </div>
-  )
+  );
 }
-
