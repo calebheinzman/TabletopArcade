@@ -33,7 +33,7 @@ const characterCards: Omit<SessionCard, 'id'>[] = [
     name: 'Contessa',
     description: 'Block assassination attempts.',
     count: 3,
-    isRevealed: false,
+    isRevealed: true,
   },
 ];
 
@@ -85,7 +85,8 @@ function initializeSession(sessionId: string) {
       cards: [],
       score: 0,
       isActive: true,
-      points: 2, // Each player starts with 2 coins in Coup
+      points: 2,
+      tokens: 0,
     },
     {
       id: '2',
@@ -94,6 +95,7 @@ function initializeSession(sessionId: string) {
       score: 0,
       isActive: true,
       points: 2,
+      tokens: 0,
     },
     {
       id: '3',
@@ -102,6 +104,7 @@ function initializeSession(sessionId: string) {
       score: 0,
       isActive: true,
       points: 2,
+      tokens: 0,
     },
     {
       id: '4',
@@ -110,6 +113,7 @@ function initializeSession(sessionId: string) {
       score: 0,
       isActive: true,
       points: 2,
+      tokens: 0,
     },
     {
       id: '5',
@@ -118,6 +122,7 @@ function initializeSession(sessionId: string) {
       score: 0,
       isActive: true,
       points: 2,
+      tokens: 0,
     },
     {
       id: '6',
@@ -126,6 +131,7 @@ function initializeSession(sessionId: string) {
       score: 0,
       isActive: true,
       points: 2,
+      tokens: 0,
     },
     {
       id: '7',
@@ -134,6 +140,7 @@ function initializeSession(sessionId: string) {
       score: 0,
       isActive: true,
       points: 2,
+      tokens: 0,
     },
     {
       id: '8',
@@ -141,7 +148,8 @@ function initializeSession(sessionId: string) {
       cards: [],
       score: 0,
       isActive: true,
-      points: 2,
+      tokens: 0,
+      points: 0,
     },
     // Add more mock players if needed
   ];
@@ -286,21 +294,90 @@ export const mockGameActions = {
     this.updateGameState(sessionId, updatedState);
   },
 
-  giveToken(sessionId: string, playerId: string, targetUsername: string) {
+  increasePoints(sessionId: string, playerId: string) {
     const state = sessionStates[sessionId];
     if (!state) return;
 
     const updatedPlayers = state.players.map((player) => {
-      if (player.id === playerId && (player.points || 0) > 0) {
-        return { ...player, points: player.points - 1 };
-      } else if (player.username === targetUsername) {
-        return { ...player, points: (player.points || 0) + 1 };
+      if (player.id === playerId) {
+        return { ...player, score: (player.score || 0) + 1 };
       } else {
         return player;
       }
     });
 
     const updatedState = { ...state, players: updatedPlayers };
+    this.updateGameState(sessionId, updatedState);
+  },
+
+  decreasePoints(sessionId: string, playerId: string) {
+    const state = sessionStates[sessionId];
+    if (!state) return;
+
+    const updatedPlayers = state.players.map((player) => {
+      if (player.id === playerId) {
+        const newScore = (player.score || 0) - 1;
+        return { ...player, score: newScore >= 0 ? newScore : 0 };
+      } else {
+        return player;
+      }
+    });
+
+    const updatedState = { ...state, players: updatedPlayers };
+    this.updateGameState(sessionId, updatedState);
+  },
+
+  giveToken(sessionId: string, playerId: string) {
+    const state = sessionStates[sessionId];
+    if (!state) return;
+
+    if (state.tokens <= 0) {
+      console.log('No tokens available to give.');
+      return;
+    }
+
+    const updatedTokens = state.tokens - 1;
+    const updatedPlayers = state.players.map((player) => {
+      if (player.id === playerId) {
+        return { ...player, tokens: (player.tokens || 0) + 1 };
+      } else {
+        return player;
+      }
+    });
+
+    const updatedState = {
+      ...state,
+      players: updatedPlayers,
+      tokens: updatedTokens,
+    };
+    this.updateGameState(sessionId, updatedState);
+  },
+
+  removeToken(sessionId: string, playerId: string) {
+    const state = sessionStates[sessionId];
+    if (!state) return;
+
+    const player = state.players.find((p) => p.id === playerId);
+    if (!player || (player.tokens || 0) <= 0) {
+      console.log('Player has no tokens to remove.');
+      return;
+    }
+
+    const updatedTokens = state.tokens + 1;
+    const updatedPlayers = state.players.map((p) => {
+      if (p.id === playerId) {
+        const newTokens = (p.tokens || 0) - 1;
+        return { ...p, tokens: newTokens >= 0 ? newTokens : 0 };
+      } else {
+        return p;
+      }
+    });
+
+    const updatedState = {
+      ...state,
+      players: updatedPlayers,
+      tokens: updatedTokens,
+    };
     this.updateGameState(sessionId, updatedState);
   },
 };

@@ -13,7 +13,10 @@ interface GameContextType {
   handleReveal: (playerId: string, cardId: string) => void;
   handleDiscard: (playerId: string, cardId: string) => void;
   drawToken: (playerId: string) => void;
-  giveToken: (playerId: string, targetUsername: string) => void;
+  giveToken: (playerId: string) => void;
+  removeToken: (playerId: string) => void; // New Function
+  increasePoints: (playerId: string) => void;
+  decreasePoints: (playerId: string) => void; // New Function
 }
 
 const GameContext = createContext<GameContextType | undefined>(undefined);
@@ -55,8 +58,20 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     mockGameActions.drawToken(sessionId, playerId);
   };
 
-  const giveToken = (playerId: string, targetUsername: string) => {
-    mockGameActions.giveToken(sessionId, playerId, targetUsername);
+  const giveToken = (playerId: string) => {
+    mockGameActions.giveToken(sessionId, playerId);
+  };
+
+  const removeToken = (playerId: string) => {
+    mockGameActions.removeToken(sessionId, playerId);
+  };
+
+  const increasePoints = (playerId: string) => {
+    mockGameActions.increasePoints(sessionId, playerId);
+  };
+
+  const decreasePoints = (playerId: string) => {
+    mockGameActions.decreasePoints(sessionId, playerId);
   };
 
   return (
@@ -68,6 +83,9 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         handleDiscard,
         drawToken,
         giveToken,
+        removeToken,
+        increasePoints,
+        decreasePoints,
       }}
     >
       {children}

@@ -76,6 +76,7 @@ export interface SessionCard {
 }
 
 export interface SessionPlayer {
+  tokens: number;
   points: number;
   username: string;
   cards: SessionCard[];
