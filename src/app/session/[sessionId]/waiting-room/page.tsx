@@ -1,7 +1,9 @@
 'use client';
 
+import { useGame } from '@/components/GameContext';
 import { Button } from '@/components/ui/button';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { SessionPlayer } from '@/lib/supabase';
+import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
 interface PlayerInfo {
@@ -12,8 +14,8 @@ interface PlayerInfo {
 
 export default function WaitingRoomPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const [playerInfo, setPlayerInfo] = useState<PlayerInfo | null>(null);
+  const { gameState } = useGame();
 
   useEffect(() => {
     // Try to get player info from localStorage
@@ -21,26 +23,17 @@ export default function WaitingRoomPage() {
     if (storedPlayerInfo) {
       setPlayerInfo(JSON.parse(storedPlayerInfo));
     } else {
-      // Fallback to URL params
-      const playerInfo = {
-        playerId: searchParams.get('playerId') || '',
-        userName: searchParams.get('userName') || '',
-        gameCode: searchParams.get('gameCode') || '',
-      };
-
-      if (!playerInfo.playerId || !playerInfo.gameCode) {
-        console.error('Missing player information');
-        router.push('/'); // Redirect to home if no player info
-        return;
-      }
-
-      setPlayerInfo(playerInfo);
+      console.error('Missing player information');
+      router.push('/');
+      return;
     }
-  }, [router, searchParams]);
+  }, [router]);
 
   const handleStartGame = () => {
     if (playerInfo) {
-      router.push(`/player-hand/${playerInfo.gameCode}/${playerInfo.playerId}`);
+      router.push(
+        `/session/${playerInfo.gameCode}/player/${playerInfo.playerId}/hand`
+      );
     }
   };
 
@@ -54,10 +47,32 @@ export default function WaitingRoomPage() {
 
       <h1 className="text-4xl font-bold mb-8">Waiting Room</h1>
 
-      <div className="bg-white p-6 rounded-lg shadow-md">
+      <div className="bg-white p-6 rounded-lg shadow-md w-full max-w-md">
         <p className="text-xl mb-4">Welcome, {playerInfo.userName}!</p>
         <p className="text-lg mb-4">Game Code: {playerInfo.gameCode}</p>
         <p className="text-gray-600 mb-6">Waiting for the game to start...</p>
+
+        {gameState && gameState.players ? (
+          <div>
+            <h2 className="text-2xl font-semibold mb-4">Players:</h2>
+            <ul className="space-y-2">
+              {gameState.players.map((player: SessionPlayer) => (
+                <li
+                  key={player.id}
+                  className={`p-2 rounded ${
+                    player.id === playerInfo.playerId
+                      ? 'bg-blue-100 font-bold'
+                      : 'bg-gray-100'
+                  }`}
+                >
+                  {player.username}
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : (
+          <div>Loading players...</div>
+        )}
       </div>
 
       {/* Temporary button for demo purposes */}

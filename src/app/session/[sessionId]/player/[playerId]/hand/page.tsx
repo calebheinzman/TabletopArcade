@@ -1,33 +1,24 @@
 'use client';
 
-import { GameProvider, useGame } from '@/components/GameContext';
+import { useGame } from '@/components/GameContext';
 import { PlayerHand } from '@/components/player-hand';
 import { Button } from '@/components/ui/button';
+import { SessionPlayer } from '@/lib/supabase';
 import { useParams, useRouter } from 'next/navigation';
 
-import { useEffect } from 'react';
-
-function PlayerHandContent() {
+export default function PlayerHandContent() {
   const router = useRouter();
   const params = useParams();
-  const gameId = params.gameId;
-  const playerId = params.playerId;
+  const playerId = params.playerId as string;
 
-  const { gameState, subscribeToGame, unsubscribeFromGame } = useGame();
+  const { gameState } = useGame();
 
-  useEffect(() => {
-    if (gameId && playerId) {
-      subscribeToGame(gameId as string);
-    }
-
-    return () => unsubscribeFromGame();
-  }, [gameId, playerId, subscribeToGame, unsubscribeFromGame]);
-
+  console.log('GAME STATE', gameState);
   if (!gameState || !playerId) return <div>Loading...</div>;
 
   // Find the current player from game state
   const currentPlayer = gameState.players.find(
-    (player) => player.id === playerId
+    (player: SessionPlayer) => player.id === playerId
   );
   if (!currentPlayer) return <div>Player not found</div>;
 
@@ -45,16 +36,8 @@ function PlayerHandContent() {
         </div>
       </header>
       <main className="flex-grow p-2 sm:p-4">
-        <PlayerHand player_id={playerId as string} />
+        <PlayerHand playerId={playerId} />
       </main>
     </div>
-  );
-}
-
-export default function PlayerHandPage() {
-  return (
-    <GameProvider>
-      <PlayerHandContent />
-    </GameProvider>
   );
 }

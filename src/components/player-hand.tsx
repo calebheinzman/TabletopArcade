@@ -1,3 +1,5 @@
+// PlayerHand.tsx
+
 'use client';
 
 import { useGame } from '@/components/GameContext';
@@ -18,100 +20,46 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
-import { useEffect, useState } from 'react';
+import { SessionPlayer } from '@/lib/supabase';
+import { useParams } from 'next/navigation';
 
-interface CardInfo {
-  id: number;
-  name: string;
-  description: string;
-  isRevealed?: boolean;
-}
+export function PlayerHand() {
+  const {
+    gameState,
+    drawCard,
+    handleReveal,
+    handleDiscard,
+    drawToken,
+    giveToken,
+  } = useGame();
+  const params = useParams();
+  const playerId = params?.playerId as string;
 
-interface PlayerData {
-  userId: string;
-  playerName: string;
-  isHost: boolean;
-  cards: CardInfo[];
-  points: number;
-}
-
-export function PlayerHand({ player_id }: { player_id: string }) {
-  const [playerData, setPlayerData] = useState<PlayerData | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const { setRevealedCard } = useGame();
-  const playerNames = ['Alice', 'Bob', 'Charlie', 'David']; // Example player names
-
-  useEffect(() => {
-    const fetchPlayerHand = async () => {
-      try {
-        const response = await fetch(`/api/player-hand/${player_id}`);
-        if (!response.ok) {
-          throw new Error('Failed to fetch player hand');
-        }
-        const data = await response.json();
-        setPlayerData(data);
-      } catch (error) {
-        setError('Error fetching player data');
-        console.error('Error fetching player hand:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchPlayerHand();
-  }, [player_id]);
-
-  const handleReveal = (card: CardInfo, index: number) => {
-    setRevealedCard(card);
-    if (playerData) {
-      const updatedCards = [...playerData.cards];
-      updatedCards[index] = { ...card, isRevealed: true };
-      setPlayerData({ ...playerData, cards: updatedCards });
-    }
-  };
-
-  const handleDiscard = (index: number) => {
-    if (playerData) {
-      const updatedCards = playerData.cards.filter((_, i) => i !== index);
-      setPlayerData({ ...playerData, cards: updatedCards });
-    }
-  };
-
-  const drawCard = () => {
-    // In a real implementation, this would call an API to draw a card
-    console.log('Drawing a card');
-  };
-
-  const drawToken = () => {
-    if (playerData) {
-      setPlayerData({ ...playerData, points: playerData.points + 1 });
-    }
-  };
-
-  const giveToken = (target: string) => {
-    if (playerData && playerData.points > 0) {
-      setPlayerData({ ...playerData, points: playerData.points - 1 });
-      console.log(`Token given to ${target}`);
-    }
-  };
-
-  if (isLoading) {
-    return <div>Loading player hand...</div>;
+  if (!gameState || !playerId) {
+    return <div>Loading game state...</div>;
   }
 
-  if (error || !playerData) {
-    return <div>Error: {error || 'Failed to load player data'}</div>;
+  const currentPlayer = gameState.players.find(
+    (player: SessionPlayer) => player.id === playerId
+  );
+
+  if (!currentPlayer) {
+    return <div>Error: Player not found</div>;
   }
+
+  const playerNames =
+    gameState.players
+      .map((player) => player.username)
+      .filter((name) => name !== currentPlayer.username) || [];
 
   return (
     <div className="w-full max-w-4xl mx-auto p-4">
       <h2 className="text-2xl font-bold mb-4">
-        {playerData.playerName}&apos;s Hand
+        {currentPlayer.username}&apos;s Hand
       </h2>
       <div className="flex flex-wrap gap-4 mb-6">
-        {playerData.cards.map((card, index) => (
-          <Dialog key={card.id}>
+        {currentPlayer.cards.map((card, index) => (
+          <Dialog key={`${card.id}-${index}`}>
             <DialogTrigger asChild>
               <Card className="w-32 h-48 bg-gray-200 shadow-md cursor-pointer hover:shadow-lg transition-shadow relative">
                 <CardContent className="flex items-center justify-center h-full">
@@ -135,7 +83,7 @@ export function PlayerHand({ player_id }: { player_id: string }) {
               <div className="flex justify-between mt-4">
                 <DialogClose asChild>
                   <Button
-                    onClick={() => handleReveal(card, index)}
+                    onClick={() => handleReveal(playerId, card.id)}
                     disabled={card.isRevealed}
                   >
                     {card.isRevealed ? 'Already Revealed' : 'Reveal on Board'}
@@ -144,7 +92,7 @@ export function PlayerHand({ player_id }: { player_id: string }) {
                 <DialogClose asChild>
                   <Button
                     variant="destructive"
-                    onClick={() => handleDiscard(index)}
+                    onClick={() => handleDiscard(playerId, card.id)}
                   >
                     Discard
                   </Button>
@@ -155,22 +103,28 @@ export function PlayerHand({ player_id }: { player_id: string }) {
         ))}
       </div>
       <div className="flex justify-between items-center mb-4">
-        <div className="text-xl font-bold">Points: {playerData.points}</div>
+        <div className="text-xl font-bold">
+          Points: {currentPlayer.points || 0}
+        </div>
         <div className="space-x-2">
-          <Button onClick={drawCard}>Draw Card</Button>
-          <Button onClick={drawToken}>Draw Token</Button>
+          <Button onClick={() => drawCard(playerId)}>Draw Card</Button>
+          <Button onClick={() => drawToken(playerId)}>Draw Token</Button>
           <Popover>
             <PopoverTrigger asChild>
-              <Button disabled={playerData.points === 0}>Give Token</Button>
+              <Button disabled={currentPlayer.points === 0}>Give Token</Button>
             </PopoverTrigger>
             <PopoverContent className="w-56">
               <div className="grid gap-2">
                 {playerNames.map((name, index) => (
-                  <Button key={index} onClick={() => giveToken(name)} size="sm">
+                  <Button
+                    key={index}
+                    onClick={() => giveToken(playerId, name)}
+                    size="sm"
+                  >
                     {name}
                   </Button>
                 ))}
-                <Button onClick={() => giveToken('Board')} size="sm">
+                <Button onClick={() => giveToken(playerId, 'Board')} size="sm">
                   Board
                 </Button>
               </div>
