@@ -1,11 +1,10 @@
+import { defaultSessionState } from '@/app/api/player-hand/[player_id]/route';
 import { createClient } from '@supabase/supabase-js';
-import { defaultSessionState } from './defaultGameState';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
-export const supabase =
-  supabaseUrl && supabaseAnonKey && createClient(supabaseUrl, supabaseAnonKey);
+export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 export interface GameTemplate {
   id: string;
@@ -84,6 +83,7 @@ export interface SessionPlayer {
   score: number;
   isActive: boolean;
   id: string;
+  tokens?: number;
 }
 
 export const gameActions = {

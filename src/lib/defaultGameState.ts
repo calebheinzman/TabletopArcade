@@ -14,7 +14,7 @@ const characterCards: Omit<SessionCard, 'id'>[] = [
     name: 'Assassin',
     description: "Pay 3 coins to assassinate another player's character.",
     count: 3,
-    isRevealed: false,
+    isRevealed: true,
   },
   {
     name: 'Captain',

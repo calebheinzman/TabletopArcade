@@ -51,7 +51,6 @@ export default function GameSelectPage() {
     );
   }
 
-  console.log(games);
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100 relative">
       <Button onClick={() => router.back()} className="absolute top-4 left-4">
