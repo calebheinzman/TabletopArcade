@@ -51,7 +51,7 @@ export default function JoinGamePage() {
 
       // Pass info through URL params as well
       router.push(
-        `/waiting-room/${gameCode}?playerId=${data.playerId}&userName=${encodeURIComponent(userName)}`
+        `/waiting-room/?playerId=${data.playerId}&userName=${encodeURIComponent(userName)}`
       );
     } catch (error) {
       console.error('Error joining game:', error);

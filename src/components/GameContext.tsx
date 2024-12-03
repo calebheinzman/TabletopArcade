@@ -1,112 +1,73 @@
+// GameContext.tsx
+
 'use client';
 
+import { mockGameActions } from '@/lib/defaultGameState';
+import { SessionState } from '@/lib/supabase';
+import { useParams } from 'next/navigation';
 import React, { createContext, useContext, useEffect, useState } from 'react';
 
-interface CardInfo {
-  name: string;
-  description: string;
-}
-
-interface Player {
-  username: string;
-  cards: number;
-  score: number;
-  isActive: boolean;
-  id: string;
-}
-
-interface GameState {
-  players: Player[];
-  tokens: number;
-  currentTurn: string;
-  deck: number;
-}
-
 interface GameContextType {
-  revealedCard: CardInfo | null;
-  setRevealedCard: (card: CardInfo | null) => void;
-  gameState: GameState | null;
-  gameId: string | null;
-  subscribeToGame: (gameId: string) => void;
-  unsubscribeFromGame: () => void;
+  gameState: SessionState | null;
+  drawCard: (playerId: string) => void;
+  handleReveal: (playerId: string, cardId: string) => void;
+  handleDiscard: (playerId: string, cardId: string) => void;
+  drawToken: (playerId: string) => void;
+  giveToken: (playerId: string, targetUsername: string) => void;
 }
-
-const initialGameState: GameState = {
-  players: [],
-  tokens: 50,
-  currentTurn: '',
-  deck: 52,
-};
 
 const GameContext = createContext<GameContextType | undefined>(undefined);
 
 export function GameProvider({ children }: { children: React.ReactNode }) {
-  const [revealedCard, setRevealedCard] = useState<CardInfo | null>(null);
-  const [gameState, setGameState] = useState<GameState | null>(null);
-  const [gameId, setGameId] = useState<string | null>(null);
+  const [gameState, setGameState] = useState<SessionState | null>(null);
+  const params = useParams();
+  const sessionId = params?.sessionId as string;
 
-  const subscribeToGame = (newGameId: string) => {
-    setGameId(newGameId);
-    setGameState(initialGameState); // Reset game state when subscribing to new game
-  };
-
-  const unsubscribeFromGame = () => {
-    setGameId(null);
-    setGameState(null);
-  };
-
-  // Simulate websocket connection and game state updates
   useEffect(() => {
-    if (!gameId) return;
+    if (!sessionId) return;
 
-    console.log(`Connecting to game ${gameId}...`);
-
-    // Simulate initial game state
-    setGameState({
-      players: [
-        { username: 'Alice', cards: 2, score: 0, isActive: true, id: '1' },
-        { username: 'Bob', cards: 2, score: 3, isActive: true, id: '2' },
-        { username: 'Charlie', cards: 2, score: 1, isActive: true, id: '3' },
-        { username: 'David', cards: 2, score: 2, isActive: false, id: '4' },
-        { username: 'Eve', cards: 2, score: 1, isActive: true, id: '5' },
-      ],
-      tokens: 50,
-      currentTurn: 'Alice',
-      deck: 52,
-    });
-
-    // Simulate periodic game state updates
-    const interval = setInterval(() => {
-      setGameState((prev) => {
-        if (!prev) return prev;
-        return {
-          ...prev,
-          tokens: Math.max(0, prev.tokens - 1),
-          players: prev.players.map((player) => ({
-            ...player,
-            score: player.isActive
-              ? player.score + Math.floor(Math.random() * 2)
-              : player.score,
-          })),
-        };
-      });
-    }, 5000);
+    const { unsubscribe } = mockGameActions.subscribeToSession(
+      sessionId,
+      (newGameState) => {
+        setGameState(newGameState);
+      }
+    );
 
     return () => {
-      clearInterval(interval);
-      console.log('Disconnecting from game...');
+      unsubscribe();
     };
-  }, [gameId]);
+  }, [sessionId]);
+
+  // Define functions that wrap the gameActions functions
+  const drawCard = (playerId: string) => {
+    mockGameActions.drawCard(sessionId, playerId);
+  };
+
+  const handleReveal = (playerId: string, cardId: string) => {
+    mockGameActions.handleReveal(sessionId, playerId, cardId);
+  };
+
+  const handleDiscard = (playerId: string, cardId: string) => {
+    mockGameActions.handleDiscard(sessionId, playerId, cardId);
+  };
+
+  const drawToken = (playerId: string) => {
+    mockGameActions.drawToken(sessionId, playerId);
+  };
+
+  const giveToken = (playerId: string, targetUsername: string) => {
+    mockGameActions.giveToken(sessionId, playerId, targetUsername);
+  };
 
   return (
     <GameContext.Provider
       value={{
-        revealedCard,
-        setRevealedCard,
         gameState,
-        gameId,
-        subscribeToGame,
-        unsubscribeFromGame,
+        drawCard,
+        handleReveal,
+        handleDiscard,
+        drawToken,
+        giveToken,
       }}
     >
       {children}
