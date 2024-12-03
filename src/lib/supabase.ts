@@ -178,9 +178,7 @@ export const gameActions = {
 
       // Step 2: Insert a new session based on the game template
       const sessionData = {
-        gameid: gameData.gameid,
-        name: gameData.name, // You might want to customize the session name
-        // Add other session-specific fields as needed
+        ...gameData,
       };
 
       const { data: sessionResult, error: sessionError } = await supabase
@@ -245,7 +243,7 @@ export const gameActions = {
 
       if (error) throw error;
 
-      return data.map((game) => game.name);
+      return data.map((game) => ({ ...game, id: game.gameid }));
     } catch (error) {
       console.error('Error fetching game names:', error);
       return [];
