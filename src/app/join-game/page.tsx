@@ -5,15 +5,16 @@ import { Input } from '@/components/ui/input';
 import { useRouter } from 'next/navigation';
 
 import { useState } from 'react';
+import { addPlayer } from '@/lib/supabase';
 
 interface PlayerInfo {
-  playerId: string;
+  playerId: number;
   userName: string;
-  gameCode: string;
+  gameCode: number;
 }
 
 export default function JoinGamePage() {
-  const [gameCode, setGameCode] = useState('');
+  const [gameCode, setGameCode] = useState(0);
   const [userName, setUserName] = useState('');
   const [isJoining, setIsJoining] = useState(false);
   const router = useRouter();
@@ -27,31 +28,24 @@ export default function JoinGamePage() {
     setIsJoining(true);
 
     try {
-      const response = await fetch(`/api/games/${gameCode}/join`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ userName }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to join game');
+      // Add player to the game
+      const { playerId, error } = await addPlayer(gameCode, userName);
+      
+      if (error || !playerId) {
+        throw new Error(error || 'Failed to join game');
       }
-
-      const data = await response.json();
 
       // Store player info in localStorage
       const playerInfo: PlayerInfo = {
-        playerId: data.playerId,
+        playerId: playerId,
         userName,
         gameCode,
       };
       localStorage.setItem('playerInfo', JSON.stringify(playerInfo));
 
-      // Pass info through URL params as well
+      // Navigate to waiting room
       router.push(
-        `session/${gameCode}/waiting-room/?playerId=${data.playerId}&userName=${encodeURIComponent(userName)}`
+        `session/${gameCode}/waiting-room/?playerId=${playerId}&userName=${encodeURIComponent(userName)}`
       );
     } catch (error) {
       console.error('Error joining game:', error);
@@ -74,7 +68,7 @@ export default function JoinGamePage() {
           </label>
           <Input
             value={gameCode}
-            onChange={(e) => setGameCode(e.target.value)}
+            onChange={(e) => setGameCode(parseInt(e.target.value))}
             className="mt-1"
             placeholder="Enter game code"
             disabled={isJoining}

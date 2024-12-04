@@ -3,27 +3,36 @@
 import { useGame } from '@/components/GameContext';
 import { Button } from '@/components/ui/button';
 import { useParams, useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import { SessionPlayer,createSession } from '@/lib/supabase';
 
 export default function HostStartPage() {
   const router = useRouter();
   const { sessionId } = useParams();
-  const { gameState } = useGame();
+  const gameContext = useGame();
+  const [players, setPlayers] = useState<SessionPlayer[]>([]);
+
+  // Monitor changes to gameContext
+  useEffect(() => {
+    console.log('HostStartPage: gameContext updated', gameContext?.sessionPlayers);
+    if (gameContext?.sessionPlayers) {
+      setPlayers(gameContext.sessionPlayers);
+    }
+  }, [gameContext?.sessionPlayers]);
 
   const startGame = async () => {
     try {
-      // Notify the game server that the game is starting
+      await createSession(gameContext);
       await fetch(`/api/games/${sessionId}/start`, {
         method: 'POST',
       });
-
-      // Navigate to the game board
-      router.push(`/board/${sessionId}`);
+      router.push(`/session/${sessionId}/board`);
     } catch (error) {
       console.error('Failed to start game:', error);
     }
   };
 
-  if (!gameState) {
+  if (!gameContext || !gameContext.session) {
     return <div>Loading game state...</div>;
   }
 
@@ -40,11 +49,11 @@ export default function HostStartPage() {
         </div>
         <div>
           <p className="text-sm font-medium text-gray-700">
-            Players Joined ({gameState.players.length})
+            Players Joined ({players.length})
           </p>
           <div className="mt-2 space-y-2">
-            {gameState.players.map((player) => (
-              <div key={player.id} className="text-sm bg-gray-50 p-2 rounded">
+            {players.map((player) => (
+              <div key={player.playerid} className="text-sm bg-gray-50 p-2 rounded">
                 {player.username}
               </div>
             ))}
@@ -53,7 +62,7 @@ export default function HostStartPage() {
         <Button
           onClick={startGame}
           className="w-full"
-          disabled={gameState.players.length < 2} // Require at least 2 players
+          disabled={players.length < 2}
         >
           Start Game
         </Button>

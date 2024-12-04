@@ -20,37 +20,62 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
-import { SessionPlayer } from '@/lib/supabase';
 import { useParams } from 'next/navigation';
+import { GameContextType } from '@/components/GameContext';
 
-export function PlayerHand() {
-  const {
-    gameState,
-    drawCard,
-    handleReveal,
-    handleDiscard,
-    drawToken,
-    giveToken,
-  } = useGame();
+function handleReveal(playerId: number, cardId: number) {
+  console.log('Reveal', playerId, cardId);
+}
+function handleDiscard(playerId: number, cardId: number) {
+  console.log('Discard', playerId, cardId);
+}
+function drawToken(playerId: number) {
+  console.log('Draw Token', playerId);
+}
+function giveToken(playerId: number, recipient: string) {
+  console.log('Give Token', playerId, recipient);
+}
+
+export function PlayerHand({ gameContext }: { gameContext: GameContextType }) {
   const params = useParams();
-  const playerId = params?.playerId as string;
+  const playerId = parseInt(params?.playerId as string);
+  console.log('PLAYERHAND CONTEXT', gameContext);
+  
+  console.log('PLAYERHAND GAME CONTEXT', gameContext);
+  console.log('PLAYERHAND PLAYER ID', playerId);
 
-  if (!gameState || !playerId) {
+  if (!gameContext || !playerId) {
     return <div>Loading game state...</div>;
   }
-
-  const currentPlayer = gameState.players.find(
-    (player: SessionPlayer) => player.id === playerId
-  );
-
+  let currentPlayer = null;
+  for (const player of gameContext.sessionPlayers) {
+    console.log('Comparing player ID:', player.playerid, 'with:', playerId);
+    if (player.playerid === playerId) {
+      currentPlayer = player;
+      break;
+    }
+  }
+  console.log('PLAYERHAND CURRENT PLAYER', currentPlayer);
   if (!currentPlayer) {
     return <div>Error: Player not found</div>;
   }
 
-  const playerNames =
-    gameState.players
-      .map((player) => player.username)
-      .filter((name) => name !== currentPlayer.username) || [];
+  const playerCards = gameContext.sessionCards
+    .filter(card => card.playerid === playerId)
+    .map(sessionCard => {
+      const deck = gameContext.decks.find(d => d.deckid === sessionCard.deckid);
+      const cardDetails = deck?.cards.find(c => c.cardid === sessionCard.cardid);
+      return {
+        id: sessionCard.sessioncardid,
+        name: cardDetails?.name || 'Unknown Card',
+        description: cardDetails?.description || '',
+        isRevealed: false
+      };
+    });
+
+  const playerNames = gameContext.sessionPlayers
+    .map((player) => player.username)
+    .filter((name) => name !== currentPlayer.username) || [];
 
   return (
     <div className="w-full max-w-4xl mx-auto p-4">
@@ -58,17 +83,14 @@ export function PlayerHand() {
         {currentPlayer.username}&apos;s Hand
       </h2>
       <div className="flex flex-wrap gap-4 mb-6">
-        {currentPlayer.cards.map((card, index) => (
+        {playerCards.map((card, index) => (
           <Dialog key={`${card.id}-${index}`}>
             <DialogTrigger asChild>
               <Card className="w-32 h-48 bg-gray-200 shadow-md cursor-pointer hover:shadow-lg transition-shadow relative">
                 <CardContent className="flex items-center justify-center h-full">
                   <span className="text-lg font-semibold">{card.name}</span>
                   {card.isRevealed && (
-                    <Badge
-                      className="absolute top-2 right-2"
-                      variant="secondary"
-                    >
+                    <Badge className="absolute top-2 right-2" variant="secondary">
                       Revealed
                     </Badge>
                   )}
@@ -104,14 +126,16 @@ export function PlayerHand() {
       </div>
       <div className="flex justify-between items-center mb-4">
         <div className="text-xl font-bold">
-          Points: {currentPlayer.points || 0}
+          Points: {currentPlayer.num_points || 0}
         </div>
         <div className="space-x-2">
-          <Button onClick={() => drawCard(playerId)}>Draw Card</Button>
+          <Button onClick={() => gameContext.drawCard(playerId)}>Draw Card</Button>
           <Button onClick={() => drawToken(playerId)}>Draw Token</Button>
           <Popover>
             <PopoverTrigger asChild>
-              <Button disabled={currentPlayer.points === 0}>Give Token</Button>
+              <Button disabled={currentPlayer.num_points === 0}>
+                Give Token
+              </Button>
             </PopoverTrigger>
             <PopoverContent className="w-56">
               <div className="grid gap-2">

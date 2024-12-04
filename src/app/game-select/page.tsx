@@ -2,7 +2,7 @@
 
 import { Button } from '@/components/ui/button';
 import useGameNamesAndId from '@/hooks/useGameNamesAndId';
-import { gameActions, GameTemplateNameAndId } from '@/lib/supabase';
+import { GameTemplateNameAndId,createSessionFromGameTemplateId} from '@/lib/supabase';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
@@ -18,7 +18,7 @@ export default function GameSelectPage() {
     setActionError('');
 
     const { error: createError, sessionId } =
-      await gameActions.createSessionFromGameTemplateId(game.id);
+      await createSessionFromGameTemplateId(game.id);
 
     // Display error if unsuccessful.
     if (createError || !sessionId) {
@@ -28,7 +28,7 @@ export default function GameSelectPage() {
     }
 
     // Navigate to the host-start page using the session id.
-    router.push(`/host-start/${sessionId}`);
+    router.push(`/session/${sessionId}/host-start`);
   };
 
   // Display loading state

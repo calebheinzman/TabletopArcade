@@ -9,48 +9,45 @@ import { useGame } from '@/components/GameContext';
 import React, { useState } from 'react';
 
 const BoardContent: React.FC = () => {
-  const { gameState, giveToken, removeToken, increasePoints, decreasePoints } =
-    useGame();
-  const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null);
+  const gameContext = useGame();
 
-  if (!gameState) return <div>Loading...</div>;
+  const [selectedPlayerId, setSelectedPlayerId] = useState<number | null>(null);
+
+  if (!gameContext) return <div>Loading...</div>;
 
   // Destructure necessary data from gameState for clarity
-  const { players, deck, tokens } = gameState;
+  const players = gameContext.sessionPlayers;
+  const deck = gameContext.sessionCards;
+  const tokens = gameContext.session.num_tokens;
   const totalPlayers = players.length;
   const deckCount = deck.length;
-  const gameTokens = tokens;
+  const gameTokens = gameContext.session.num_tokens;
 
   // Find the selected player based on selectedPlayerId
   const selectedPlayer = players.find(
-    (player) => player.id === selectedPlayerId
+    (player) => player.playerid === selectedPlayerId
   );
 
   // Handler functions for adjusting tokens and points
   const handleGiveToken = () => {
     if (selectedPlayerId) {
-      giveToken(selectedPlayerId);
-      // Optionally, keep the dialog open for multiple adjustments
     }
   };
 
   const handleRemoveToken = () => {
     if (selectedPlayerId) {
-      removeToken(selectedPlayerId);
       // Optionally, keep the dialog open for multiple adjustments
     }
   };
 
   const handleIncreasePoints = () => {
     if (selectedPlayerId) {
-      increasePoints(selectedPlayerId);
       // Optionally, keep the dialog open for multiple adjustments
     }
   };
 
   const handleDecreasePoints = () => {
     if (selectedPlayerId) {
-      decreasePoints(selectedPlayerId);
       // Optionally, keep the dialog open for multiple adjustments
     }
   };
@@ -89,8 +86,8 @@ const BoardContent: React.FC = () => {
         <BoardPlayerActionsDialog
           isOpen={!!selectedPlayerId}
           playerName={selectedPlayer.username}
-          tokens={selectedPlayer.tokens || 0}
-          points={selectedPlayer.score || 0}
+          tokens={selectedPlayer.num_points || 0}
+          points={0}
           onClose={() => setSelectedPlayerId(null)}
           onIncreaseToken={handleGiveToken}
           onDecreaseToken={handleRemoveToken}

@@ -1,102 +1,231 @@
 // GameContext.tsx
 
 'use client';
-
-import { mockGameActions } from '@/lib/defaultGameState';
-import { SessionState } from '@/lib/supabase';
-import { useParams } from 'next/navigation';
+import { 
+  subscribeToPlayer,
+  subscribeToPlayerActions,
+  subscribeToSession,
+  subscribeToSessionCards,
+  supabase 
+} from '@/lib/supabase';
+import { 
+  CustomGameData, 
+  DeckData, 
+  CardData, 
+  SessionCard, 
+  PlayerAction, 
+  Session, 
+  SessionPlayer 
+} from '@/lib/supabase';
 import React, { createContext, useContext, useEffect, useState } from 'react';
+import { 
+  fetchInitialPlayers,
+  fetchGameData,
+  fetchDecksAndCards,
+  fetchSessionCards,
+  fetchPlayerActions,
+  fetchSession,
+  drawCardFromDeck,
+} from '@/lib/supabase';
 
-interface GameContextType {
-  gameState: SessionState | null;
-  drawCard: (playerId: string) => void;
-  handleReveal: (playerId: string, cardId: string) => void;
-  handleDiscard: (playerId: string, cardId: string) => void;
-  drawToken: (playerId: string) => void;
-  giveToken: (playerId: string) => void;
-  removeToken: (playerId: string) => void; // New Function
-  increasePoints: (playerId: string) => void;
-  decreasePoints: (playerId: string) => void; // New Function
+// Types
+export interface GameContextType {
+  gameid: number;
+  sessionid: number;
+  gameData: CustomGameData;
+  decks: DeckData[];
+  cards: CardData[][];
+  sessionCards: SessionCard[];
+  playerActions: PlayerAction[];
+  session: Session;
+  sessionPlayers: SessionPlayer[];
+  drawCard: (playerId: number) => Promise<void>;
 }
 
-const GameContext = createContext<GameContextType | undefined>(undefined);
+const initialGameContext: GameContextType = {
+  gameid: 0,
+  sessionid: 0,
+  gameData: {} as CustomGameData,
+  decks: [],
+  cards: [],
+  sessionCards: [],
+  playerActions: [],
+  session: {} as Session,
+  sessionPlayers: [],
+  drawCard: async (playerId: number) => {}
+};
 
-export function GameProvider({ children }: { children: React.ReactNode }) {
-  const [gameState, setGameState] = useState<SessionState | null>(null);
-  const params = useParams();
-  const sessionId = params?.sessionId as string;
+// Context
+const GameContext = createContext<GameContextType | null>(null);
+
+// Helper Functions
+const handlePlayerUpdate = (
+  currentPlayers: SessionPlayer[],
+  payload: any
+): SessionPlayer[] => {
+  let updatedPlayers = [...currentPlayers];
+  
+  switch (payload.eventType) {
+    case 'INSERT':
+      return [...updatedPlayers, payload.new];
+      
+    case 'UPDATE':
+      return updatedPlayers.map(player =>
+        player.playerid === payload.new.playerid ? payload.new : player
+      );
+      
+    case 'DELETE':
+      return updatedPlayers.filter(player =>
+        player.playerid !== payload.old.playerid
+      );
+      
+    default:
+      return currentPlayers;
+  }
+};
+
+// Provider Component
+export function GameProvider({ 
+  children, 
+  sessionId 
+}: { 
+  children: React.ReactNode;
+  sessionId: number;
+}) {
+  const [gameContext, setGameContext] = useState<GameContextType>({
+    ...initialGameContext,
+    sessionid: sessionId
+  });
 
   useEffect(() => {
     if (!sessionId) return;
 
-    const { unsubscribe } = mockGameActions.subscribeToSession(
-      sessionId,
-      (newGameState) => {
-        setGameState(newGameState);
-      }
-    );
+    let mounted = true;
 
+    const initializeGameData = async () => {
+      try {
+        // Fetch game data and extract gameId
+        const { gameData, gameId } = await fetchGameData(sessionId);
+
+        if (!mounted || !gameId) return;
+
+        // Fetch other data using the gameId
+        const [{ decks, cards }, sessionCards, players, playerActions, session] = await Promise.all([
+          fetchDecksAndCards(gameId),
+          fetchSessionCards(sessionId),
+          fetchInitialPlayers(sessionId),
+          fetchPlayerActions(sessionId),
+          fetchSession(sessionId)
+        ]);
+
+        if (!mounted) return;
+
+        setGameContext(prev => ({
+          ...prev,
+          gameid: gameId,
+          gameData: gameData || {} as CustomGameData,
+          decks,
+          cards,
+          sessionCards,
+          sessionPlayers: players,
+          playerActions,
+          session: session || {} as Session
+        }));
+      } catch (error) {
+        console.error('Error initializing game data:', error);
+      }
+    };
+
+    initializeGameData();
+
+    // Set up all subscriptions
+    const playerSubscription = subscribeToPlayer(sessionId, (payload) => {
+      if (!mounted) return;
+      setGameContext(prev => ({
+        ...prev,
+        sessionPlayers: handlePlayerUpdate(prev.sessionPlayers, payload)
+      }));
+    });
+
+    const playerActionsSubscription = subscribeToPlayerActions(sessionId, (payload) => {
+      if (!mounted) return;
+      setGameContext(prev => ({
+        ...prev,
+        playerActions: [...prev.playerActions, payload.new as PlayerAction]
+      }));
+    });
+
+    const sessionSubscription = subscribeToSession(sessionId, (payload) => {
+      if (!mounted) return;
+      if (payload.eventType === 'UPDATE') {
+        setGameContext(prev => ({
+          ...prev,
+          session: payload.new as Session
+        }));
+      }
+    });
+
+    const sessionCardsSubscription = subscribeToSessionCards(sessionId, (payload) => {
+      if (!mounted) return;
+      
+      switch (payload.eventType) {
+        case 'INSERT':
+          setGameContext(prev => ({
+            ...prev,
+            sessionCards: [...prev.sessionCards, payload.new as SessionCard]
+          }));
+          break;
+        case 'UPDATE':
+          setGameContext(prev => ({
+            ...prev,
+            sessionCards: prev.sessionCards.map(card => 
+              card.sessioncardid === payload.new.sessioncardid 
+                ? payload.new as SessionCard 
+                : card
+            )
+          }));
+          break;
+        case 'DELETE':
+          setGameContext(prev => ({
+            ...prev,
+            sessionCards: prev.sessionCards.filter(card => 
+              card.sessioncardid !== payload.old.sessioncardid
+            )
+          }));
+          break;
+      }
+    });
+
+    // Cleanup function
     return () => {
-      unsubscribe();
+      mounted = false;
+      playerSubscription.unsubscribe();
+      playerActionsSubscription.unsubscribe();
+      sessionSubscription.unsubscribe();
+      sessionCardsSubscription.unsubscribe();
     };
   }, [sessionId]);
+  console.log('gameContext', gameContext);
 
-  // Define functions that wrap the gameActions functions
-  const drawCard = (playerId: string) => {
-    mockGameActions.drawCard(sessionId, playerId);
-  };
-
-  const handleReveal = (playerId: string, cardId: string) => {
-    mockGameActions.handleReveal(sessionId, playerId, cardId);
-  };
-
-  const handleDiscard = (playerId: string, cardId: string) => {
-    mockGameActions.handleDiscard(sessionId, playerId, cardId);
-  };
-
-  const drawToken = (playerId: string) => {
-    mockGameActions.drawToken(sessionId, playerId);
-  };
-
-  const giveToken = (playerId: string) => {
-    mockGameActions.giveToken(sessionId, playerId);
-  };
-
-  const removeToken = (playerId: string) => {
-    mockGameActions.removeToken(sessionId, playerId);
-  };
-
-  const increasePoints = (playerId: string) => {
-    mockGameActions.increasePoints(sessionId, playerId);
-  };
-
-  const decreasePoints = (playerId: string) => {
-    mockGameActions.decreasePoints(sessionId, playerId);
+  const contextValue = {
+    ...gameContext,
+    drawCard: (playerId: number) => drawCardFromDeck(gameContext, playerId)
   };
 
   return (
-    <GameContext.Provider
-      value={{
-        gameState,
-        drawCard,
-        handleReveal,
-        handleDiscard,
-        drawToken,
-        giveToken,
-        removeToken,
-        increasePoints,
-        decreasePoints,
-      }}
-    >
+    <GameContext.Provider value={contextValue}>
       {children}
     </GameContext.Provider>
   );
 }
 
-export function useGame() {
+// Hook
+export function useGame(): GameContextType {
   const context = useContext(GameContext);
-  if (context === undefined) {
+  
+  if (!context) {
     throw new Error('useGame must be used within a GameProvider');
   }
+  
   return context;
 }

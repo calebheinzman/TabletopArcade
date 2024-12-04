@@ -1,5 +1,6 @@
 // mockGameActions.ts
-import { GameTemplate, Session, SessionCard, SessionPlayer, SessionState } from '@/lib/supabase'; // Adjust the import path as necessary
+import { GameContextType } from '@/components/GameContext';
+import {Session, SessionCard, SessionPlayer, SessionState } from '@/lib/supabase'; // Adjust the import path as necessary
 
 // Shuffle function
 function shuffle<T>(array: T[]): T[] {
@@ -17,25 +18,25 @@ const subscribers: {
   [sessionId: string]: Array<(state: SessionState) => void>;
 } = {};
 
-function generateDeck(gameData: GameTemplate): SessionCard[] {
+function generateDeck(gameContext: GameContextType): SessionCard[] {
 	const allCards: SessionCard[] = [];
 	let cardPosition = 0;
 
-	if (!gameData.decks) return [];
+	if (!gameContext.decks) return [];
   var idx = 0;
-	gameData.decks.forEach(deck => {
+	gameContext.decks.forEach(deck => {
 		if (!deck.cards) return;
 
 		deck.cards.forEach(card => {
 			// Create multiple copies based on card count
 			for (let i = 0; i < card.count; i++) {
 				allCards.push({
-					sessionid: '',  // Will be set when initializing session
-					sessionCardId: idx,
-          cardid: card.cardid.toString(),
+					sessionid: 0,  // Will be set when initializing session
+					sessioncardid: idx,
+          cardid: card.cardid,
 					cardPosition: cardPosition++,
-					playerid: '',   // Empty means card is in deck
-					deckid: deck.deckid.toString()
+					playerid: 0,   // Empty means card is in deck
+					deckid: deck.deckid
 				});
         idx++;
 			}
@@ -46,75 +47,46 @@ function generateDeck(gameData: GameTemplate): SessionCard[] {
 }
 
 
-export function initializeSession(sessionId: string,gameData: GameTemplate) {
+export function initializeSession(gameContext: GameContextType) {
+  const { sessionid, sessionPlayers } = gameContext;
+
   // Generate and shuffle the deck
-  const deck = generateDeck(gameData);
-  
+  const deck = generateDeck(gameContext);
+
   // Update all cards with the sessionId
   deck.forEach(card => {
-    card.sessionid = sessionId;
+    card.sessionid = sessionid;
   });
 
   console.log('DECK0');
   console.log(deck);
 
-  // Create initial players
-  const players: SessionPlayer[] = [
-    {
-      sessionid: sessionId,
-      playerid: '1',
-      username: 'Caleb',
-      num_points: 2,
-    },
-    {
-      sessionid: sessionId,
-      playerid: '2',
-      username: 'Seth',
-      num_points: 2,
-    },
-    {
-      sessionid: sessionId,
-      playerid: '3',
-      username: 'JD',
-      num_points: 2,
-    },
-    {
-      sessionid: sessionId,
-      playerid: '4',
-      username: 'Anna',
-      num_points: 2,
-    },
-    {
-      sessionid: sessionId,
-      playerid: '5',
-      username: 'Emily',
-      num_points: 2,
-    },
-    {
-      sessionid: sessionId,
-      playerid: '6',
-      username: 'Chris',
-      num_points: 2,
-    },
-    // Add more mock players if needed
-  ];
+  // Use players from sessionPlayers in game context
+  const players = sessionPlayers.map((player: SessionPlayer) => ({
+    ...player,
+    sessionid: sessionid
+  }));
+
   // Create the initial session state
   const session: Session = {
-    sessionId: sessionId,
-    gameId: '1',
-    num_tokens: 10,
+    sessionId: sessionid,
+    gameId: gameContext.gameid,
+    num_tokens: gameContext.gameData.num_tokens,
     num_players: players.length,
-    num_cards:
-     deck.length,
+    num_cards: deck.length,
   };
 
   // Assign starting cards to players in round-robin fashion
-  const totalStartingCards = gameData.starting_num_cards * players.length;
+  const totalStartingCards = gameContext.gameData.starting_num_cards * players.length;
   deck.forEach((card, index) => {
     if (index < totalStartingCards) {
-      var player = players[index % players.length]
+      const player = players[index % players.length];
       card.playerid = player.playerid;
       card.cardPosition = 0;
+    } else {
+      // Renumber remaining deck cards starting from 1
+      card.cardPosition = index - totalStartingCards + 1;
+      card.playerid = 0;
     }
   });
 
