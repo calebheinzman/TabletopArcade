@@ -10,6 +10,8 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 export interface GameTemplate {
   id: string;
   name: string;
+  decks: DeckData[];
+  starting_num_cards: number;
 }
 
 export interface GameTemplateNameAndId {
@@ -40,13 +42,16 @@ interface CustomGameData {
 }
 
 export interface DeckData {
-  gameid?: number;
+  gameid: number;
+  deckid: number;
   deckname: string;
   num_cards: number;
+  cards: CardData[];
 }
 
 export interface CardData {
-  deckid?: number;
+  deckid: number;
+  cardid: number;
   name: string;
   count: number;
   description: string;
@@ -72,8 +77,8 @@ export interface SessionState {
 }
 
 export interface Session {
-  sessionid: string;
-  gameid: string;
+  gameId: string;
+  sessionId: string;
   num_tokens: number;
   num_players: number;
   num_cards: number;
@@ -81,6 +86,7 @@ export interface Session {
 
 export interface SessionCard {
   sessionid: string;
+  sessionCardId: number;
   cardid: string;
   cardPosition: number;
   playerid: string;
@@ -89,8 +95,7 @@ export interface SessionCard {
 
 export interface SessionPlayer {
   sessionid: string;
-  id?: string;
-  playerid?: string;
+  playerid: string;
   username: string;
   num_points: number;
 }
@@ -185,8 +190,7 @@ export const gameActions = {
       const gameData = await this.fetchGameTemplate(templateId);
 
       if (!gameData) throw new Error('Failed to fetch game template data.');
-      console.log('GAME DATA');
-      console.log(gameData);
+      
       // Step 2: Insert a new session based on the game template
       const sessionData = {
         gameid: gameData.gameid,
@@ -205,9 +209,25 @@ export const gameActions = {
 
       const sessionId = sessionResult.sessionid;
 
-      initializeSession(sessionId);
-      
-      throw new Error('Failed to initialize session');
+      // Initialize session and get the deck
+      const sessionCards = initializeSession(sessionId, gameData);
+      console.log('SESSION CARDS');
+      console.log(sessionCards);
+      // Insert the session cards into the database
+      const { error: cardsError } = await supabase
+        .from('session_cards')
+        .insert(
+          sessionCards.map(card => ({
+            sessionid: parseInt(card.sessionid),
+            sessioncardid: card.sessionCardId,
+            cardid: parseInt(card.cardid),
+            cardposition: card.cardPosition.toString(),
+            playerid: card.playerid ? parseInt(card.playerid) : null,
+            deckid: parseInt(card.deckid)
+          }))
+        );
+
+      if (cardsError) throw cardsError;
 
       return { error: null, sessionId };
     } catch (error) {
