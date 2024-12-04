@@ -1,5 +1,6 @@
 import { defaultSessionState } from '@/app/api/player-hand/[player_id]/route';
 import { createClient } from '@supabase/supabase-js';
+import { initializeSession } from './defaultGameState';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
@@ -53,37 +54,45 @@ export interface CardData {
 }
 
 export interface Player {
+  sessionid: string;
+  playerid: string;
   username: string;
-  cards: number;
-  score: number;
-  isActive: boolean;
-  id: string;
+  num_points: number;
 }
 
 export interface SessionState {
-  players: SessionPlayer[];
-  tokens: number;
-  currentTurn: string;
+  sessionid: string;
+  gameid: string;
+  num_tokens: number;
+  num_players: number;
+  num_cards: number;
+  players: Player[];
   deck: SessionCard[];
+  currentTurn: string;
+}
+
+export interface Session {
+  sessionid: string;
+  gameid: string;
+  num_tokens: number;
+  num_players: number;
+  num_cards: number;
 }
 
 export interface SessionCard {
-  id: string;
-  name: string;
-  description: string;
-  isRevealed: boolean;
-  count: number;
+  sessionid: string;
+  cardid: string;
+  cardPosition: number;
+  playerid: string;
+  deckid: string;
 }
 
 export interface SessionPlayer {
-  tokens: number;
-  points: number;
+  sessionid: string;
+  id?: string;
+  playerid?: string;
   username: string;
-  cards: SessionCard[];
-  score: number;
-  isActive: boolean;
-  id: string;
-  tokens?: number;
+  num_points: number;
 }
 
 export const gameActions = {
@@ -176,10 +185,14 @@ export const gameActions = {
       const gameData = await this.fetchGameTemplate(templateId);
 
       if (!gameData) throw new Error('Failed to fetch game template data.');
-
+      console.log('GAME DATA');
+      console.log(gameData);
       // Step 2: Insert a new session based on the game template
       const sessionData = {
-        ...gameData,
+        gameid: gameData.gameid,
+        num_tokens: 0,
+        num_players: 0,
+        num_cards: 0,
       };
 
       const { data: sessionResult, error: sessionError } = await supabase
@@ -192,42 +205,9 @@ export const gameActions = {
 
       const sessionId = sessionResult.sessionid;
 
-      // Step 3: Copy decks and associate them with the new session
-      for (const deck of gameData.decks) {
-        const deckData = {
-          sessionid: sessionId,
-          deckname: deck.deckname,
-          num_cards: deck.num_cards,
-          // Add other deck fields as needed
-        };
-
-        const { data: newDeck, error: deckError } = await supabase
-          .from('deck')
-          .insert(deckData)
-          .select('deckid')
-          .single();
-
-        if (deckError) throw deckError;
-
-        const newDeckId = newDeck.deckid;
-
-        // Step 4: Copy cards and associate them with the new deck
-        for (const card of deck.cards) {
-          const cardData = {
-            deckid: newDeckId,
-            name: card.name,
-            count: card.count,
-            description: card.description,
-            // Add other card fields as needed
-          };
-
-          const { error: cardError } = await supabase
-            .from('card')
-            .insert(cardData);
-
-          if (cardError) throw cardError;
-        }
-      }
+      initializeSession(sessionId);
+      
+      throw new Error('Failed to initialize session');
 
       return { error: null, sessionId };
     } catch (error) {
@@ -265,72 +245,72 @@ export const gameActions = {
     return data;
   },
 
-  // New function to subscribe to a session
-  subscribeToSession(
-    sessionId: string,
-    onUpdate: (gameState: SessionState) => void,
-    useDefaultValues: boolean = false
-  ) {
-    if (useDefaultValues) {
-      // Simulate an initial update
-      onUpdate(defaultSessionState);
+//   // New function to subscribe to a session
+//   subscribeToSession(
+//     sessionId: string,
+//     onUpdate: (gameState: SessionState) => void,
+//     useDefaultValues: boolean = false
+//   ) {
+//     if (useDefaultValues) {
+//       // Simulate an initial update
+//       onUpdate(defaultSessionState);
 
-      // Simulate real-time updates
-      const interval = setInterval(() => {
-        // Modify defaultSessionState to simulate changes
-        const newGameState = {
-          ...defaultSessionState,
-          tokens: defaultSessionState.tokens - Math.floor(Math.random() * 5),
-          currentTurn:
-            defaultSessionState.players[
-              Math.floor(Math.random() * defaultSessionState.players.length)
-            ].id,
-        };
-        onUpdate(newGameState);
-      }, 5000); // Update every 5 seconds
+//       // Simulate real-time updates
+//       const interval = setInterval(() => {
+//         // Modify defaultSessionState to simulate changes
+//         const newGameState = {
+//           ...defaultSessionState,
+//           tokens: defaultSessionState.tokens - Math.floor(Math.random() * 5),
+//           currentTurn:
+//             defaultSessionState.players[
+//               Math.floor(Math.random() * defaultSessionState.players.length)
+//             ].id,
+//         };
+//         onUpdate(newGameState);
+//       }, 5000); // Update every 5 seconds
 
-      // Return an unsubscribe function
-      const unsubscribe = () => {
-        clearInterval(interval);
-        console.log('Unsubscribed from default session:', sessionId);
-      };
+//       // Return an unsubscribe function
+//       const unsubscribe = () => {
+//         clearInterval(interval);
+//         console.log('Unsubscribed from default session:', sessionId);
+//       };
 
-      return { unsubscribe };
-    } else {
-      // Existing Supabase subscription logic
-      const channel = supabase
-        .channel(`session:${sessionId}`)
-        .on(
-          'postgres_changes',
-          {
-            event: '*',
-            schema: 'public',
-            table: 'session',
-            filter: `id=eq.${sessionId}`,
-          },
-          (payload) => {
-            console.log('Received update from Supabase:', payload);
-            if (
-              payload.eventType === 'UPDATE' ||
-              payload.eventType === 'INSERT'
-            ) {
-              onUpdate(payload.new as SessionState);
-            }
-          }
-        )
-        .subscribe((status) => {
-          if (status === 'SUBSCRIBED') {
-            console.log(`Subscribed to session ${sessionId}`);
-          }
-        });
+//       return { unsubscribe };
+//     } else {
+//       // Existing Supabase subscription logic
+//       const channel = supabase
+//         .channel(`session:${sessionId}`)
+//         .on(
+//           'postgres_changes',
+//           {
+//             event: '*',
+//             schema: 'public',
+//             table: 'session',
+//             filter: `id=eq.${sessionId}`,
+//           },
+//           (payload) => {
+//             console.log('Received update from Supabase:', payload);
+//             if (
+//               payload.eventType === 'UPDATE' ||
+//               payload.eventType === 'INSERT'
+//             ) {
+//               onUpdate(payload.new as SessionState);
+//             }
+//           }
+//         )
+//         .subscribe((status) => {
+//           if (status === 'SUBSCRIBED') {
+//             console.log(`Subscribed to session ${sessionId}`);
+//           }
+//         });
 
-      // Return a function to unsubscribe
-      const unsubscribe = () => {
-        supabase.removeChannel(channel);
-        console.log('Unsubscribed from session:', sessionId);
-      };
+//       // Return a function to unsubscribe
+//       const unsubscribe = () => {
+//         supabase.removeChannel(channel);
+//         console.log('Unsubscribed from session:', sessionId);
+//       };
 
-      return { unsubscribe };
-    }
-  },
+//       return { unsubscribe };
+//     }
+//   },
 };

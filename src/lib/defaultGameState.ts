@@ -41,6 +41,8 @@ const characterCards: Omit<SessionCard, 'id'>[] = [
 function generateDeck(): SessionCard[] {
   const deck: SessionCard[] = [];
   let idCounter = 1;
+  console.log('CHARACTER CARDS');
+  console.log(characterCards);
 
   characterCards.forEach((cardType) => {
     for (let i = 0; i < cardType.count; i++) {
@@ -53,8 +55,9 @@ function generateDeck(): SessionCard[] {
     }
   });
 
+
   // Shuffle the deck
-  return shuffle(deck);
+  return deck;
 }
 
 // Shuffle function
@@ -73,100 +76,68 @@ const subscribers: {
   [sessionId: string]: Array<(state: SessionState) => void>;
 } = {};
 
-function initializeSession(sessionId: string) {
+export function initializeSession(sessionId: string) {
   // Generate and shuffle the deck
   const deck = generateDeck();
 
   // Create initial players
   const players: SessionPlayer[] = [
     {
+      sessionid: sessionId,
       id: '1',
       username: 'Caleb',
-      cards: [],
-      score: 0,
-      isActive: true,
-      points: 2,
-      tokens: 0,
+      num_points: 2,
     },
     {
+      sessionid: sessionId,
       id: '2',
       username: 'Seth',
-      cards: [],
-      score: 0,
-      isActive: true,
-      points: 2,
-      tokens: 0,
+      num_points: 2,
     },
     {
-      id: '3',
+      sessionid: sessionId,
+      playerid: '3',
       username: 'JD',
-      cards: [],
-      score: 0,
-      isActive: true,
-      points: 2,
-      tokens: 0,
+      num_points: 2,
     },
     {
-      id: '4',
+      sessionid: sessionId,
+      playerid: '4',
       username: 'Anna',
-      cards: [],
-      score: 0,
-      isActive: true,
-      points: 2,
-      tokens: 0,
+      num_points: 2,
     },
     {
-      id: '5',
+      sessionid: sessionId,
+      playerid: '5',
       username: 'Emily',
-      cards: [],
-      score: 0,
-      isActive: true,
-      points: 2,
-      tokens: 0,
+      num_points: 2,
     },
     {
-      id: '6',
+      sessionid: sessionId,
+      playerid: '6',
       username: 'Chris',
-      cards: [],
-      score: 0,
-      isActive: true,
-      points: 2,
-      tokens: 0,
-    },
-    {
-      id: '7',
-      username: 'Mom',
-      cards: [],
-      score: 0,
-      isActive: true,
-      points: 2,
-      tokens: 0,
-    },
-    {
-      id: '8',
-      username: 'Dad',
-      cards: [],
-      score: 0,
-      isActive: true,
-      tokens: 0,
-      points: 0,
+      num_points: 2,
     },
     // Add more mock players if needed
   ];
-
-  // Deal 2 cards to each player
-  players.forEach((player) => {
-    player.cards = deck.splice(0, 2);
-  });
+  
 
   // Create the initial session state
-  const sessionState: SessionState = {
-    players,
-    tokens: 50, // Number of coins in the treasury
-    currentTurn: '1',
-    deck: deck,
+  const session: LocalSession = {
+    sessionId: sessionId,
+    gameid: '1',
+    num_tokens: 10,
+    num_players: players.length,
+    num_cards: deck.length,
   };
-
+  console.log('SESSION STATE');
+  console.log(sessionState);
+  console.log('DECK');
+  console.log(deck);
+  console.log('PLAYERS');
+  console.log(players);
+  console.log('States');
+  console.log(sessionStates);
   sessionStates[sessionId] = sessionState;
 }
 
