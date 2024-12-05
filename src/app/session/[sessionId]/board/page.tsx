@@ -29,34 +29,65 @@ const BoardContent: React.FC = () => {
   );
 
   // Handler functions for adjusting tokens and points
-  const handleGiveToken = () => {
-    if (selectedPlayerId) {
+  const handleDrawCard = async (playerId: number) => {
+    try {
+      await gameContext.drawCard(playerId);
+    } catch (error) {
+      console.error('Error drawing card:', error);
     }
   };
 
-  const handleRemoveToken = () => {
-    if (selectedPlayerId) {
-      // Optionally, keep the dialog open for multiple adjustments
+  const handleGiveToken = async (playerId: number) => {
+    try {
+      await gameContext.drawToken(playerId);
+    } catch (error) {
+      console.error('Error giving token:', error);
+    }
+  };
+
+  const handleDiscardCard = async (playerId: number) => {
+    const playerCard = gameContext.sessionCards.find(
+      card => card.playerid === playerId
+    );
+    if (playerCard) {
+      try {
+        await gameContext.discardCard(playerId, playerCard.sessioncardid);
+      } catch (error) {
+        console.error('Error discarding card:', error);
+      }
+    }
+  };
+
+  const handleShuffle = async () => {
+    try {
+      await gameContext.shuffleDeck();
+    } catch (error) {
+      console.error('Error shuffling deck:', error);
     }
   };
 
   const handleIncreasePoints = () => {
-    if (selectedPlayerId) {
-      // Optionally, keep the dialog open for multiple adjustments
-    }
+    // TODO: Implement points logic when ready
+    console.log('Increase points');
   };
 
   const handleDecreasePoints = () => {
-    if (selectedPlayerId) {
-      // Optionally, keep the dialog open for multiple adjustments
-    }
+    // TODO: Implement points logic when ready
+    console.log('Decrease points');
   };
 
   return (
     <div className="flex flex-col items-center justify-start min-h-screen bg-gray-100 p-2 sm:p-4">
       <div className="w-full max-w-6xl mx-auto flex flex-col h-[98vh] relative">
         {/* Header Section */}
-        <BoardHeader deckCount={deckCount} />
+        <BoardHeader
+          deckCount={deckCount}
+          players={players}
+          onDrawCard={handleDrawCard}
+          onGiveToken={handleGiveToken}
+          onDiscardCard={handleDiscardCard}
+          onShuffle={handleShuffle}
+        />
 
         {/* Game Board */}
         <div className="relative flex-grow bg-white rounded-lg shadow-xl border border-gray-200 overflow-hidden w-full mx-auto">
@@ -89,8 +120,8 @@ const BoardContent: React.FC = () => {
           tokens={selectedPlayer.num_points || 0}
           points={0}
           onClose={() => setSelectedPlayerId(null)}
-          onIncreaseToken={handleGiveToken}
-          onDecreaseToken={handleRemoveToken}
+          onIncreaseToken={() => handleGiveToken(selectedPlayer.playerid)}
+          onDecreaseToken={() => handleDiscardCard(selectedPlayer.playerid)}
           onIncreasePoint={handleIncreasePoints}
           onDecreasePoint={handleDecreasePoints}
         />

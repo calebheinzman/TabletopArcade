@@ -92,6 +92,7 @@ export interface SessionCard {
   cardPosition: number;
   playerid: number;
   deckid: number;
+  isRevealed: boolean;
 }
 
 export interface SessionPlayer {
@@ -117,7 +118,8 @@ export async function insertSessionCards(sessionId: number, sessionCards: Sessio
           cardid: card.cardid,
           cardPosition: card.cardPosition,
           playerid: card.playerid ? card.playerid: null,
-          deckid: card.deckid
+          deckid: card.deckid,
+          isRevealed: card.isRevealed
         }))
       );
 
@@ -536,44 +538,149 @@ export async function fetchPlayerActions(sessionId: number): Promise<PlayerActio
   return data || [];
 }
 
-export async function drawCardFromDeck(gameContext: GameContextType, playerId: number) {
-  try {
-    const topCard = gameContext.sessionCards.find(card => card.cardPosition === 1);
+export async function updateSessionCards(updates: {
+  sessionid: number;
+  sessioncardid: number;
+  cardPosition: number;
+  playerid: number | null;
+}[]) {
+  const { error } = await supabase
+    .from('session_cards')
+    .upsert(updates, { 
+      onConflict: 'sessionid,sessioncardid'
+    });
 
-    if (!topCard) {
-      console.error('No cards left in deck');
-      return;
-    }
+  if (error) throw error;
+}
 
-    const deckCards = gameContext.sessionCards
-      .filter(card => card.cardPosition > 1)
-      .sort((a, b) => a.cardPosition - b.cardPosition);
+export async function updatePlayerTokens(sessionId: number, playerId: number, newTokenCount: number) {
+  const { error } = await supabase
+    .from('player')
+    .update({ num_points: newTokenCount })
+    .match({ sessionid: sessionId, playerid: playerId });
 
-    const updates = [
-      {
-        sessionid: gameContext.sessionid,
-        sessioncardid: topCard.sessioncardid,
-        cardPosition: 0,
-        playerid: playerId
-      },
-      ...deckCards.map((card, index) => ({
-        sessionid: gameContext.sessionid,
-        sessioncardid: card.sessioncardid,
-        cardPosition: index + 1,
-        playerid: null
-      }))
-    ];
-    
-    const { error } = await supabase
-      .from('session_cards')
-      .upsert(updates, { 
-        onConflict: 'sessionid,sessioncardid'
-      });
+  if (error) throw error;
+}
 
-    if (error) throw error;
+export async function updateSessionTokens(sessionId: number, newTokenCount: number) {
+  const { error } = await supabase
+    .from('session')
+    .update({ num_tokens: newTokenCount })
+    .match({ sessionid: sessionId });
 
-  } catch (error) {
-    console.error('Error drawing card:', error);
-    throw new Error('Failed to draw card');
+  if (error) throw error;
+}
+
+export async function getMaxCardPosition(sessionId: number): Promise<number> {
+  const { data, error } = await supabase
+    .from('session_cards')
+    .select('cardPosition')
+    .eq('sessionid', sessionId)
+    .order('cardPosition', { ascending: false })
+    .limit(1)
+    .single();
+
+  if (error) {
+    console.error('Error getting max card position:', error);
+    return 0;
   }
+
+  return data?.cardPosition || 0;
+}
+
+export async function discardCardToDb(
+  sessionId: number, 
+  sessionCardId: number, 
+  newPosition: number
+): Promise<SessionCard[]> {
+  const { data, error } = await supabase
+    .from('session_cards')
+    .update({ 
+      playerid: null,
+      cardPosition: newPosition 
+    })
+    .match({ 
+      sessionid: sessionId,
+      sessioncardid: sessionCardId 
+    })
+    .select();
+
+  if (error) throw error;
+  return data || [];
+}
+
+export async function updateDeckOrder(
+  sessionId: number, 
+  sessionCards: SessionCard[]
+): Promise<SessionCard[]> {
+  const deckCards = sessionCards
+    .filter(card => card.cardPosition > 0)
+    .sort((a, b) => a.cardPosition - b.cardPosition);
+
+  // Create a shuffled array of positions
+  const positions = deckCards.map((_, index) => index + 1);
+  for (let i = positions.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [positions[i], positions[j]] = [positions[j], positions[i]];
+  }
+
+  // Create updates with new positions
+  const updates = deckCards.map((card, index) => ({
+    sessionid: sessionId,
+    sessioncardid: card.sessioncardid,
+    cardPosition: positions[index],
+    playerid: null
+  }));
+
+  const { data, error } = await supabase
+    .from('session_cards')
+    .upsert(updates, { onConflict: 'sessionid,sessioncardid' })
+    .select();
+
+  if (error) throw error;
+  return data || [];
+}
+
+export async function discardAndShuffleCard(
+  sessionId: number,
+  sessionCardId: number,
+  sessionCards: SessionCard[]
+): Promise<SessionCard[]> {
+  try {
+    // Get max position and add discarded card to end
+    const maxPosition = Math.max(...sessionCards.map(card => card.cardPosition));
+    const discardedCards = await discardCardToDb(sessionId, sessionCardId, maxPosition + 1);
+    
+    // Get updated session cards with discarded card
+    const updatedSessionCards = sessionCards.map(card => 
+      card.sessioncardid === sessionCardId 
+        ? { ...card, cardPosition: maxPosition + 1, playerid: null }
+        : card
+    );
+
+    // Shuffle all cards in the deck (including the newly discarded card)
+    const shuffledCards = await updateDeckOrder(sessionId, updatedSessionCards as SessionCard[]);
+    console.log('Shuffled cards:', shuffledCards);
+    
+    return shuffledCards;
+  } catch (error) {
+    console.error('Error in discardAndShuffleCard:', error);
+    throw error;
+  }
+}
+
+export async function updateCardRevealed(
+  sessionId: number,
+  sessionCardId: number,
+  isRevealed: boolean
+): Promise<void> {
+  const { error } = await supabase
+    .from('session_cards')
+    .update({ isRevealed })
+    .match({ 
+      sessionid: sessionId,
+      sessioncardid: sessionCardId 
+    });
+
+  if (error) throw error;
 }

@@ -29,33 +29,22 @@ function handleReveal(playerId: number, cardId: number) {
 function handleDiscard(playerId: number, cardId: number) {
   console.log('Discard', playerId, cardId);
 }
-function drawToken(playerId: number) {
-  console.log('Draw Token', playerId);
-}
-function giveToken(playerId: number, recipient: string) {
-  console.log('Give Token', playerId, recipient);
-}
+
 
 export function PlayerHand({ gameContext }: { gameContext: GameContextType }) {
   const params = useParams();
   const playerId = parseInt(params?.playerId as string);
-  console.log('PLAYERHAND CONTEXT', gameContext);
-  
-  console.log('PLAYERHAND GAME CONTEXT', gameContext);
-  console.log('PLAYERHAND PLAYER ID', playerId);
 
   if (!gameContext || !playerId) {
     return <div>Loading game state...</div>;
   }
   let currentPlayer = null;
   for (const player of gameContext.sessionPlayers) {
-    console.log('Comparing player ID:', player.playerid, 'with:', playerId);
     if (player.playerid === playerId) {
       currentPlayer = player;
       break;
     }
   }
-  console.log('PLAYERHAND CURRENT PLAYER', currentPlayer);
   if (!currentPlayer) {
     return <div>Error: Player not found</div>;
   }
@@ -76,6 +65,33 @@ export function PlayerHand({ gameContext }: { gameContext: GameContextType }) {
   const playerNames = gameContext.sessionPlayers
     .map((player) => player.username)
     .filter((name) => name !== currentPlayer.username) || [];
+
+  const handleDrawToken = async () => {
+    try {
+      await gameContext.drawToken(playerId);
+    } catch (error) {
+      console.error('Error drawing token:', error);
+      // You might want to show an error message to the user here
+    }
+  };
+
+  const handleGiveToken = async (recipient: string) => {
+    try {
+      await gameContext.giveToken(playerId, recipient);
+    } catch (error) {
+      console.error('Error giving token:', error);
+      // You might want to show an error message to the user here
+    }
+  };
+
+  const handleDiscard = async (playerId: number, cardId: number) => {
+    try {
+      await gameContext.discardCard(playerId, cardId);
+    } catch (error) {
+      console.error('Error discarding card:', error);
+      // You might want to show an error message to the user here
+    }
+  };
 
   return (
     <div className="w-full max-w-4xl mx-auto p-4">
@@ -130,7 +146,12 @@ export function PlayerHand({ gameContext }: { gameContext: GameContextType }) {
         </div>
         <div className="space-x-2">
           <Button onClick={() => gameContext.drawCard(playerId)}>Draw Card</Button>
-          <Button onClick={() => drawToken(playerId)}>Draw Token</Button>
+          <Button 
+            onClick={handleDrawToken}
+            disabled={!gameContext.session.num_tokens || gameContext.session.num_tokens <= 0}
+          >
+            Draw Token
+          </Button>
           <Popover>
             <PopoverTrigger asChild>
               <Button disabled={currentPlayer.num_points === 0}>
@@ -142,13 +163,13 @@ export function PlayerHand({ gameContext }: { gameContext: GameContextType }) {
                 {playerNames.map((name, index) => (
                   <Button
                     key={index}
-                    onClick={() => giveToken(playerId, name)}
+                    onClick={() => handleGiveToken(name)}
                     size="sm"
                   >
                     {name}
                   </Button>
                 ))}
-                <Button onClick={() => giveToken(playerId, 'Board')} size="sm">
+                <Button onClick={() => handleGiveToken('Board')} size="sm">
                   Board
                 </Button>
               </div>

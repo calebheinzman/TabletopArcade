@@ -36,7 +36,8 @@ function generateDeck(gameContext: GameContextType): SessionCard[] {
           cardid: card.cardid,
 					cardPosition: cardPosition++,
 					playerid: 0,   // Empty means card is in deck
-					deckid: deck.deckid
+					deckid: deck.deckid,
+          isRevealed: false
 				});
         idx++;
 			}
