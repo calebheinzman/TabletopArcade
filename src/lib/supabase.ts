@@ -681,6 +681,6 @@ export async function updateCardRevealed(
       sessionid: sessionId,
       sessioncardid: sessionCardId 
     });
-
+  console.log('Updated card revealed:', sessionCardId, isRevealed);
   if (error) throw error;
 }

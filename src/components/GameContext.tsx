@@ -301,24 +301,34 @@ export function GameProvider({
         throw new Error('Player has no tokens to give');
       }
 
-      const toPlayer = gameContext.sessionPlayers.find(
-        player => player.username === toUsername
-      );
+      const newFromPlayerTokens = fromPlayer.num_points - 1;
 
-      if (!toPlayer) {
-        throw new Error('Recipient player not found');
+      if (toUsername === "Board") {
+        // Give token back to the board
+        const newSessionTokens = (gameContext.session.num_tokens || 0) + 1;
+        await Promise.all([
+          updatePlayerTokens(gameContext.sessionid, fromPlayerId, newFromPlayerTokens),
+          updateSessionTokens(gameContext.sessionid, newSessionTokens)
+        ]);
+      } else {
+        // Give token to another player
+        const toPlayer = gameContext.sessionPlayers.find(
+          player => player.username === toUsername
+        );
+
+        if (!toPlayer) {
+          throw new Error('Recipient player not found');
+        }
+
+        const newToPlayerTokens = (toPlayer.num_points || 0) + 1;
+        await Promise.all([
+          updatePlayerTokens(gameContext.sessionid, fromPlayerId, newFromPlayerTokens),
+          updatePlayerTokens(gameContext.sessionid, toPlayer.playerid, newToPlayerTokens)
+        ]);
       }
 
-      const newFromPlayerTokens = fromPlayer.num_points - 1;
-      const newToPlayerTokens = (toPlayer.num_points || 0) + 1;
-
-      await Promise.all([
-        updatePlayerTokens(gameContext.sessionid, fromPlayerId, newFromPlayerTokens),
-        updatePlayerTokens(gameContext.sessionid, toPlayer.playerid, newToPlayerTokens)
-      ]);
-
     } catch (error) {
-      console.error('Error giving token:', error);
+      console.error('Error giving token:', fromPlayerId, toUsername, error);
       throw new Error('Failed to give token');
     }
   };
@@ -365,7 +375,12 @@ export function GameProvider({
 
   const revealCard = async (playerId: number, sessionCardId: number) => {
     try {
-      await updateCardRevealed(gameContext.sessionid, sessionCardId, true);
+      // Find the current card to get its revealed state
+      const card = gameContext.sessionCards.find(c => c.sessioncardid === sessionCardId);
+      if (!card) throw new Error('Card not found');
+      
+      // Toggle the revealed state
+      await updateCardRevealed(gameContext.sessionid, sessionCardId, !card.isRevealed);
     } catch (error) {
       console.error('Error revealing card:', error);
       throw new Error('Failed to reveal card');
