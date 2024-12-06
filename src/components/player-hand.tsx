@@ -23,13 +23,6 @@ import {
 import { useParams } from 'next/navigation';
 import { GameContextType } from '@/components/GameContext';
 
-function handleReveal(playerId: number, cardId: number) {
-  console.log('Reveal', playerId, cardId);
-}
-function handleDiscard(playerId: number, cardId: number) {
-  console.log('Discard', playerId, cardId);
-}
-
 
 export function PlayerHand({ gameContext }: { gameContext: GameContextType }) {
   const params = useParams();
@@ -58,7 +51,7 @@ export function PlayerHand({ gameContext }: { gameContext: GameContextType }) {
         id: sessionCard.sessioncardid,
         name: cardDetails?.name || 'Unknown Card',
         description: cardDetails?.description || '',
-        isRevealed: false
+        isRevealed: sessionCard.isRevealed || false
       };
     });
 
@@ -93,6 +86,15 @@ export function PlayerHand({ gameContext }: { gameContext: GameContextType }) {
     }
   };
 
+  const handleReveal = async (playerId: number, cardId: number) => {
+    try {
+      await gameContext.revealCard(playerId, cardId);
+    } catch (error) {
+      console.error('Error revealing card:', error);
+      // You might want to show an error message to the user here
+    }
+  };
+  console.log('playerCards', playerCards);
   return (
     <div className="w-full max-w-4xl mx-auto p-4">
       <h2 className="text-2xl font-bold mb-4">
@@ -122,9 +124,9 @@ export function PlayerHand({ gameContext }: { gameContext: GameContextType }) {
                 <DialogClose asChild>
                   <Button
                     onClick={() => handleReveal(playerId, card.id)}
-                    disabled={card.isRevealed}
+                    disabled={false}
                   >
-                    {card.isRevealed ? 'Already Revealed' : 'Reveal on Board'}
+                    {card.isRevealed ? 'Unreveal Card' : 'Reveal on Board'}
                   </Button>
                 </DialogClose>
                 <DialogClose asChild>

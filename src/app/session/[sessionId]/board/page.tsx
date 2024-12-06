@@ -20,7 +20,7 @@ const BoardContent: React.FC = () => {
   const deck = gameContext.sessionCards;
   const tokens = gameContext.session.num_tokens;
   const totalPlayers = players.length;
-  const deckCount = deck.length;
+  const deckCount = gameContext.sessionCards.filter(card => card.cardPosition > 0).length;
   const gameTokens = gameContext.session.num_tokens;
 
   // Find the selected player based on selectedPlayerId
@@ -38,6 +38,13 @@ const BoardContent: React.FC = () => {
   };
 
   const handleGiveToken = async (playerId: number) => {
+    try {
+      await gameContext.giveToken(playerId,"Board");
+    } catch (error) {
+      console.error('Error giving token:', error);
+    }
+  };
+  const handleDrawToken = async (playerId: number) => {
     try {
       await gameContext.drawToken(playerId);
     } catch (error) {
@@ -84,7 +91,7 @@ const BoardContent: React.FC = () => {
           deckCount={deckCount}
           players={players}
           onDrawCard={handleDrawCard}
-          onGiveToken={handleGiveToken}
+          onGiveToken={handleDrawToken}
           onDiscardCard={handleDiscardCard}
           onShuffle={handleShuffle}
         />
@@ -118,12 +125,9 @@ const BoardContent: React.FC = () => {
           isOpen={!!selectedPlayerId}
           playerName={selectedPlayer.username}
           tokens={selectedPlayer.num_points || 0}
-          points={0}
           onClose={() => setSelectedPlayerId(null)}
-          onIncreaseToken={() => handleGiveToken(selectedPlayer.playerid)}
-          onDecreaseToken={() => handleDiscardCard(selectedPlayer.playerid)}
-          onIncreasePoint={handleIncreasePoints}
-          onDecreasePoint={handleDecreasePoints}
+          onIncreaseToken={() => handleDrawToken(selectedPlayer.playerid)}
+          onDecreaseToken={() => handleGiveToken(selectedPlayer.playerid)}
         />
       )}
     </div>
