@@ -9,57 +9,85 @@ import { useGame } from '@/components/GameContext';
 import React, { useState } from 'react';
 
 const BoardContent: React.FC = () => {
-  const { gameState, giveToken, removeToken, increasePoints, decreasePoints } =
-    useGame();
-  const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null);
+  const gameContext = useGame();
 
-  if (!gameState) return <div>Loading...</div>;
+  const [selectedPlayerId, setSelectedPlayerId] = useState<number | null>(null);
+
+  if (!gameContext) return <div>Loading...</div>;
 
   // Destructure necessary data from gameState for clarity
-  const { players, deck, tokens } = gameState;
+  const players = gameContext.sessionPlayers;
+  const deck = gameContext.sessionCards;
+  const tokens = gameContext.session.num_tokens;
   const totalPlayers = players.length;
   const deckCount = deck.length;
-  const gameTokens = tokens;
+  const gameTokens = gameContext.session.num_tokens;
 
   // Find the selected player based on selectedPlayerId
   const selectedPlayer = players.find(
-    (player) => player.id === selectedPlayerId
+    (player) => player.playerid === selectedPlayerId
   );
 
   // Handler functions for adjusting tokens and points
-  const handleGiveToken = () => {
-    if (selectedPlayerId) {
-      giveToken(selectedPlayerId);
-      // Optionally, keep the dialog open for multiple adjustments
+  const handleDrawCard = async (playerId: number) => {
+    try {
+      await gameContext.drawCard(playerId);
+    } catch (error) {
+      console.error('Error drawing card:', error);
     }
   };
 
-  const handleRemoveToken = () => {
-    if (selectedPlayerId) {
-      removeToken(selectedPlayerId);
-      // Optionally, keep the dialog open for multiple adjustments
+  const handleGiveToken = async (playerId: number) => {
+    try {
+      await gameContext.drawToken(playerId);
+    } catch (error) {
+      console.error('Error giving token:', error);
+    }
+  };
+
+  const handleDiscardCard = async (playerId: number) => {
+    const playerCard = gameContext.sessionCards.find(
+      card => card.playerid === playerId
+    );
+    if (playerCard) {
+      try {
+        await gameContext.discardCard(playerId, playerCard.sessioncardid);
+      } catch (error) {
+        console.error('Error discarding card:', error);
+      }
+    }
+  };
+
+  const handleShuffle = async () => {
+    try {
+      await gameContext.shuffleDeck();
+    } catch (error) {
+      console.error('Error shuffling deck:', error);
     }
   };
 
   const handleIncreasePoints = () => {
-    if (selectedPlayerId) {
-      increasePoints(selectedPlayerId);
-      // Optionally, keep the dialog open for multiple adjustments
-    }
+    // TODO: Implement points logic when ready
+    console.log('Increase points');
   };
 
   const handleDecreasePoints = () => {
-    if (selectedPlayerId) {
-      decreasePoints(selectedPlayerId);
-      // Optionally, keep the dialog open for multiple adjustments
-    }
+    // TODO: Implement points logic when ready
+    console.log('Decrease points');
   };
 
   return (
     <div className="flex flex-col items-center justify-start min-h-screen bg-gray-100 p-2 sm:p-4">
       <div className="w-full max-w-6xl mx-auto flex flex-col h-[98vh] relative">
         {/* Header Section */}
-        <BoardHeader deckCount={deckCount} />
+        <BoardHeader
+          deckCount={deckCount}
+          players={players}
+          onDrawCard={handleDrawCard}
+          onGiveToken={handleGiveToken}
+          onDiscardCard={handleDiscardCard}
+          onShuffle={handleShuffle}
+        />
 
         {/* Game Board */}
         <div className="relative flex-grow bg-white rounded-lg shadow-xl border border-gray-200 overflow-hidden w-full mx-auto">
@@ -89,11 +117,11 @@ const BoardContent: React.FC = () => {
         <BoardPlayerActionsDialog
           isOpen={!!selectedPlayerId}
           playerName={selectedPlayer.username}
-          tokens={selectedPlayer.tokens || 0}
-          points={selectedPlayer.score || 0}
+          tokens={selectedPlayer.num_points || 0}
+          points={0}
           onClose={() => setSelectedPlayerId(null)}
-          onIncreaseToken={handleGiveToken}
-          onDecreaseToken={handleRemoveToken}
+          onIncreaseToken={() => handleGiveToken(selectedPlayer.playerid)}
+          onDecreaseToken={() => handleDiscardCard(selectedPlayer.playerid)}
           onIncreasePoint={handleIncreasePoints}
           onDecreasePoint={handleDecreasePoints}
         />

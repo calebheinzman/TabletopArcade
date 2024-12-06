@@ -1,4 +1,4 @@
-import { gameActions, GameTemplateNameAndId } from '@/lib/supabase';
+import { fetchGameNames, GameTemplateNameAndId } from '@/lib/supabase';
 import { useEffect, useState } from 'react';
 
 // Used to fetch games with name and id from game table.
@@ -10,7 +10,7 @@ const useGameNamesAndId = () => {
   useEffect(() => {
     const fetchGames = async () => {
       try {
-        const gamesData = await gameActions.fetchGameNames();
+        const gamesData = await fetchGameNames();
         setGames(gamesData);
       } catch (err) {
         console.error('Error fetching game names:', err);
