@@ -22,7 +22,7 @@ import {
 } from '@/components/ui/popover';
 import { useParams } from 'next/navigation';
 import { GameContextType } from '@/components/GameContext';
-import { passTurnToNextPlayer } from '@/lib/supabase';
+import { passTurnToNextPlayer, pushPlayerAction } from '@/lib/supabase';
 
 
 export function PlayerHand({ gameContext }: { gameContext: GameContextType }) {
@@ -63,44 +63,74 @@ export function PlayerHand({ gameContext }: { gameContext: GameContextType }) {
   const handleDrawToken = async () => {
     try {
       await gameContext.drawToken(playerId);
+      await pushPlayerAction(gameContext.sessionid, playerId, "Drew a token");
     } catch (error) {
       console.error('Error drawing token:', error);
-      // You might want to show an error message to the user here
     }
   };
 
   const handleGiveToken = async (recipient: string) => {
     try {
       await gameContext.giveToken(playerId, recipient);
+      await pushPlayerAction(
+        gameContext.sessionid, 
+        playerId, 
+        `Gave a token to ${recipient}`
+      );
     } catch (error) {
       console.error('Error giving token:', error);
-      // You might want to show an error message to the user here
     }
   };
 
   const handleDiscard = async (playerId: number, cardId: number) => {
     try {
       await gameContext.discardCard(playerId, cardId);
+      await pushPlayerAction(
+        gameContext.sessionid, 
+        playerId, 
+        `Discarded card ${cardId}`
+      );
     } catch (error) {
       console.error('Error discarding card:', error);
-      // You might want to show an error message to the user here
     }
   };
 
   const handleReveal = async (playerId: number, cardId: number) => {
     try {
       await gameContext.revealCard(playerId, cardId);
+      await pushPlayerAction(
+        gameContext.sessionid, 
+        playerId, 
+        `Revealed card ${cardId}`
+      );
     } catch (error) {
       console.error('Error revealing card:', error);
-      // You might want to show an error message to the user here
     }
   };
 
   const handleEndTurn = async () => {
     try {
       await passTurnToNextPlayer(gameContext.sessionid, playerId);
+      await pushPlayerAction(
+        gameContext.sessionid, 
+        playerId, 
+        "Ended their turn"
+      );
     } catch (error) {
       console.error('Error ending turn:', error);
+    }
+  };
+
+  const handleDrawCard = async () => {
+    try {
+      await gameContext.drawCard(playerId);
+      await pushPlayerAction(
+        gameContext.sessionid, 
+        playerId, 
+        "Drew a card"
+      );
+    } catch (error) {
+      console.error('Error drawing card:', error);
     }
   };
 
@@ -159,7 +189,7 @@ export function PlayerHand({ gameContext }: { gameContext: GameContextType }) {
         </div>
         <div className="space-x-2">
           <Button 
-            onClick={() => gameContext.drawCard(playerId)}
+            onClick={handleDrawCard}
             disabled={disabled}
           >
             Draw Card

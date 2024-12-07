@@ -114,6 +114,7 @@ export interface PlayerAction {
   playerid: number;
   sessionid: number;
   description: string;
+  action_id: number;
 }
 
 export async function insertSessionCards(sessionId: number, sessionCards: SessionCard[]) {
@@ -762,4 +763,25 @@ export async function passTurnToNextPlayer(sessionId: number, currentPlayerId: n
         console.error('Error passing turn:', error);
         throw error;
     }
+}
+
+export async function pushPlayerAction(
+  sessionId: number,
+  playerId: number,
+  description: string
+): Promise<void> {
+  try {
+    const { error } = await supabase
+      .from('player_actions')
+      .insert({
+        sessionid: sessionId,
+        playerid: playerId,
+        description: description
+      });
+
+    if (error) throw error;
+  } catch (error) {
+    console.error('Error pushing player action:', error);
+    throw new Error('Failed to push player action');
+  }
 }
