@@ -47,8 +47,8 @@ export interface GameContextType {
   session: Session;
   sessionPlayers: SessionPlayer[];
   drawCard: (playerId: number) => Promise<void>;
-  drawToken: (playerId: number) => Promise<void>;
-  giveToken: (fromPlayerId: number, toUsername: string) => Promise<void>;
+  drawTokens: (playerId: number, quantity: number) => Promise<void>;
+  giveTokens: (fromPlayerId: number, toUsername: string, quantity: number) => Promise<void>;
   discardCard: (playerId: number, sessionCardId: number) => Promise<void>;
   shuffleDeck: () => Promise<void>;
   revealCard: (playerId: number, sessionCardId: number) => Promise<void>;
@@ -65,8 +65,8 @@ const initialGameContext: GameContextType = {
   session: {} as Session,
   sessionPlayers: [],
   drawCard: async (playerId: number) => {},
-  drawToken: async (playerId: number) => {},
-  giveToken: async (fromPlayerId: number, toUsername: string) => {},
+  drawTokens: async (playerId: number, quantity: number) => {},
+  giveTokens: async (fromPlayerId: number, toUsername: string, quantity: number) => {},
   discardCard: async (playerId: number, sessionCardId: number) => {},
   shuffleDeck: async () => {},
   revealCard: async (playerId: number, sessionCardId: number) => {},
@@ -259,7 +259,7 @@ export function GameProvider({
     }
   };
 
-  const drawToken = async (playerId: number) => {
+  const drawTokens = async (playerId: number, quantity: number) => {
     try {
       const currentPlayer = gameContext.sessionPlayers.find(
         player => player.playerid === playerId
@@ -269,12 +269,12 @@ export function GameProvider({
         throw new Error('Player not found');
       }
 
-      if (!gameContext.session.num_tokens || gameContext.session.num_tokens <= 0) {
-        throw new Error('No tokens left in the session');
+      if (!gameContext.session.num_tokens || gameContext.session.num_tokens < quantity) {
+        throw new Error('Not enough tokens left in the session');
       }
 
-      const newPlayerTokens = (currentPlayer.num_points || 0) + 1;
-      const newSessionTokens = gameContext.session.num_tokens - 1;
+      const newPlayerTokens = (currentPlayer.num_points || 0) + quantity;
+      const newSessionTokens = gameContext.session.num_tokens - quantity;
 
       await Promise.all([
         updatePlayerTokens(gameContext.sessionid, playerId, newPlayerTokens),
@@ -282,12 +282,12 @@ export function GameProvider({
       ]);
 
     } catch (error) {
-      console.error('Error drawing token:', error);
-      throw new Error('Failed to draw token');
+      console.error('Error drawing tokens:', error);
+      throw new Error('Failed to draw tokens');
     }
   };
 
-  const giveToken = async (fromPlayerId: number, toUsername: string) => {
+  const giveTokens = async (fromPlayerId: number, toUsername: string, quantity: number) => {
     try {
       const fromPlayer = gameContext.sessionPlayers.find(
         player => player.playerid === fromPlayerId
@@ -297,21 +297,21 @@ export function GameProvider({
         throw new Error('Source player not found');
       }
 
-      if (fromPlayer.num_points <= 0) {
-        throw new Error('Player has no tokens to give');
+      if (fromPlayer.num_points < quantity) {
+        throw new Error('Player does not have enough tokens to give');
       }
 
-      const newFromPlayerTokens = fromPlayer.num_points - 1;
+      const newFromPlayerTokens = fromPlayer.num_points - quantity;
 
       if (toUsername === "Board") {
-        // Give token back to the board
-        const newSessionTokens = (gameContext.session.num_tokens || 0) + 1;
+        // Give tokens back to the board
+        const newSessionTokens = (gameContext.session.num_tokens || 0) + quantity;
         await Promise.all([
           updatePlayerTokens(gameContext.sessionid, fromPlayerId, newFromPlayerTokens),
           updateSessionTokens(gameContext.sessionid, newSessionTokens)
         ]);
       } else {
-        // Give token to another player
+        // Give tokens to another player
         const toPlayer = gameContext.sessionPlayers.find(
           player => player.username === toUsername
         );
@@ -320,7 +320,7 @@ export function GameProvider({
           throw new Error('Recipient player not found');
         }
 
-        const newToPlayerTokens = (toPlayer.num_points || 0) + 1;
+        const newToPlayerTokens = (toPlayer.num_points || 0) + quantity;
         await Promise.all([
           updatePlayerTokens(gameContext.sessionid, fromPlayerId, newFromPlayerTokens),
           updatePlayerTokens(gameContext.sessionid, toPlayer.playerid, newToPlayerTokens)
@@ -328,8 +328,8 @@ export function GameProvider({
       }
 
     } catch (error) {
-      console.error('Error giving token:', fromPlayerId, toUsername, error);
-      throw new Error('Failed to give token');
+      console.error('Error giving tokens:', fromPlayerId, toUsername, error);
+      throw new Error('Failed to give tokens');
     }
   };
 
@@ -390,8 +390,8 @@ export function GameProvider({
   const contextValue = {
     ...gameContext,
     drawCard,
-    drawToken,
-    giveToken,
+    drawTokens,
+    giveTokens,
     discardCard,
     shuffleDeck,
     revealCard,

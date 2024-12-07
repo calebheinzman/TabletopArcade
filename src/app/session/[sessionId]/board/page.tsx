@@ -7,10 +7,10 @@ import BoardPlayerActionsDialog from '@/components/board/board-player-actions-di
 import BoardPlayerHands from '@/components/board/board-player-hands';
 import { useGame } from '@/components/GameContext';
 import React, { useState } from 'react';
-import { passTurnToNextPlayer } from '@/lib/supabase';
+import { passTurnToNextPlayer, resetGame } from '@/lib/supabase';
 import BoardActionFeed from '@/components/board/board-action-feed';
 import { Button } from '@/components/ui/button';
-
+import { pushPlayerAction } from '@/lib/supabase';
 const BoardContent: React.FC = () => {
   const gameContext = useGame();
 
@@ -43,16 +43,21 @@ const BoardContent: React.FC = () => {
     }
   };
 
-  const handleGiveToken = async (playerId: number) => {
+  const handleGiveToken = async (playerId: number, quantity: number) => {
     try {
-      await gameContext.giveToken(playerId,"Board");
+      await gameContext.giveTokens(playerId, "Board", quantity);
+      await pushPlayerAction(
+        gameContext.sessionid,
+        playerId,
+        `Gave ${quantity} token(s)`
+      );
     } catch (error) {
       console.error('Error giving token:', error);
     }
   };
-  const handleDrawToken = async (playerId: number) => {
+  const handleDrawToken = async (playerId: number, quantity: number) => {
     try {
-      await gameContext.drawToken(playerId);
+      await gameContext.drawTokens(playerId, quantity);
     } catch (error) {
       console.error('Error giving token:', error);
     }
@@ -97,6 +102,16 @@ const BoardContent: React.FC = () => {
     }
   };
 
+  const handleReset = async () => {
+    try {
+      if (!gameContext) return;
+      await resetGame(gameContext);
+      // The realtime subscriptions should automatically update the UI
+    } catch (error) {
+      console.error('Error resetting game:', error);
+    }
+  };
+
   return (
     <div className="flex flex-col items-center justify-start min-h-screen bg-gray-100 p-2 sm:p-4">
       {/* Main container for board and action feed */}
@@ -111,6 +126,7 @@ const BoardContent: React.FC = () => {
             onGiveToken={handleDrawToken}
             onDiscardCard={handleDiscardCard}
             onShuffle={handleShuffle}
+            onReset={handleReset}
           />
 
           {/* Game Board */}
@@ -155,8 +171,8 @@ const BoardContent: React.FC = () => {
               isHost={isHost}
               is_turn={selectedPlayer.is_turn}
               onClose={() => setSelectedPlayerId(null)}
-              onIncreaseToken={() => handleDrawToken(selectedPlayer.playerid)}
-              onDecreaseToken={() => handleGiveToken(selectedPlayer.playerid)}
+              onIncreaseToken={() => handleDrawToken(selectedPlayer.playerid, 1)}
+              onDecreaseToken={() => handleGiveToken(selectedPlayer.playerid, 1)}
               onEndTurn={handleEndTurn}
             />
           )}
