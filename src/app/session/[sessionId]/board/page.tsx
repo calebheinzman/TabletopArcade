@@ -7,7 +7,7 @@ import BoardPlayerActionsDialog from '@/components/board/board-player-actions-di
 import BoardPlayerHands from '@/components/board/board-player-hands';
 import { useGame } from '@/components/GameContext';
 import React, { useState } from 'react';
-import { passTurnToNextPlayer } from '@/lib/supabase';
+import { passTurnToNextPlayer, resetGame } from '@/lib/supabase';
 import BoardActionFeed from '@/components/board/board-action-feed';
 import { Button } from '@/components/ui/button';
 
@@ -97,6 +97,16 @@ const BoardContent: React.FC = () => {
     }
   };
 
+  const handleReset = async () => {
+    try {
+      if (!gameContext) return;
+      await resetGame(gameContext);
+      // The realtime subscriptions should automatically update the UI
+    } catch (error) {
+      console.error('Error resetting game:', error);
+    }
+  };
+
   return (
     <div className="flex flex-col items-center justify-start min-h-screen bg-gray-100 p-2 sm:p-4">
       {/* Main container for board and action feed */}
@@ -111,6 +121,7 @@ const BoardContent: React.FC = () => {
             onGiveToken={handleDrawToken}
             onDiscardCard={handleDiscardCard}
             onShuffle={handleShuffle}
+            onReset={handleReset}
           />
 
           {/* Game Board */}

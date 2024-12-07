@@ -14,13 +14,14 @@ interface PlayerInfo {
 }
 
 export default function JoinGamePage() {
-  const [gameCode, setGameCode] = useState(0);
+  const [gameCode, setGameCode] = useState('');
   const [userName, setUserName] = useState('');
   const [isJoining, setIsJoining] = useState(false);
   const router = useRouter();
 
   const joinGame = async () => {
-    if (!gameCode || !userName) {
+    const numericGameCode = parseInt(gameCode);
+    if (!numericGameCode || !userName) {
       alert('Please enter both game code and user name');
       return;
     }
@@ -29,30 +30,41 @@ export default function JoinGamePage() {
 
     try {
       // Add player to the game
-      const { playerId, error } = await addPlayer(gameCode, userName);
+      const { playerId, error } = await addPlayer(numericGameCode, userName);
       
-      if (error || !playerId) {
-        throw new Error(error || 'Failed to join game');
+      if (error) {
+        alert(error);
+        return;
+      }
+
+      if (!playerId) {
+        alert('Failed to join game');
+        return;
       }
 
       // Store player info in localStorage
       const playerInfo: PlayerInfo = {
         playerId: playerId,
         userName,
-        gameCode,
+        gameCode: numericGameCode,
       };
       localStorage.setItem('playerInfo', JSON.stringify(playerInfo));
 
       // Navigate to waiting room
       router.push(
-        `session/${gameCode}/waiting-room/?playerId=${playerId}&userName=${encodeURIComponent(userName)}`
+        `session/${numericGameCode}/waiting-room/?playerId=${playerId}&userName=${encodeURIComponent(userName)}`
       );
     } catch (error) {
       console.error('Error joining game:', error);
-      alert('Failed to join game. Please try again.');
+      alert('An unexpected error occurred. Please try again.');
     } finally {
       setIsJoining(false);
     }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await joinGame();
   };
 
   return (
@@ -61,14 +73,14 @@ export default function JoinGamePage() {
         Back
       </Button>
       <h1 className="text-4xl font-bold mb-8">Join Game</h1>
-      <div className="bg-white p-8 rounded-lg shadow-md w-96 space-y-6">
+      <form onSubmit={handleSubmit} className="bg-white p-8 rounded-lg shadow-md w-96 space-y-6">
         <div>
           <label className="block text-sm font-medium text-gray-700">
             Game Code
           </label>
           <Input
             value={gameCode}
-            onChange={(e) => setGameCode(parseInt(e.target.value))}
+            onChange={(e) => setGameCode(e.target.value)}
             className="mt-1"
             placeholder="Enter game code"
             disabled={isJoining}
@@ -86,10 +98,10 @@ export default function JoinGamePage() {
             disabled={isJoining}
           />
         </div>
-        <Button onClick={joinGame} className="w-full" disabled={isJoining}>
+        <Button type="submit" className="w-full" disabled={isJoining}>
           {isJoining ? 'Joining...' : 'Join Game'}
         </Button>
-      </div>
+      </form>
     </div>
   );
 }

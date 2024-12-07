@@ -22,12 +22,28 @@ import {
 } from '@/components/ui/popover';
 import { useParams } from 'next/navigation';
 import { GameContextType } from '@/components/GameContext';
-import { passTurnToNextPlayer, pushPlayerAction } from '@/lib/supabase';
+import { passTurnToNextPlayer, pushPlayerAction, updatePlayerLastAction } from '@/lib/supabase';
+import { useEffect } from 'react';
 
 
 export function PlayerHand({ gameContext }: { gameContext: GameContextType }) {
   const params = useParams();
   const playerId = parseInt(params?.playerId as string);
+
+  useEffect(() => {
+    if (!playerId || !gameContext?.sessionid) return;
+
+    const updateLastActive = () => {
+      updatePlayerLastAction(gameContext.sessionid, playerId)
+        .catch(error => console.error('Error updating last active:', error));
+    };
+
+    updateLastActive();
+
+    const interval = setInterval(updateLastActive, 30000);
+
+    return () => clearInterval(interval);
+  }, [playerId, gameContext?.sessionid]);
 
   if (!gameContext || !playerId) {
     return <div>Loading game state...</div>;
@@ -136,6 +152,10 @@ export function PlayerHand({ gameContext }: { gameContext: GameContextType }) {
 
   console.log('playerCards', playerCards);
   var disabled = !currentPlayer.is_turn && gameContext.gameData.lock_turn;
+  const atMaxCards = playerCards.length >= gameContext.gameData.max_cards_per_player;
+  const deckCount = gameContext.sessionCards.filter(card => card.cardPosition > 0).length;
+  const noDeckCards = deckCount === 0;
+
   return (
     <div className="w-full max-w-4xl mx-auto p-4">
       <h2 className="text-2xl font-bold mb-4">
@@ -190,9 +210,9 @@ export function PlayerHand({ gameContext }: { gameContext: GameContextType }) {
         <div className="space-x-2">
           <Button 
             onClick={handleDrawCard}
-            disabled={disabled}
+            disabled={disabled || atMaxCards || noDeckCards}
           >
-            Draw Card
+            Draw Card ({deckCount})
           </Button>
           <Button 
             onClick={handleDrawToken}

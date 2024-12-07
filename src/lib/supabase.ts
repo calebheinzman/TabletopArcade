@@ -43,6 +43,7 @@ export interface CustomGameData {
   face_down_player_discard_piles_columbs: number | null;
   is_turn_based: boolean;
   lock_turn: boolean;
+  max_cards_per_player: number;
 }
 
 export interface DeckData {
@@ -69,6 +70,7 @@ export interface Player {
   num_points: number;
   is_turn: boolean;
   player_order: number;
+  time_last_action: string; // This will store ISO timestamp
 }
 
 export interface SessionState {
@@ -108,6 +110,7 @@ export interface SessionPlayer {
   num_points: number;
   player_order: number;
   is_turn: boolean;
+  time_last_action: string; 
 }
 
 export interface PlayerAction {
@@ -337,7 +340,18 @@ export async function addPlayer(sessionId: number, username: string): Promise<{ 
 
       if (sessionError) throw sessionError;
 
-      const playerOrder = (sessionData.player?.length || 0) + 1;
+      // Check if game is already in progress
+      if (sessionData.is_live) {
+        return { playerId: null, error: 'Game is already in progress' };
+      }
+
+      // Check if game is full
+      const currentPlayerCount = sessionData.player?.length || 0;
+      if (currentPlayerCount >= sessionData.game.num_players) {
+        return { playerId: null, error: 'Game is full' };
+      }
+
+      const playerOrder = currentPlayerCount + 1;
 
       const { data: playerData, error: playerError } = await supabase
         .from('player')
@@ -346,7 +360,8 @@ export async function addPlayer(sessionId: number, username: string): Promise<{ 
           username: username,
           num_points: sessionData.game.starting_num_tokens || 0,
           player_order: playerOrder,
-          is_turn: false
+          is_turn: false,
+          time_last_action: new Date().toISOString()
         })
         .select('playerid')
         .single();
@@ -783,5 +798,60 @@ export async function pushPlayerAction(
   } catch (error) {
     console.error('Error pushing player action:', error);
     throw new Error('Failed to push player action');
+  }
+}
+
+export async function updatePlayerLastAction(sessionId: number, playerId: number): Promise<void> {
+  const { error } = await supabase
+    .from('player')
+    .update({ time_last_action: new Date().toISOString() })
+    .match({ sessionid: sessionId, playerid: playerId });
+
+  if (error) throw error;
+}
+
+export async function resetGame(gameContext: GameContextType): Promise<void> {
+  try {
+    // Reset session cards
+    const newDeck = initializeSession(gameContext);
+    
+    // Delete existing session cards
+    const { error: deleteError } = await supabase
+      .from('session_cards')
+      .delete()
+      .eq('sessionid', gameContext.sessionid);
+    
+    if (deleteError) throw deleteError;
+
+    // Insert new session cards
+    await insertSessionCards(gameContext.sessionid, newDeck);
+
+    // Reset player tokens to starting amount
+    const { error: playerError } = await supabase
+      .from('player')
+      .update({ 
+        num_points: gameContext.gameData.starting_num_tokens || 0,
+        is_turn: false 
+      })
+      .eq('sessionid', gameContext.sessionid);
+
+    if (playerError) throw playerError;
+
+    // Reset session tokens
+    const { error: sessionError } = await supabase
+      .from('session')
+      .update({ 
+        num_tokens: gameContext.gameData.num_tokens
+      })
+      .eq('sessionid', gameContext.sessionid);
+
+    if (sessionError) throw sessionError;
+
+    // Set first player's turn
+    await setFirstPlayerTurn(gameContext.sessionid);
+
+  } catch (error) {
+    console.error('Error resetting game:', error);
+    throw error;
   }
 }
