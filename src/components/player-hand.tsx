@@ -88,7 +88,7 @@ export function PlayerHand({ gameContext }: { gameContext: GameContextType }) {
       await pushPlayerAction(
         gameContext.sessionid, 
         playerId, 
-        `Discarded card ${cardId}`
+        `Discarded card`
       );
     } catch (error) {
       console.error('Error discarding card:', error);
