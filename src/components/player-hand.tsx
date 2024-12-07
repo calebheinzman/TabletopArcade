@@ -22,6 +22,7 @@ import {
 } from '@/components/ui/popover';
 import { useParams } from 'next/navigation';
 import { GameContextType } from '@/components/GameContext';
+import { passTurnToNextPlayer, pushPlayerAction } from '@/lib/supabase';
 
 
 export function PlayerHand({ gameContext }: { gameContext: GameContextType }) {
@@ -62,39 +63,79 @@ export function PlayerHand({ gameContext }: { gameContext: GameContextType }) {
   const handleDrawToken = async () => {
     try {
       await gameContext.drawToken(playerId);
+      await pushPlayerAction(gameContext.sessionid, playerId, "Drew a token");
     } catch (error) {
       console.error('Error drawing token:', error);
-      // You might want to show an error message to the user here
     }
   };
 
   const handleGiveToken = async (recipient: string) => {
     try {
       await gameContext.giveToken(playerId, recipient);
+      await pushPlayerAction(
+        gameContext.sessionid, 
+        playerId, 
+        `Gave a token to ${recipient}`
+      );
     } catch (error) {
       console.error('Error giving token:', error);
-      // You might want to show an error message to the user here
     }
   };
 
   const handleDiscard = async (playerId: number, cardId: number) => {
     try {
       await gameContext.discardCard(playerId, cardId);
+      await pushPlayerAction(
+        gameContext.sessionid, 
+        playerId, 
+        `Discarded card ${cardId}`
+      );
     } catch (error) {
       console.error('Error discarding card:', error);
-      // You might want to show an error message to the user here
     }
   };
 
   const handleReveal = async (playerId: number, cardId: number) => {
     try {
       await gameContext.revealCard(playerId, cardId);
+      await pushPlayerAction(
+        gameContext.sessionid, 
+        playerId, 
+        `Revealed card ${cardId}`
+      );
     } catch (error) {
       console.error('Error revealing card:', error);
-      // You might want to show an error message to the user here
     }
   };
+
+  const handleEndTurn = async () => {
+    try {
+      await passTurnToNextPlayer(gameContext.sessionid, playerId);
+      await pushPlayerAction(
+        gameContext.sessionid, 
+        playerId, 
+        "Ended their turn"
+      );
+    } catch (error) {
+      console.error('Error ending turn:', error);
+    }
+  };
+
+  const handleDrawCard = async () => {
+    try {
+      await gameContext.drawCard(playerId);
+      await pushPlayerAction(
+        gameContext.sessionid, 
+        playerId, 
+        "Drew a card"
+      );
+    } catch (error) {
+      console.error('Error drawing card:', error);
+    }
+  };
+
   console.log('playerCards', playerCards);
+  var disabled = !currentPlayer.is_turn && gameContext.gameData.lock_turn;
   return (
     <div className="w-full max-w-4xl mx-auto p-4">
       <h2 className="text-2xl font-bold mb-4">
@@ -147,16 +188,30 @@ export function PlayerHand({ gameContext }: { gameContext: GameContextType }) {
           Points: {currentPlayer.num_points || 0}
         </div>
         <div className="space-x-2">
-          <Button onClick={() => gameContext.drawCard(playerId)}>Draw Card</Button>
+          <Button 
+            onClick={handleDrawCard}
+            disabled={disabled}
+          >
+            Draw Card
+          </Button>
           <Button 
             onClick={handleDrawToken}
-            disabled={!gameContext.session.num_tokens || gameContext.session.num_tokens <= 0}
+            disabled={
+              disabled || 
+              !gameContext.session.num_tokens || 
+              gameContext.session.num_tokens <= 0
+            }
           >
             Draw Token
           </Button>
           <Popover>
             <PopoverTrigger asChild>
-              <Button disabled={currentPlayer.num_points === 0}>
+              <Button 
+                disabled={
+                  disabled|| 
+                  currentPlayer.num_points === 0
+                }
+              >
                 Give Token
               </Button>
             </PopoverTrigger>
@@ -177,6 +232,13 @@ export function PlayerHand({ gameContext }: { gameContext: GameContextType }) {
               </div>
             </PopoverContent>
           </Popover>
+          <Button 
+            onClick={handleEndTurn}
+            disabled={!currentPlayer.is_turn}
+            variant={gameContext.gameData.lock_turn ? "default" : "outline"}
+          >
+            End Turn
+          </Button>
         </div>
       </div>
     </div>

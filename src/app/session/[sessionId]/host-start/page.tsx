@@ -4,7 +4,8 @@ import { useGame } from '@/components/GameContext';
 import { Button } from '@/components/ui/button';
 import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { SessionPlayer,createSession } from '@/lib/supabase';
+import { SessionPlayer,createSession, setFirstPlayerTurn } from '@/lib/supabase';
+import { supabase } from '@/lib/supabase';
 
 export default function HostStartPage() {
   const router = useRouter();
@@ -23,6 +24,15 @@ export default function HostStartPage() {
   const startGame = async () => {
     try {
       await createSession(gameContext);
+      await setFirstPlayerTurn(parseInt(sessionId as string));
+      
+      const { error: updateError } = await supabase
+        .from('session')
+        .update({ is_live: true })
+        .eq('sessionid', sessionId);
+
+      if (updateError) throw updateError;
+
       await fetch(`/api/games/${sessionId}/start`, {
         method: 'POST',
       });

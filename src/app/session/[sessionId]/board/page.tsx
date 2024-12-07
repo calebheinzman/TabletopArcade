@@ -7,24 +7,30 @@ import BoardPlayerActionsDialog from '@/components/board/board-player-actions-di
 import BoardPlayerHands from '@/components/board/board-player-hands';
 import { useGame } from '@/components/GameContext';
 import React, { useState } from 'react';
+import { passTurnToNextPlayer } from '@/lib/supabase';
+import BoardActionFeed from '@/components/board/board-action-feed';
+import { Button } from '@/components/ui/button';
 
 const BoardContent: React.FC = () => {
   const gameContext = useGame();
 
   const [selectedPlayerId, setSelectedPlayerId] = useState<number | null>(null);
+  const [isHost] = useState(true); // TODO: Implement proper host check
+  const [isActionFeedOpen, setIsActionFeedOpen] = useState(false);
 
   if (!gameContext) return <div>Loading...</div>;
 
+  // Sort players by player_order
+  const sortedPlayers = [...gameContext.sessionPlayers].sort(
+    (a, b) => (a.player_order || 0) - (b.player_order || 0)
+  );
+
   // Destructure necessary data from gameState for clarity
-  const players = gameContext.sessionPlayers;
-  const deck = gameContext.sessionCards;
-  const tokens = gameContext.session.num_tokens;
-  const totalPlayers = players.length;
   const deckCount = gameContext.sessionCards.filter(card => card.cardPosition > 0).length;
   const gameTokens = gameContext.session.num_tokens;
 
   // Find the selected player based on selectedPlayerId
-  const selectedPlayer = players.find(
+  const selectedPlayer = sortedPlayers.find(
     (player) => player.playerid === selectedPlayerId
   );
 
@@ -83,53 +89,84 @@ const BoardContent: React.FC = () => {
     console.log('Decrease points');
   };
 
+  const handleEndTurn = async (playerId: number) => {
+    try {
+      await passTurnToNextPlayer(gameContext.sessionid, playerId);
+    } catch (error) {
+      console.error('Error ending turn:', error);
+    }
+  };
+
   return (
     <div className="flex flex-col items-center justify-start min-h-screen bg-gray-100 p-2 sm:p-4">
-      <div className="w-full max-w-6xl mx-auto flex flex-col h-[98vh] relative">
-        {/* Header Section */}
-        <BoardHeader
-          deckCount={deckCount}
-          players={players}
-          onDrawCard={handleDrawCard}
-          onGiveToken={handleDrawToken}
-          onDiscardCard={handleDiscardCard}
-          onShuffle={handleShuffle}
-        />
+      {/* Main container for board and action feed */}
+      <div className="w-full max-w-6xl mx-auto flex h-[90vh] gap-4">
+        {/* Board and related components */}
+        <div className="flex flex-col flex-grow relative">
+          {/* Header Section */}
+          <BoardHeader
+            deckCount={deckCount}
+            players={sortedPlayers}
+            onDrawCard={handleDrawCard}
+            onGiveToken={handleDrawToken}
+            onDiscardCard={handleDiscardCard}
+            onShuffle={handleShuffle}
+          />
 
-        {/* Game Board */}
-        <div className="relative flex-grow bg-white rounded-lg shadow-xl border border-gray-200 overflow-hidden w-full mx-auto">
-          {/* Central Deck Display */}
-          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 scale-75 sm:scale-90 md:scale-100">
-            <div className="w-16 h-24 sm:w-18 sm:h-26 md:w-20 md:h-28 bg-white border-2 border-black shadow-lg flex items-center justify-center text-black text-base sm:text-lg font-bold">
-              {deckCount}
+          {/* Game Board */}
+          <div className="relative flex-grow bg-white rounded-lg shadow-xl border border-gray-200 overflow-hidden w-full">
+            {/* Toggle Action Feed Button */}
+            <Button
+              size="sm"
+              variant="outline"
+              className="absolute top-4 right-4 z-10"
+              onClick={() => setIsActionFeedOpen(!isActionFeedOpen)}
+            >
+              {isActionFeedOpen ? 'Hide Actions' : 'Show Actions'}
+            </Button>
+
+            {/* Central Deck Display */}
+            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 scale-75 sm:scale-90 md:scale-100">
+              <div className="w-16 h-24 sm:w-18 sm:h-26 md:w-20 md:h-28 bg-white border-2 border-black shadow-lg flex items-center justify-center text-black text-base sm:text-lg font-bold">
+                {deckCount}
+              </div>
+            </div>
+
+            {/* Players */}
+            <BoardPlayerHands
+              players={sortedPlayers}
+              totalPlayers={sortedPlayers.length}
+              onSelectPlayer={setSelectedPlayerId}
+            />
+
+            {/* Game Tokens Display */}
+            <div className="absolute top-4 left-4 bg-yellow-400 text-black px-4 py-2 rounded-full text-sm sm:text-base font-bold">
+              Tokens: {gameTokens}
             </div>
           </div>
 
-          {/* Players */}
-          <BoardPlayerHands
-            players={players}
-            totalPlayers={totalPlayers}
-            onSelectPlayer={setSelectedPlayerId}
-          />
-
-          {/* Game Tokens Display (Inside the Board) */}
-          <div className="absolute top-4 left-4 bg-yellow-400 text-black px-4 py-2 rounded-full text-sm sm:text-base font-bold">
-            Tokens: {gameTokens}
-          </div>
+          {/* Player Actions Dialog */}
+          {selectedPlayer && (
+            <BoardPlayerActionsDialog
+              isOpen={!!selectedPlayerId}
+              playerName={selectedPlayer.username}
+              tokens={selectedPlayer.num_points || 0}
+              playerId={selectedPlayer.playerid}
+              isHost={isHost}
+              is_turn={selectedPlayer.is_turn}
+              onClose={() => setSelectedPlayerId(null)}
+              onIncreaseToken={() => handleDrawToken(selectedPlayer.playerid)}
+              onDecreaseToken={() => handleGiveToken(selectedPlayer.playerid)}
+              onEndTurn={handleEndTurn}
+            />
+          )}
         </div>
-      </div>
 
-      {/* Player Actions Dialog */}
-      {selectedPlayer && (
-        <BoardPlayerActionsDialog
-          isOpen={!!selectedPlayerId}
-          playerName={selectedPlayer.username}
-          tokens={selectedPlayer.num_points || 0}
-          onClose={() => setSelectedPlayerId(null)}
-          onIncreaseToken={() => handleDrawToken(selectedPlayer.playerid)}
-          onDecreaseToken={() => handleGiveToken(selectedPlayer.playerid)}
-        />
-      )}
+        {/* Action Feed */}
+        {isActionFeedOpen && (
+          <BoardActionFeed />
+        )}
+      </div>
     </div>
   );
 };

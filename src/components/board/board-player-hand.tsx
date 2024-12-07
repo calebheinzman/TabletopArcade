@@ -44,8 +44,13 @@ const BoardPlayerHand: FC<BoardPlayerHandProps> = ({
       style={position}
       className="flex flex-col items-center text-center cursor-pointer absolute transform -translate-x-1/2 -translate-y-1/2"
     >
-      <div className={`text-xs sm:text-sm font-semibold mb-1 ${isActive ? 'text-green-600' : ''}`}>
+      <div className={`
+        text-xs sm:text-sm font-semibold mb-1 
+        ${isActive ? 'text-green-600' : ''} 
+        ${player.is_turn ? 'ring-2 ring-yellow-400 rounded-full px-2 py-1 bg-yellow-50' : ''}
+      `}>
         {player.username} {!isActive && '(Disconnected)'}
+        {player.is_turn && ' 🎲'}
       </div>
 
       <div className="text-xs sm:text-sm font-semibold mb-2">
