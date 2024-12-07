@@ -3,7 +3,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import React from 'react';
+import React, { useState } from 'react';
 import { Button } from '../ui/button';
 import {
   DropdownMenu,
@@ -20,7 +20,7 @@ interface BoardHeaderProps {
   deckCount: number;
   players: SessionPlayer[];
   onDrawCard: (playerId: number) => void;
-  onGiveToken: (playerId: number) => void;
+  onGiveToken: (playerId: number, quantity: number) => void;
   onDiscardCard: (playerId: number) => void;
   onShuffle: () => void;
   onReset: () => void;
@@ -37,6 +37,7 @@ const BoardHeader: React.FC<BoardHeaderProps> = ({
 }) => {
   const router = useRouter();
   const gameContext = useGame();
+  const [numTokensToGive, setNumTokensToGive] = useState(1);
 
   const getPlayerCardCount = (playerId: number) => {
     return gameContext?.sessionCards.filter(card => card.playerid === playerId).length || 0;
@@ -95,16 +96,31 @@ const BoardHeader: React.FC<BoardHeaderProps> = ({
             <Button size="sm">Give Token</Button>
           </PopoverTrigger>
           <PopoverContent className="w-56">
-            <div className="grid gap-2">
-              {players.map((player) => (
-                <Button
-                  key={player.playerid}
-                  onClick={() => onGiveToken(player.playerid)}
-                  size="sm"
-                >
-                  {player.username}
-                </Button>
-              ))}
+            <div className="flex flex-col">
+              <span className="mb-2">Select Number of Tokens</span>
+              <div className="flex space-x-2 mb-2">
+                {[1, 2, 3].map((num) => (
+                  <Button
+                    key={num}
+                    size="sm"
+                    variant={numTokensToGive === num ? 'default' : 'outline'}
+                    onClick={() => setNumTokensToGive(num)}
+                  >
+                    {num}
+                  </Button>
+                ))}
+              </div>
+              <div className="grid gap-2">
+                {players.map((player) => (
+                  <Button
+                    key={player.playerid}
+                    onClick={() => onGiveToken(player.playerid, numTokensToGive)}
+                    size="sm"
+                  >
+                    {player.username}
+                  </Button>
+                ))}
+              </div>
             </div>
           </PopoverContent>
         </Popover>

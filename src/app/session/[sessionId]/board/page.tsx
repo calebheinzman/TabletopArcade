@@ -10,7 +10,7 @@ import React, { useState } from 'react';
 import { passTurnToNextPlayer, resetGame } from '@/lib/supabase';
 import BoardActionFeed from '@/components/board/board-action-feed';
 import { Button } from '@/components/ui/button';
-
+import { pushPlayerAction } from '@/lib/supabase';
 const BoardContent: React.FC = () => {
   const gameContext = useGame();
 
@@ -43,16 +43,21 @@ const BoardContent: React.FC = () => {
     }
   };
 
-  const handleGiveToken = async (playerId: number) => {
+  const handleGiveToken = async (playerId: number, quantity: number) => {
     try {
-      await gameContext.giveToken(playerId,"Board");
+      await gameContext.giveTokens(playerId, "Board", quantity);
+      await pushPlayerAction(
+        gameContext.sessionid,
+        playerId,
+        `Gave ${quantity} token(s)`
+      );
     } catch (error) {
       console.error('Error giving token:', error);
     }
   };
-  const handleDrawToken = async (playerId: number) => {
+  const handleDrawToken = async (playerId: number, quantity: number) => {
     try {
-      await gameContext.drawToken(playerId);
+      await gameContext.drawTokens(playerId, quantity);
     } catch (error) {
       console.error('Error giving token:', error);
     }
@@ -166,8 +171,8 @@ const BoardContent: React.FC = () => {
               isHost={isHost}
               is_turn={selectedPlayer.is_turn}
               onClose={() => setSelectedPlayerId(null)}
-              onIncreaseToken={() => handleDrawToken(selectedPlayer.playerid)}
-              onDecreaseToken={() => handleGiveToken(selectedPlayer.playerid)}
+              onIncreaseToken={() => handleDrawToken(selectedPlayer.playerid, 1)}
+              onDecreaseToken={() => handleGiveToken(selectedPlayer.playerid, 1)}
               onEndTurn={handleEndTurn}
             />
           )}
