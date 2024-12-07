@@ -22,6 +22,7 @@ import {
 } from '@/components/ui/popover';
 import { useParams } from 'next/navigation';
 import { GameContextType } from '@/components/GameContext';
+import { passTurnToNextPlayer } from '@/lib/supabase';
 
 
 export function PlayerHand({ gameContext }: { gameContext: GameContextType }) {
@@ -94,7 +95,17 @@ export function PlayerHand({ gameContext }: { gameContext: GameContextType }) {
       // You might want to show an error message to the user here
     }
   };
+
+  const handleEndTurn = async () => {
+    try {
+      await passTurnToNextPlayer(gameContext.sessionid, playerId);
+    } catch (error) {
+      console.error('Error ending turn:', error);
+    }
+  };
+
   console.log('playerCards', playerCards);
+  var disabled = !currentPlayer.is_turn && gameContext.gameData.lock_turn;
   return (
     <div className="w-full max-w-4xl mx-auto p-4">
       <h2 className="text-2xl font-bold mb-4">
@@ -147,16 +158,30 @@ export function PlayerHand({ gameContext }: { gameContext: GameContextType }) {
           Points: {currentPlayer.num_points || 0}
         </div>
         <div className="space-x-2">
-          <Button onClick={() => gameContext.drawCard(playerId)}>Draw Card</Button>
+          <Button 
+            onClick={() => gameContext.drawCard(playerId)}
+            disabled={disabled}
+          >
+            Draw Card
+          </Button>
           <Button 
             onClick={handleDrawToken}
-            disabled={!gameContext.session.num_tokens || gameContext.session.num_tokens <= 0}
+            disabled={
+              disabled || 
+              !gameContext.session.num_tokens || 
+              gameContext.session.num_tokens <= 0
+            }
           >
             Draw Token
           </Button>
           <Popover>
             <PopoverTrigger asChild>
-              <Button disabled={currentPlayer.num_points === 0}>
+              <Button 
+                disabled={
+                  disabled|| 
+                  currentPlayer.num_points === 0
+                }
+              >
                 Give Token
               </Button>
             </PopoverTrigger>
@@ -177,6 +202,13 @@ export function PlayerHand({ gameContext }: { gameContext: GameContextType }) {
               </div>
             </PopoverContent>
           </Popover>
+          <Button 
+            onClick={handleEndTurn}
+            disabled={!currentPlayer.is_turn}
+            variant={gameContext.gameData.lock_turn ? "default" : "outline"}
+          >
+            End Turn
+          </Button>
         </div>
       </div>
     </div>

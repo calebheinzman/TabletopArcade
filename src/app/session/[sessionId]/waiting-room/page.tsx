@@ -7,15 +7,15 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
 interface PlayerInfo {
-  playerId: string;
+  playerId: number;
   userName: string;
-  gameCode: string;
+  gameCode: number;
 }
 
 export default function WaitingRoomPage() {
   const router = useRouter();
   const [playerInfo, setPlayerInfo] = useState<PlayerInfo | null>(null);
-  const { gameState } = useGame();
+  const gameContext = useGame();
 
   useEffect(() => {
     // Try to get player info from localStorage
@@ -29,13 +29,14 @@ export default function WaitingRoomPage() {
     }
   }, [router]);
 
-  const handleStartGame = () => {
-    if (playerInfo) {
+  // Add new effect to watch for game.is_live changes
+  useEffect(() => {
+    if (gameContext?.session?.is_live && playerInfo) {
       router.push(
         `/session/${playerInfo.gameCode}/player/${playerInfo.playerId}/hand`
       );
     }
-  };
+  }, [gameContext?.session?.is_live, playerInfo, router]);
 
   if (!playerInfo) return <div>Loading...</div>;
 
@@ -52,15 +53,15 @@ export default function WaitingRoomPage() {
         <p className="text-lg mb-4">Game Code: {playerInfo.gameCode}</p>
         <p className="text-gray-600 mb-6">Waiting for the game to start...</p>
 
-        {gameState && gameState.players ? (
+        {gameContext && gameContext.sessionPlayers ? (
           <div>
             <h2 className="text-2xl font-semibold mb-4">Players:</h2>
             <ul className="space-y-2">
-              {gameState.players.map((player: SessionPlayer) => (
+              {gameContext.sessionPlayers.map((player: SessionPlayer) => (
                 <li
-                  key={player.id}
+                  key={player.playerid}
                   className={`p-2 rounded ${
-                    player.id === playerInfo.playerId
+                    player.playerid === playerInfo.playerId
                       ? 'bg-blue-100 font-bold'
                       : 'bg-gray-100'
                   }`}
@@ -74,11 +75,6 @@ export default function WaitingRoomPage() {
           <div>Loading players...</div>
         )}
       </div>
-
-      {/* Temporary button for demo purposes */}
-      <Button onClick={handleStartGame} className="mt-8">
-        Start Game (Demo)
-      </Button>
     </div>
   );
 }

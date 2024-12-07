@@ -17,18 +17,26 @@ interface BoardPlayerActionsDialogProps {
   isOpen: boolean;
   playerName: string;
   tokens: number;
+  playerId: number;
+  isHost: boolean;
+  is_turn: boolean;
   onClose: () => void;
   onIncreaseToken: () => void;
   onDecreaseToken: () => void;
+  onEndTurn: (playerId: number) => void;
 }
 
 const BoardPlayerActionsDialog: FC<BoardPlayerActionsDialogProps> = ({
   isOpen,
   playerName,
   tokens,
+  playerId,
+  isHost,
+  is_turn,
   onClose,
   onIncreaseToken,
   onDecreaseToken,
+  onEndTurn,
 }) => {
   return (
     <Dialog open={isOpen} onOpenChange={isOpen ? onClose : undefined}>
@@ -64,7 +72,16 @@ const BoardPlayerActionsDialog: FC<BoardPlayerActionsDialogProps> = ({
             </div>
           </div>
         </div>
-        <DialogFooter>
+        <DialogFooter className="flex justify-between">
+          {isHost && (
+            <Button 
+              variant="default"
+              onClick={() => onEndTurn(playerId)}
+              disabled={!is_turn}
+            >
+              End Player Turn
+            </Button>
+          )}
           <Button variant="secondary" onClick={onClose}>
             Close
           </Button>

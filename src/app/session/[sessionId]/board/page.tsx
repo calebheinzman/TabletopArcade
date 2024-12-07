@@ -7,24 +7,30 @@ import BoardPlayerActionsDialog from '@/components/board/board-player-actions-di
 import BoardPlayerHands from '@/components/board/board-player-hands';
 import { useGame } from '@/components/GameContext';
 import React, { useState } from 'react';
+import { passTurnToNextPlayer } from '@/lib/supabase';
 
 const BoardContent: React.FC = () => {
   const gameContext = useGame();
 
   const [selectedPlayerId, setSelectedPlayerId] = useState<number | null>(null);
+  const [isHost] = useState(true); // TODO: Implement proper host check
 
   if (!gameContext) return <div>Loading...</div>;
 
+  // Sort players by player_order
+  const sortedPlayers = [...gameContext.sessionPlayers].sort(
+    (a, b) => (a.player_order || 0) - (b.player_order || 0)
+  );
+
   // Destructure necessary data from gameState for clarity
-  const players = gameContext.sessionPlayers;
   const deck = gameContext.sessionCards;
   const tokens = gameContext.session.num_tokens;
-  const totalPlayers = players.length;
+  const totalPlayers = sortedPlayers.length;
   const deckCount = gameContext.sessionCards.filter(card => card.cardPosition > 0).length;
   const gameTokens = gameContext.session.num_tokens;
 
   // Find the selected player based on selectedPlayerId
-  const selectedPlayer = players.find(
+  const selectedPlayer = sortedPlayers.find(
     (player) => player.playerid === selectedPlayerId
   );
 
@@ -83,13 +89,21 @@ const BoardContent: React.FC = () => {
     console.log('Decrease points');
   };
 
+  const handleEndTurn = async (playerId: number) => {
+    try {
+      await passTurnToNextPlayer(gameContext.sessionid, playerId);
+    } catch (error) {
+      console.error('Error ending turn:', error);
+    }
+  };
+
   return (
     <div className="flex flex-col items-center justify-start min-h-screen bg-gray-100 p-2 sm:p-4">
       <div className="w-full max-w-6xl mx-auto flex flex-col h-[98vh] relative">
         {/* Header Section */}
         <BoardHeader
           deckCount={deckCount}
-          players={players}
+          players={sortedPlayers}
           onDrawCard={handleDrawCard}
           onGiveToken={handleDrawToken}
           onDiscardCard={handleDiscardCard}
@@ -107,8 +121,8 @@ const BoardContent: React.FC = () => {
 
           {/* Players */}
           <BoardPlayerHands
-            players={players}
-            totalPlayers={totalPlayers}
+            players={sortedPlayers}
+            totalPlayers={sortedPlayers.length}
             onSelectPlayer={setSelectedPlayerId}
           />
 
@@ -125,9 +139,13 @@ const BoardContent: React.FC = () => {
           isOpen={!!selectedPlayerId}
           playerName={selectedPlayer.username}
           tokens={selectedPlayer.num_points || 0}
+          playerId={selectedPlayer.playerid}
+          isHost={isHost}
+          is_turn={selectedPlayer.is_turn}  // Add this line
           onClose={() => setSelectedPlayerId(null)}
           onIncreaseToken={() => handleDrawToken(selectedPlayer.playerid)}
           onDecreaseToken={() => handleGiveToken(selectedPlayer.playerid)}
+          onEndTurn={handleEndTurn}
         />
       )}
     </div>

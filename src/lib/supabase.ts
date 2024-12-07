@@ -26,6 +26,7 @@ export interface CustomGameData {
   num_dice: number;
   num_players: number;
   starting_num_cards: number;
+  starting_num_tokens: number;
   can_discard: boolean;
   can_reveal: boolean;
   can_give_tokens: boolean;
@@ -40,6 +41,8 @@ export interface CustomGameData {
   face_up_player_discard_piles_columbs: number | null;
   face_down_player_discard_piles_row: number | null;
   face_down_player_discard_piles_columbs: number | null;
+  is_turn_based: boolean;
+  lock_turn: boolean;
 }
 
 export interface DeckData {
@@ -64,6 +67,8 @@ export interface Player {
   playerid: number;
   username: string;
   num_points: number;
+  is_turn: boolean;
+  player_order: number;
 }
 
 export interface SessionState {
@@ -83,6 +88,7 @@ export interface Session {
   num_tokens: number;
   num_players: number;
   num_cards: number;
+  is_live: boolean;
 }
 
 export interface SessionCard {
@@ -100,6 +106,8 @@ export interface SessionPlayer {
   playerid: number;
   username: string;
   num_points: number;
+  player_order: number;
+  is_turn: boolean;
 }
 
 export interface PlayerAction {
@@ -250,18 +258,16 @@ export async function fetchGameTemplate(templateId: GameTemplate['id']) {
 
 export async function createSessionFromGameTemplateId(templateId: GameTemplate['id']) {
     try {
-      // Step 1: Fetch the game template with decks and cards
       const gameData = await fetchGameTemplate(templateId);
 
       if (!gameData) throw new Error('Failed to fetch game template data.');
-      console.log('gameData', gameData);
-      console.log('gameData.numcards', gameData.num_cards);
-      // Step 2: Insert a new session based on the game template
+      
       const sessionData = {
         gameid: gameData.gameid,
         num_tokens: gameData.num_tokens,
         num_players: 0,
         num_cards: gameData.decks[0].cards.length,
+        is_live: false
       };
 
       const { data: sessionResult, error: sessionError } = await supabase
@@ -272,10 +278,7 @@ export async function createSessionFromGameTemplateId(templateId: GameTemplate['
 
       if (sessionError) throw sessionError;
 
-      const sessionId = sessionResult.sessionid;
-
-
-      return { error: null, sessionId };
+      return { error: null, sessionId: sessionResult.sessionid };
     } catch (error) {
       console.error('Error creating session from game:', error);
       return { sessionId: null, error: 'Failed to create session from game' };
@@ -321,16 +324,28 @@ export async function fetchGameSession(sessionId: string) {
 
 export async function addPlayer(sessionId: number, username: string): Promise<{ playerId: number | null, error: string | null }> {
     try {
+      const { data: sessionData, error: sessionError } = await supabase
+        .from('session')
+        .select(`
+          *,
+          game(*),
+          player!player_sessionid_fkey(*)
+        `)
+        .eq('sessionid', sessionId)
+        .single();
 
+      if (sessionError) throw sessionError;
 
+      const playerOrder = (sessionData.player?.length || 0) + 1;
 
-      // Insert the new player
       const { data: playerData, error: playerError } = await supabase
         .from('player')
         .insert({
           sessionid: sessionId,
           username: username,
-          num_points: 0
+          num_points: sessionData.game.starting_num_tokens || 0,
+          player_order: playerOrder,
+          is_turn: false
         })
         .select('playerid')
         .single();
@@ -341,6 +356,27 @@ export async function addPlayer(sessionId: number, username: string): Promise<{ 
     } catch (error) {
       console.error('Error adding player:', error);
       return { playerId: null, error: 'Failed to add player' };
+    }
+}
+
+export async function setFirstPlayerTurn(sessionId: number): Promise<void> {
+    try {
+        // Update all players to is_turn = false first
+        await supabase
+            .from('player')
+            .update({ is_turn: false })
+            .eq('sessionid', sessionId);
+
+        // Set is_turn = true for player with player_order = 1
+        const { error } = await supabase
+            .from('player')
+            .update({ is_turn: true })
+            .match({ sessionid: sessionId, player_order: 1 });
+
+        if (error) throw error;
+    } catch (error) {
+        console.error('Error setting first player turn:', error);
+        throw error;
     }
 }
 
@@ -683,4 +719,47 @@ export async function updateCardRevealed(
     });
   console.log('Updated card revealed:', sessionCardId, isRevealed);
   if (error) throw error;
+}
+
+export async function passTurnToNextPlayer(sessionId: number, currentPlayerId: number): Promise<void> {
+    try {
+        // Get current player's order
+        const { data: currentPlayer, error: currentPlayerError } = await supabase
+            .from('player')
+            .select('player_order')
+            .eq('playerid', currentPlayerId)
+            .single();
+
+        if (currentPlayerError) throw currentPlayerError;
+
+        // Get total number of players
+        const { data: players, error: playersError } = await supabase
+            .from('player')
+            .select('player_order')
+            .eq('sessionid', sessionId)
+            .order('player_order', { ascending: true });
+
+        if (playersError) throw playersError;
+
+        // Calculate next player's order
+        const maxOrder = Math.max(...players.map(p => p.player_order));
+        const nextOrder = currentPlayer.player_order === maxOrder ? 1 : currentPlayer.player_order + 1;
+
+        // Update all players to is_turn = false
+        await supabase
+            .from('player')
+            .update({ is_turn: false })
+            .eq('sessionid', sessionId);
+
+        // Set is_turn = true for next player
+        const { error: updateError } = await supabase
+            .from('player')
+            .update({ is_turn: true })
+            .match({ sessionid: sessionId, player_order: nextOrder });
+
+        if (updateError) throw updateError;
+    } catch (error) {
+        console.error('Error passing turn:', error);
+        throw error;
+    }
 }
