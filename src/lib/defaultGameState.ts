@@ -62,18 +62,18 @@ export function initializeSession(gameContext: GameContextType) {
   console.log('DECK0');
   console.log(deck);
 
-  // Use players from sessionPlayers in game context, initialize with starting tokens
+  // Use players from sessionPlayers in game context, initialize with starting points
   const players = sessionPlayers.map((player: SessionPlayer) => ({
     ...player,
     sessionid: sessionid,
-    num_points: gameContext.gameData.starting_num_tokens || 0  // Initialize with starting tokens
+    num_points: gameContext.gameData.starting_num_points || 0  // Initialize with starting points
   }));
 
   // Create the initial session state
   const session: Session = {
     sessionId: sessionid,
     gameId: gameContext.gameid,
-    num_tokens: gameContext.gameData.num_tokens,
+    num_points: gameContext.gameData.num_points,
     num_players: players.length,
     num_cards: deck.length,
     is_live: false

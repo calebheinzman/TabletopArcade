@@ -27,14 +27,14 @@ const BoardContent: React.FC = () => {
 
   // Destructure necessary data from gameState for clarity
   const deckCount = gameContext.sessionCards.filter(card => card.cardPosition > 0).length;
-  const gameTokens = gameContext.session.num_tokens;
+  const gamePoints = gameContext.session.num_points;
 
   // Find the selected player based on selectedPlayerId
   const selectedPlayer = sortedPlayers.find(
     (player) => player.playerid === selectedPlayerId
   );
 
-  // Handler functions for adjusting tokens and points
+  // Handler functions for adjusting points and points
   const handleDrawCard = async (playerId: number) => {
     try {
       await gameContext.drawCard(playerId);
@@ -43,23 +43,23 @@ const BoardContent: React.FC = () => {
     }
   };
 
-  const handleGiveToken = async (playerId: number, quantity: number) => {
+  const handleGivePoint = async (playerId: number, quantity: number) => {
     try {
-      await gameContext.giveTokens(playerId, "Board", quantity);
+      await gameContext.givePoints(playerId, "Board", quantity);
       await pushPlayerAction(
         gameContext.sessionid,
         playerId,
-        `Gave ${quantity} token(s)`
+        `Gave ${quantity} point(s)`
       );
     } catch (error) {
-      console.error('Error giving token:', error);
+      console.error('Error giving points:', error);
     }
   };
-  const handleDrawToken = async (playerId: number, quantity: number) => {
+  const handleDrawPoint = async (playerId: number, quantity: number) => {
     try {
-      await gameContext.drawTokens(playerId, quantity);
+      await gameContext.drawPoints(playerId, quantity);
     } catch (error) {
-      console.error('Error giving token:', error);
+      console.error('Error giving point:', error);
     }
   };
 
@@ -123,7 +123,7 @@ const BoardContent: React.FC = () => {
             deckCount={deckCount}
             players={sortedPlayers}
             onDrawCard={handleDrawCard}
-            onGiveToken={handleDrawToken}
+            onGivePoint={handleDrawPoint}
             onDiscardCard={handleDiscardCard}
             onShuffle={handleShuffle}
             onReset={handleReset}
@@ -155,9 +155,9 @@ const BoardContent: React.FC = () => {
               onSelectPlayer={setSelectedPlayerId}
             />
 
-            {/* Game Tokens Display */}
+            {/* Game Points Display */}
             <div className="absolute top-4 left-4 bg-yellow-400 text-black px-4 py-2 rounded-full text-sm sm:text-base font-bold">
-              Tokens: {gameTokens}
+              Points: {gamePoints}
             </div>
           </div>
 
@@ -166,13 +166,13 @@ const BoardContent: React.FC = () => {
             <BoardPlayerActionsDialog
               isOpen={!!selectedPlayerId}
               playerName={selectedPlayer.username}
-              tokens={selectedPlayer.num_points || 0}
+              points={selectedPlayer.num_points || 0}
               playerId={selectedPlayer.playerid}
               isHost={isHost}
               is_turn={selectedPlayer.is_turn}
               onClose={() => setSelectedPlayerId(null)}
-              onIncreaseToken={() => handleDrawToken(selectedPlayer.playerid, 1)}
-              onDecreaseToken={() => handleGiveToken(selectedPlayer.playerid, 1)}
+              onIncreasePoint={() => handleDrawPoint(selectedPlayer.playerid, 1)}
+              onDecreasePoint={() => handleGivePoint(selectedPlayer.playerid, 1)}
               onEndTurn={handleEndTurn}
             />
           )}

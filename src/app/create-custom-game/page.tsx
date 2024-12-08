@@ -42,16 +42,16 @@ export default function CreateCustomGamePage() {
     deckName: 'Default Deck',
   });
   const [name, setName] = useState('Custom Game');
-  const [tokens, setTokens] = useState(0);
+  const [points, setPoints] = useState(0);
   const [dice, setDice] = useState(0);
   const [players, setPlayers] = useState(2);
   const [startingCards, setStartingCards] = useState(2);
   const [canDiscardCard, setCanDiscardCard] = useState(false);
   const [canRevealCard, setCanRevealCard] = useState(false);
-  const [canGiveToken, setCanGiveToken] = useState(false);
+  const [canGivePoint, setCanGivePoint] = useState(false);
   const [canGiveCard, setCanGiveCard] = useState(false);
   const [canDrawCard, setCanDrawCard] = useState(false);
-  const [canDrawToken, setCanDrawToken] = useState(false);
+  const [canDrawPoint, setCanDrawPoint] = useState(false);
   const [faceUpBoardDiscardPiles, setFaceUpBoardDiscardPiles] = useState({
     rows: 1,
     columns: 1,
@@ -100,16 +100,16 @@ export default function CreateCustomGamePage() {
   const createGame = async () => {
     const gameData = {
       name,
-      num_tokens: tokens,
+      num_points: points,
       num_dice: dice,
       num_players: players,
       starting_num_cards: startingCards,
       can_discard: canDiscardCard,
       can_reveal: canRevealCard,
-      can_give_tokens: canGiveToken,
+      can_give_points: canGivePoint,
       can_give_cards: canGiveCard,
       can_draw_cards: canDrawCard,
-      can_draw_tokens: canDrawToken,
+      can_draw_points: canDrawPoint,
       face_up_board_discard_piles_row: faceUpBoardDiscardPiles.rows,
       face_up_board_discard_piles_columbs: faceUpBoardDiscardPiles.columns,
       face_down_board_discard_piles_row: faceDownBoardDiscardPiles.rows,
@@ -319,12 +319,12 @@ export default function CreateCustomGamePage() {
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="tokens">Number of Tokens</Label>
+                <Label htmlFor="points">Number of Points</Label>
                 <Input
-                  id="tokens"
+                  id="points"
                   type="number"
-                  value={tokens}
-                  onChange={(e) => setTokens(parseInt(e.target.value))}
+                  value={points}
+                  onChange={(e) => setPoints(parseInt(e.target.value))}
                   min={0}
                 />
               </div>
@@ -376,11 +376,11 @@ export default function CreateCustomGamePage() {
               </div>
               <div className="flex items-center space-x-2">
                 <Switch
-                  id="canGiveToken"
-                  checked={canGiveToken}
-                  onCheckedChange={setCanGiveToken}
+                  id="canGivePoint"
+                  checked={canGivePoint}
+                  onCheckedChange={setCanGivePoint}
                 />
-                <Label htmlFor="canGiveToken">Can Give Token</Label>
+                <Label htmlFor="canGivePoint">Can Give Point</Label>
               </div>
               <div className="flex items-center space-x-2">
                 <Switch
@@ -400,11 +400,11 @@ export default function CreateCustomGamePage() {
               </div>
               <div className="flex items-center space-x-2">
                 <Switch
-                  id="canDrawToken"
-                  checked={canDrawToken}
-                  onCheckedChange={setCanDrawToken}
+                  id="canDrawPoint"
+                  checked={canDrawPoint}
+                  onCheckedChange={setCanDrawPoint}
                 />
-                <Label htmlFor="canDrawToken">Can Draw Token</Label>
+                <Label htmlFor="canDrawPoint">Can Draw Point</Label>
               </div>
               <div>
                 <Label htmlFor="faceUpBoardDiscardPiles">

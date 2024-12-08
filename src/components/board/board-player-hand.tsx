@@ -92,7 +92,7 @@ const BoardPlayerHand: FC<BoardPlayerHandProps> = ({
       </div>
 
       <div className="text-xs sm:text-sm font-semibold mb-2">
-        Tokens: {player.num_points || 0} | Cards: {playerCards.length}
+        Points: {player.num_points || 0} | Cards: {playerCards.length}
       </div>
 
       <div className="relative flex justify-center items-center mt-2 gap-2">
