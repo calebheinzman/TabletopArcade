@@ -97,7 +97,7 @@ players.forEach((player) => {
 // Define default session state for testing
 export const defaultSessionState: SessionState = {
   players: players,
-  tokens: 50,
+  points: 50,
   currentTurn: '1',
   deck: shuffledDeck, // Remaining cards in the deck
 };
@@ -116,7 +116,7 @@ export const mockGameActions = {
       // Simulate drawing or discarding cards
       const newSessionState: SessionState = {
         ...defaultSessionState,
-        tokens: defaultSessionState.tokens - Math.floor(Math.random() * 2), // Random token usage
+        points: defaultSessionState.points - Math.floor(Math.random() * 2), // Random point usage
         currentTurn:
           defaultSessionState.players[
             Math.floor(Math.random() * defaultSessionState.players.length)

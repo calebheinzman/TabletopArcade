@@ -20,7 +20,7 @@ interface BoardHeaderProps {
   deckCount: number;
   players: SessionPlayer[];
   onDrawCard: (playerId: number) => void;
-  onGiveToken: (playerId: number, quantity: number) => void;
+  onGivePoint: (playerId: number, quantity: number) => void;
   onDiscardCard: (playerId: number) => void;
   onShuffle: () => void;
   onReset: () => void;
@@ -30,14 +30,14 @@ const BoardHeader: React.FC<BoardHeaderProps> = ({
   deckCount,
   players,
   onDrawCard,
-  onGiveToken,
+  onGivePoint,
   onDiscardCard,
   onShuffle,
   onReset,
 }) => {
   const router = useRouter();
   const gameContext = useGame();
-  const [numTokensToGive, setNumTokensToGive] = useState(1);
+  const [numPointsToGive, setNumPointsToGive] = useState(1);
 
   const getPlayerCardCount = (playerId: number) => {
     return gameContext?.sessionCards.filter(card => card.playerid === playerId).length || 0;
@@ -93,18 +93,18 @@ const BoardHeader: React.FC<BoardHeaderProps> = ({
 
         <Popover>
           <PopoverTrigger asChild>
-            <Button size="sm">Give Token</Button>
+            <Button size="sm">Give Points</Button>
           </PopoverTrigger>
           <PopoverContent className="w-56">
             <div className="flex flex-col">
-              <span className="mb-2">Select Number of Tokens</span>
+              <span className="mb-2">Select Number of Points</span>
               <div className="flex space-x-2 mb-2">
                 {[1, 2, 3].map((num) => (
                   <Button
                     key={num}
                     size="sm"
-                    variant={numTokensToGive === num ? 'default' : 'outline'}
-                    onClick={() => setNumTokensToGive(num)}
+                    variant={numPointsToGive === num ? 'default' : 'outline'}
+                    onClick={() => setNumPointsToGive(num)}
                   >
                     {num}
                   </Button>
@@ -114,7 +114,7 @@ const BoardHeader: React.FC<BoardHeaderProps> = ({
                 {players.map((player) => (
                   <Button
                     key={player.playerid}
-                    onClick={() => onGiveToken(player.playerid, numTokensToGive)}
+                    onClick={() => onGivePoint(player.playerid, numPointsToGive)}
                     size="sm"
                   >
                     {player.username}
@@ -148,6 +148,7 @@ const BoardHeader: React.FC<BoardHeaderProps> = ({
           Shuffle
         </Button>
       </div>
+
     </div>
   );
 };

@@ -12,62 +12,87 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { FC } from 'react';
+import { useGame } from '@/components/GameContext';
 
 interface BoardPlayerActionsDialogProps {
   isOpen: boolean;
   playerName: string;
-  tokens: number;
+  points: number;
   playerId: number;
   isHost: boolean;
   is_turn: boolean;
   onClose: () => void;
-  onIncreaseToken: () => void;
-  onDecreaseToken: () => void;
+  onIncreasePoint: () => void;
+  onDecreasePoint: () => void;
   onEndTurn: (playerId: number) => void;
+  onDrawCard: (playerId: number) => void;
 }
 
 const BoardPlayerActionsDialog: FC<BoardPlayerActionsDialogProps> = ({
   isOpen,
   playerName,
-  tokens,
+  points,
   playerId,
   isHost,
   is_turn,
   onClose,
-  onIncreaseToken,
-  onDecreaseToken,
+  onIncreasePoint,
+  onDecreasePoint,
   onEndTurn,
+  onDrawCard,
 }) => {
+  const gameContext = useGame();
+  const playerCardCount = gameContext.sessionCards.filter(card => 
+    card.playerid === playerId
+  ).length;
+  const deckCount = gameContext.sessionCards.filter(card => card.cardPosition > 0).length;
+  const atMaxCards = playerCardCount >= (gameContext.gameData.max_cards_per_player || 0);
+
   return (
     <Dialog open={isOpen} onOpenChange={isOpen ? onClose : undefined}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Adjust {playerName}&apos;s Stats</DialogTitle>
           <DialogDescription>
-            Modify tokens for {playerName}.
+            Modify points for {playerName}.
           </DialogDescription>
         </DialogHeader>
         <div className="flex flex-col gap-4 mt-4">
-          {/* Tokens Control */}
+          {/* Points Control */}
           <div className="flex items-center justify-between">
-            <span className="font-semibold">Tokens:</span>
+            <span className="font-semibold">Points:</span>
             <div className="flex items-center gap-2">
               <Button
-                onClick={onDecreaseToken}
-                disabled={tokens === 0}
+                onClick={onDecreasePoint}
+                disabled={points === 0}
                 size="sm"
                 variant="destructive"
               >
                 -
               </Button>
-              <span className="text-sm">{tokens}</span>
+              <span className="text-sm">{points}</span>
               <Button
-                onClick={onIncreaseToken}
+                onClick={onIncreasePoint}
                 disabled={false}
                 size="sm"
                 variant="default"
               >
                 +
+              </Button>
+            </div>
+          </div>
+
+          {/* Draw Card Control */}
+          <div className="flex items-center justify-between">
+            <span className="font-semibold">Cards:</span>
+            <div className="flex items-center gap-2">
+              <Button
+                onClick={() => onDrawCard(playerId)}
+                disabled={atMaxCards || deckCount === 0}
+                size="sm"
+                variant="default"
+              >
+                Draw Card ({deckCount})
               </Button>
             </div>
           </div>

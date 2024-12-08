@@ -22,17 +22,17 @@ export interface GameTemplateNameAndId {
 
 export interface CustomGameData {
   name: string;
-  num_tokens: number;
+  num_points: number;
   num_dice: number;
   num_players: number;
   starting_num_cards: number;
-  starting_num_tokens: number;
+  starting_num_points: number;
   can_discard: boolean;
   can_reveal: boolean;
-  can_give_tokens: boolean;
+  can_give_points: boolean;
   can_give_cards: boolean;
   can_draw_cards: boolean;
-  can_draw_tokens: boolean;
+  can_draw_points: boolean;
   face_up_board_discard_piles_row: number | null;
   face_up_board_discard_piles_columbs: number | null;
   face_down_board_discard_piles_row: number | null;
@@ -76,7 +76,7 @@ export interface Player {
 export interface SessionState {
   sessionid: number;
   gameid: number;
-  num_tokens: number;
+  num_points: number;
   num_players: number;
   num_cards: number;
   players: Player[];
@@ -87,7 +87,7 @@ export interface SessionState {
 export interface Session {
   gameId: number;
   sessionId: number;
-  num_tokens: number;
+  num_points: number;
   num_players: number;
   num_cards: number;
   is_live: boolean;
@@ -268,7 +268,7 @@ export async function createSessionFromGameTemplateId(templateId: GameTemplate['
       
       const sessionData = {
         gameid: gameData.gameid,
-        num_tokens: gameData.num_tokens,
+        num_points: gameData.num_points,
         num_players: 0,
         num_cards: gameData.decks[0].cards.length,
         is_live: false
@@ -358,7 +358,7 @@ export async function addPlayer(sessionId: number, username: string): Promise<{ 
         .insert({
           sessionid: sessionId,
           username: username,
-          num_points: sessionData.game.starting_num_tokens || 0,
+          num_points: sessionData.game.starting_num_points || 0,
           player_order: playerOrder,
           is_turn: false,
           time_last_action: new Date().toISOString()
@@ -605,19 +605,19 @@ export async function updateSessionCards(updates: {
   if (error) throw error;
 }
 
-export async function updatePlayerTokens(sessionId: number, playerId: number, newTokenCount: number) {
+export async function updatePlayerPoints(sessionId: number, playerId: number, newPointCount: number) {
   const { error } = await supabase
     .from('player')
-    .update({ num_points: newTokenCount })
+    .update({ num_points: newPointCount })
     .match({ sessionid: sessionId, playerid: playerId });
 
   if (error) throw error;
 }
 
-export async function updateSessionTokens(sessionId: number, newTokenCount: number) {
+export async function updateSessionPoints(sessionId: number, newPointCount: number) {
   const { error } = await supabase
     .from('session')
-    .update({ num_tokens: newTokenCount })
+    .update({ num_points: newPointCount })
     .match({ sessionid: sessionId });
 
   if (error) throw error;
@@ -826,22 +826,22 @@ export async function resetGame(gameContext: GameContextType): Promise<void> {
     // Insert new session cards
     await insertSessionCards(gameContext.sessionid, newDeck);
 
-    // Reset player tokens to starting amount
+    // Reset player points to starting amount
     const { error: playerError } = await supabase
       .from('player')
       .update({ 
-        num_points: gameContext.gameData.starting_num_tokens || 0,
+        num_points: gameContext.gameData.starting_num_points || 0,
         is_turn: false 
       })
       .eq('sessionid', gameContext.sessionid);
 
     if (playerError) throw playerError;
 
-    // Reset session tokens
+    // Reset session points
     const { error: sessionError } = await supabase
       .from('session')
       .update({ 
-        num_tokens: gameContext.gameData.num_tokens
+        num_points: gameContext.gameData.num_points
       })
       .eq('sessionid', gameContext.sessionid);
 

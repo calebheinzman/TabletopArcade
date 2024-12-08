@@ -29,12 +29,12 @@ export function PlayerHand({ gameContext }: { gameContext: GameContextType }) {
   const params = useParams();
   const playerId = parseInt(params?.playerId as string);
 
-  // New state variables for handling token quantity and popover visibility
-  const [numTokensToDraw, setNumTokensToDraw] = useState(1);
-  const [drawTokenPopoverOpen, setDrawTokenPopoverOpen] = useState(false);
+  // New state variables for handling point quantity and popover visibility
+  const [numPointsToDraw, setNumPointsToDraw] = useState(1);
+  const [drawPointsPopoverOpen, setDrawPointsPopoverOpen] = useState(false);
 
-  const [numTokensToGive, setNumTokensToGive] = useState(1);
-  const [giveTokenPopoverOpen, setGiveTokenPopoverOpen] = useState(false);
+  const [numPointsToGive, setNumPointsToGive] = useState(1);
+  const [givePointsPopoverOpen, setGivePointsPopoverOpen] = useState(false);
 
   useEffect(() => {
     if (!playerId || !gameContext?.sessionid) return;
@@ -83,35 +83,35 @@ export function PlayerHand({ gameContext }: { gameContext: GameContextType }) {
     .map((player) => player.username)
     .filter((name) => name !== currentPlayer.username) || [];
 
-  const handleDrawTokens = async () => {
+  const handleDrawPoints = async () => {
     try {
-      await gameContext.drawTokens(playerId, numTokensToDraw);
+      await gameContext.drawPoints(playerId, numPointsToDraw);
       await pushPlayerAction(
         gameContext.sessionid,
         playerId,
-        `Drew ${numTokensToDraw} token(s)`
+        `Drew ${numPointsToDraw} point(s)`
       );
     } catch (error) {
-      console.error('Error drawing tokens:', error);
+      console.error('Error drawing points:', error);
     } finally {
-      setDrawTokenPopoverOpen(false);
-      setNumTokensToDraw(1);
+      setDrawPointsPopoverOpen(false);
+      setNumPointsToDraw(1);
     }
   };
 
-  const handleGiveTokens = async (recipient: string) => {
+  const handleGivePoints = async (recipient: string) => {
     try {
-      await gameContext.giveTokens(playerId, recipient, numTokensToGive);
+      await gameContext.givePoints(playerId, recipient, numPointsToGive);
       await pushPlayerAction(
         gameContext.sessionid,
         playerId,
-        `Gave ${numTokensToGive} token(s) to ${recipient}`
+        `Gave ${numPointsToGive} point(s) to ${recipient}`
       );
     } catch (error) {
-      console.error('Error giving tokens:', error);
+      console.error('Error giving points:', error);
     } finally {
-      setGiveTokenPopoverOpen(false);
-      setNumTokensToGive(1);
+      setGivePointsPopoverOpen(false);
+      setNumPointsToGive(1);
     }
   };
 
@@ -232,28 +232,28 @@ export function PlayerHand({ gameContext }: { gameContext: GameContextType }) {
             Draw Card ({deckCount})
           </Button>
 
-          {/* Draw Token Button with Popover */}
-          <Popover open={drawTokenPopoverOpen} onOpenChange={setDrawTokenPopoverOpen}>
+          {/* Draw Points Button with Popover */}
+          <Popover open={drawPointsPopoverOpen} onOpenChange={setDrawPointsPopoverOpen}>
             <PopoverTrigger asChild>
               <Button
                 disabled={
                   disabled ||
-                  !gameContext.session.num_tokens ||
-                  gameContext.session.num_tokens <= 0
+                  !gameContext.session.num_points ||
+                  gameContext.session.num_points <= 0
                 }
               >
-                Draw Token
+                Draw Points
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-56">
               <div className="flex flex-col items-center">
-                <span className="mb-2">Select Number of Tokens to Draw</span>
+                <span className="mb-2">Select Number of Points to Draw</span>
                 <div className="flex space-x-2">
                   {[1, 2, 3].map((num) => (
                     <Button
                       key={num}
-                      variant={numTokensToDraw === num ? 'default' : 'outline'}
-                      onClick={() => setNumTokensToDraw(num)}
+                      variant={numPointsToDraw === num ? 'default' : 'outline'}
+                      onClick={() => setNumPointsToDraw(num)}
                     >
                       {num}
                     </Button>
@@ -261,11 +261,11 @@ export function PlayerHand({ gameContext }: { gameContext: GameContextType }) {
                 </div>
                 <Button
                   className="mt-4"
-                  onClick={handleDrawTokens}
+                  onClick={handleDrawPoints}
                   disabled={
                     disabled ||
-                    !gameContext.session.num_tokens ||
-                    gameContext.session.num_tokens < numTokensToDraw
+                    !gameContext.session.num_points ||
+                    gameContext.session.num_points < numPointsToDraw
                   }
                 >
                   Confirm
@@ -274,8 +274,8 @@ export function PlayerHand({ gameContext }: { gameContext: GameContextType }) {
             </PopoverContent>
           </Popover>
 
-          {/* Give Token Button with Popover */}
-          <Popover open={giveTokenPopoverOpen} onOpenChange={setGiveTokenPopoverOpen}>
+          {/* Give Points Button with Popover */}
+          <Popover open={givePointsPopoverOpen} onOpenChange={setGivePointsPopoverOpen}>
             <PopoverTrigger asChild>
               <Button 
                 disabled={
@@ -283,18 +283,18 @@ export function PlayerHand({ gameContext }: { gameContext: GameContextType }) {
                   currentPlayer.num_points === 0
                 }
               >
-                Give Token
+                Give Points
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-56">
               <div className="flex flex-col">
-                <span className="mb-2">Select Number of Tokens to Give</span>
+                <span className="mb-2">Select Number of Points to Give</span>
                 <div className="flex space-x-2 mb-2">
                   {[1, 2, 3].map((num) => (
                     <Button
                       key={num}
-                      variant={numTokensToGive === num ? 'default' : 'outline'}
-                      onClick={() => setNumTokensToGive(num)}
+                      variant={numPointsToGive === num ? 'default' : 'outline'}
+                      onClick={() => setNumPointsToGive(num)}
                     >
                       {num}
                     </Button>
@@ -304,17 +304,17 @@ export function PlayerHand({ gameContext }: { gameContext: GameContextType }) {
                   {playerNames.map((name, index) => (
                     <Button
                       key={index}
-                      onClick={() => handleGiveTokens(name)}
+                      onClick={() => handleGivePoints(name)}
                       size="sm"
-                      disabled={currentPlayer.num_points < numTokensToGive}
+                      disabled={currentPlayer.num_points < numPointsToGive}
                     >
                       {name}
                     </Button>
                   ))}
                   <Button
-                    onClick={() => handleGiveTokens('Board')}
+                    onClick={() => handleGivePoints('Board')}
                     size="sm"
-                    disabled={currentPlayer.num_points < numTokensToGive}
+                    disabled={currentPlayer.num_points < numPointsToGive}
                   >
                     Board
                   </Button>
