@@ -12,6 +12,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { FC } from 'react';
+import { useGame } from '@/components/GameContext';
 
 interface BoardPlayerActionsDialogProps {
   isOpen: boolean;
@@ -24,6 +25,7 @@ interface BoardPlayerActionsDialogProps {
   onIncreasePoint: () => void;
   onDecreasePoint: () => void;
   onEndTurn: (playerId: number) => void;
+  onDrawCard: (playerId: number) => void;
 }
 
 const BoardPlayerActionsDialog: FC<BoardPlayerActionsDialogProps> = ({
@@ -37,7 +39,15 @@ const BoardPlayerActionsDialog: FC<BoardPlayerActionsDialogProps> = ({
   onIncreasePoint,
   onDecreasePoint,
   onEndTurn,
+  onDrawCard,
 }) => {
+  const gameContext = useGame();
+  const playerCardCount = gameContext.sessionCards.filter(card => 
+    card.playerid === playerId
+  ).length;
+  const deckCount = gameContext.sessionCards.filter(card => card.cardPosition > 0).length;
+  const atMaxCards = playerCardCount >= (gameContext.gameData.max_cards_per_player || 0);
+
   return (
     <Dialog open={isOpen} onOpenChange={isOpen ? onClose : undefined}>
       <DialogContent>
@@ -68,6 +78,21 @@ const BoardPlayerActionsDialog: FC<BoardPlayerActionsDialogProps> = ({
                 variant="default"
               >
                 +
+              </Button>
+            </div>
+          </div>
+
+          {/* Draw Card Control */}
+          <div className="flex items-center justify-between">
+            <span className="font-semibold">Cards:</span>
+            <div className="flex items-center gap-2">
+              <Button
+                onClick={() => onDrawCard(playerId)}
+                disabled={atMaxCards || deckCount === 0}
+                size="sm"
+                variant="default"
+              >
+                Draw Card ({deckCount})
               </Button>
             </div>
           </div>

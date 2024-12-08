@@ -11,6 +11,9 @@ import { passTurnToNextPlayer, resetGame } from '@/lib/supabase';
 import BoardActionFeed from '@/components/board/board-action-feed';
 import { Button } from '@/components/ui/button';
 import { pushPlayerAction } from '@/lib/supabase';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import BoardDeckDialog from '@/components/board/board-deck-dialog';
+
 const BoardContent: React.FC = () => {
   const gameContext = useGame();
 
@@ -142,11 +145,11 @@ const BoardContent: React.FC = () => {
             </Button>
 
             {/* Central Deck Display */}
-            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 scale-75 sm:scale-90 md:scale-100">
-              <div className="w-16 h-24 sm:w-18 sm:h-26 md:w-20 md:h-28 bg-white border-2 border-black shadow-lg flex items-center justify-center text-black text-base sm:text-lg font-bold">
-                {deckCount}
-              </div>
-            </div>
+            <BoardDeckDialog
+              deckCount={deckCount}
+              players={sortedPlayers}
+              onDrawCard={handleDrawCard}
+            />
 
             {/* Players */}
             <BoardPlayerHands
@@ -174,6 +177,7 @@ const BoardContent: React.FC = () => {
               onIncreasePoint={() => handleDrawPoint(selectedPlayer.playerid, 1)}
               onDecreasePoint={() => handleGivePoint(selectedPlayer.playerid, 1)}
               onEndTurn={handleEndTurn}
+              onDrawCard={handleDrawCard}
             />
           )}
         </div>
