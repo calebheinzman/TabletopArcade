@@ -5,7 +5,7 @@
 import { useGame } from '@/components/GameContext';
 import { FC } from 'react';
 import BoardPlayerHand from './board-player-hand';
-import { SessionPlayer } from '@/lib/supabase';
+import { SessionPlayer } from '@/types/game-interfaces';
 
 interface BoardPlayerHandsProps {
   players: (SessionPlayer & { player_order?: number })[];
@@ -23,14 +23,15 @@ const BoardPlayerHands: FC<BoardPlayerHandsProps> = ({
   return (
     <>
       {players.map((player) => (
-        <BoardPlayerHand
-          key={`player-${player.playerid}`}
-          player={player}
-          index={player.player_order ? player.player_order - 1 : 0}
-          totalPlayers={totalPlayers}
-          onSelect={onSelectPlayer}
-          cards={sessionCards}
-        />
+        <div key={`player-${player.playerid}`} className="my-4">
+          <BoardPlayerHand
+            player={player}
+            index={player.player_order ? player.player_order - 1 : 0}
+            totalPlayers={totalPlayers}
+            onSelect={onSelectPlayer}
+            cards={sessionCards}
+          />
+        </div>
       ))}
     </>
   );

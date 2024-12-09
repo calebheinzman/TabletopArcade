@@ -1,6 +1,6 @@
 'use client';
 
-import { PlayerAction } from '@/lib/supabase';
+import { PlayerAction } from '@/types/game-interfaces';
 import { useGame } from '@/components/GameContext';
 
 const PLAYER_COLORS = [

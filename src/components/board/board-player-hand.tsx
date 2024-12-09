@@ -3,7 +3,7 @@
 'use client';
 
 import usePlayerPosition from '@/hooks/usePlayerPosition';
-import { SessionPlayer, SessionCard } from '@/lib/supabase';
+import { SessionPlayer, SessionCard } from '@/types/game-interfaces';
 import { FC, useEffect, useState } from 'react';
 import { Card } from '../ui/card';
 import { useGame } from '@/components/GameContext';
@@ -105,6 +105,7 @@ const BoardPlayerHand: FC<BoardPlayerHandProps> = ({
     >
       <div
         className={`mb-2 bg-white rounded-lg shadow-md p-2 ${player.is_turn ? 'bg-yellow-50' : ''} hover:bg-yellow-100`}
+        style={{ marginTop: '20px', marginBottom: '20px' }}
       >
         <div className={`
           text-sm font-semibold flex flex-col gap-1

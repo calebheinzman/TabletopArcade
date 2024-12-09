@@ -2,7 +2,8 @@
 
 import { Button } from '@/components/ui/button';
 import useGameNamesAndId from '@/hooks/useGameNamesAndId';
-import { GameTemplateNameAndId,createSessionFromGameTemplateId} from '@/lib/supabase';
+import { createSessionFromGameTemplateId } from '@/lib/supabase/session';
+import { GameTemplateNameAndId } from '@/types/game-interfaces';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';

@@ -1,6 +1,6 @@
 // mockGameActions.ts
 import { GameContextType } from '@/components/GameContext';
-import {Session, SessionCard, SessionPlayer, SessionState } from '@/lib/supabase'; // Adjust the import path as necessary
+import { Session, SessionCard, SessionPlayer, SessionState } from '@/types/game-interfaces';
 
 // Shuffle function
 function shuffle<T>(array: T[]): T[] {

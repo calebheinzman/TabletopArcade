@@ -3,7 +3,7 @@
 import { useGame } from '@/components/GameContext';
 import { PlayerHand } from '@/components/player-hand';
 import { Button } from '@/components/ui/button';
-import { SessionPlayer } from '@/lib/supabase';
+import { SessionPlayer } from '@/types/game-interfaces';
 import { useParams, useRouter } from 'next/navigation';
 
 export default function PlayerHandContent() {

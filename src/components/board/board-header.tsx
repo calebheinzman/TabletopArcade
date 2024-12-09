@@ -11,10 +11,10 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@radix-ui/react-dropdown-menu';
-import { SessionPlayer } from '@/lib/supabase';
+import { SessionPlayer } from '@/types/game-interfaces';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useGame } from '@/components/GameContext';
-import { resetGame } from '@/lib/supabase';
+import { resetGame } from '@/lib/supabase/session';
 
 interface BoardHeaderProps {
   deckCount: number;

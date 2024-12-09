@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { useRouter } from 'next/navigation';
 
 import { useState } from 'react';
-import { addPlayer } from '@/lib/supabase';
+import { addPlayer } from '@/lib/supabase/player';
 
 interface PlayerInfo {
   playerId: number;

@@ -7,10 +7,11 @@ import BoardPlayerActionsDialog from '@/components/board/board-player-actions-di
 import BoardPlayerHands from '@/components/board/board-player-hands';
 import { useGame } from '@/components/GameContext';
 import React, { useState } from 'react';
-import { passTurnToNextPlayer, resetGame } from '@/lib/supabase';
+import { passTurnToNextPlayer } from '@/lib/supabase/player';
+import { resetGame } from '@/lib/supabase/session';
 import BoardActionFeed from '@/components/board/board-action-feed';
 import { Button } from '@/components/ui/button';
-import { pushPlayerAction } from '@/lib/supabase';
+import { pushPlayerAction } from '@/lib/supabase/player';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import BoardDeckDialog from '@/components/board/board-deck-dialog';
 
@@ -108,7 +109,7 @@ const BoardContent: React.FC = () => {
   const handleReset = async () => {
     try {
       if (!gameContext) return;
-      await resetGame(gameContext);
+      await resetGame(gameContext, () => gameContext.sessionCards);
       // The realtime subscriptions should automatically update the UI
     } catch (error) {
       console.error('Error resetting game:', error);
@@ -133,7 +134,7 @@ const BoardContent: React.FC = () => {
           />
 
           {/* Game Board */}
-          <div className="relative flex-grow bg-white rounded-lg shadow-xl border border-gray-200 overflow-hidden w-full">
+          <div className="relative flex-grow bg-white rounded-lg shadow-xl border border-gray-200 overflow-hidden w-full p-8">
             {/* Toggle Action Feed Button */}
             <Button
               size="sm"
@@ -144,19 +145,22 @@ const BoardContent: React.FC = () => {
               {isActionFeedOpen ? 'Hide Actions' : 'Show Actions'}
             </Button>
 
-            {/* Central Deck Display */}
-            <BoardDeckDialog
-              deckCount={deckCount}
-              players={sortedPlayers}
-              onDrawCard={handleDrawCard}
-            />
+            {/* Add a padding container around the game content */}
+            <div className="p-24 py-32">
+              {/* Central Deck Display */}
+              <BoardDeckDialog
+                deckCount={deckCount}
+                players={sortedPlayers}
+                onDrawCard={handleDrawCard}
+              />
 
-            {/* Players */}
-            <BoardPlayerHands
-              players={sortedPlayers}
-              totalPlayers={sortedPlayers.length}
-              onSelectPlayer={setSelectedPlayerId}
-            />
+              {/* Players */}
+              <BoardPlayerHands
+                players={sortedPlayers}
+                totalPlayers={sortedPlayers.length}
+                onSelectPlayer={setSelectedPlayerId}
+              />
+            </div>
 
             {/* Game Points Display */}
             <div className="absolute top-4 left-4 bg-yellow-400 text-black px-4 py-2 rounded-full text-sm sm:text-base font-bold">

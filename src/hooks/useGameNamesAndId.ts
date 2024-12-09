@@ -1,4 +1,5 @@
-import { fetchGameNames, GameTemplateNameAndId } from '@/lib/supabase';
+import { GameTemplateNameAndId } from '@/types/game-interfaces';
+import { fetchGameNames } from '@/lib/supabase/session';
 import { useEffect, useState } from 'react';
 
 // Used to fetch games with name and id from game table.

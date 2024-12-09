@@ -2,7 +2,7 @@
 
 import { useGame } from '@/components/GameContext';
 import { Button } from '@/components/ui/button';
-import { SessionPlayer } from '@/lib/supabase';
+import { SessionPlayer } from '@/types/game-interfaces';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 

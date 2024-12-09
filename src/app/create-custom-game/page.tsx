@@ -13,7 +13,8 @@ import {
 } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
-import { CardData, DeckData, gameActions } from '@/lib/supabase';
+import { createCustomGame } from '@/lib/supabase/session';
+import { CardData, DeckData } from '@/types/game-interfaces';
 import { X } from 'lucide-react';
 
 import { useRouter } from 'next/navigation';
@@ -104,6 +105,7 @@ export default function CreateCustomGamePage() {
       num_dice: dice,
       num_players: players,
       starting_num_cards: startingCards,
+      starting_num_points: 0,
       can_discard: canDiscardCard,
       can_reveal: canRevealCard,
       can_give_points: canGivePoint,
@@ -117,8 +119,11 @@ export default function CreateCustomGamePage() {
       face_up_player_discard_piles_row: faceUpPlayerDiscardPiles.rows,
       face_up_player_discard_piles_columbs: faceUpPlayerDiscardPiles.columns,
       face_down_player_discard_piles_row: faceDownPlayerDiscardPiles.rows,
-      face_down_player_discard_piles_columbs:
-        faceDownPlayerDiscardPiles.columns,
+      face_down_player_discard_piles_columbs: faceDownPlayerDiscardPiles.columns,
+      is_turn_based: false,
+      lock_turn: false,
+      max_cards_per_player: 0,
+      game_rules: '',
     };
 
     const deckData: DeckData[] = decks.map((deck) => ({
@@ -127,6 +132,8 @@ export default function CreateCustomGamePage() {
         .filter((card) => card.deckName === deck.name)
         .reduce((sum, card) => sum + card.count, 0),
       gameid: 0,
+      deckid: 0,
+      cards: [],
     }));
 
     const cardData: CardData[][] = decks.map((deck) =>
@@ -137,14 +144,19 @@ export default function CreateCustomGamePage() {
           count: card.count,
           description: card.description,
           deckName: deck.name,
+          deckid: 0,
+          cardid: 0,
+          front_image_url: '',
+          back_image_url: '',
         }))
     );
 
     try {
-      const result = await gameActions.createCustomGame(
+      const result = await createCustomGame(
         gameData,
         deckData,
-        cardData
+        cardData,
+        []
       );
       if (result.success) {
         console.log('Game created successfully:', result.gameId);

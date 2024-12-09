@@ -6,15 +6,37 @@ import {
   subscribeToPlayerActions,
   subscribeToSession,
   subscribeToSessionCards,
-  supabase,
+} from '@/lib/supabase/subscription';
+
+import {
   updatePlayerPoints,
-  updateSessionPoints,
+  passTurnToNextPlayer,
+  pushPlayerAction,
+  updatePlayerLastAction,
+  fetchInitialPlayers,
+  fetchPlayerActions,
+} from '@/lib/supabase/player';
+
+import {
+  updateSessionCards,
   getMaxCardPosition,
   updateDeckOrder,
   discardCardToDb,
   discardAndShuffleCard,
-  updateCardRevealed
-} from '@/lib/supabase';
+  updateCardRevealed,
+  fetchSessionCards,
+} from '@/lib/supabase/card';
+
+import {
+  fetchGameData,
+  fetchDecksAndCards,
+  fetchSession,
+  updateSessionPoints,
+  createSession,
+  resetGame,
+} from '@/lib/supabase/session';
+
+import { supabase } from '@/lib/supabase';
 import { 
   CustomGameData, 
   DeckData, 
@@ -23,17 +45,9 @@ import {
   PlayerAction, 
   Session, 
   SessionPlayer 
-} from '@/lib/supabase';
+} from '@/types/game-interfaces';
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { 
-  fetchInitialPlayers,
-  fetchGameData,
-  fetchDecksAndCards,
-  fetchSessionCards,
-  fetchPlayerActions,
-  fetchSession,
-  updateSessionCards
-} from '@/lib/supabase';
+
 
 // Types
 export interface GameContextType {

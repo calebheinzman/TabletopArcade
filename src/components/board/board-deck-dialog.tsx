@@ -9,7 +9,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { SessionPlayer } from '@/lib/supabase';
+import { SessionPlayer } from '@/types/game-interfaces';
 import { FC } from 'react';
 import { useGame } from '@/components/GameContext';
 

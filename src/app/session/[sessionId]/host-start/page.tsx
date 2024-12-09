@@ -4,8 +4,12 @@ import { useGame } from '@/components/GameContext';
 import { Button } from '@/components/ui/button';
 import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { SessionPlayer,createSession, setFirstPlayerTurn } from '@/lib/supabase';
+import { SessionPlayer, SessionCard } from '@/types/game-interfaces';
+import { createSession } from '@/lib/supabase/session';
+import { setFirstPlayerTurn } from '@/lib/supabase/player';
 import { supabase } from '@/lib/supabase';
+import { GameContextType } from '@/components/GameContext';
+import { initializeSession } from '@/lib/defaultGameState';
 
 export default function HostStartPage() {
   const router = useRouter();
@@ -23,7 +27,24 @@ export default function HostStartPage() {
 
   const startGame = async () => {
     try {
-      await createSession(gameContext);
+      // Use initializeSession instead of local generateDeck
+      const deck = initializeSession(gameContext);
+      
+      // Assign starting cards to players
+      const totalStartingCards = gameContext.gameData.starting_num_cards * players.length;
+      deck.forEach((card, index) => {
+        if (index < totalStartingCards) {
+          const player = players[index % players.length];
+          card.playerid = player.playerid;
+          card.cardPosition = 0;
+        } else {
+          card.cardPosition = index - totalStartingCards + 1;
+          card.playerid = 0;
+        }
+      });
+
+      // Create session with the generated deck
+      await createSession(gameContext.sessionid, deck);
       await setFirstPlayerTurn(parseInt(sessionId as string));
       
       const { error: updateError } = await supabase

@@ -22,7 +22,7 @@ import {
 } from '@/components/ui/popover';
 import { useParams } from 'next/navigation';
 import { GameContextType } from '@/components/GameContext';
-import { passTurnToNextPlayer, pushPlayerAction, updatePlayerLastAction } from '@/lib/supabase';
+import { passTurnToNextPlayer, pushPlayerAction, updatePlayerLastAction } from '@/lib/supabase/player';
 import { useEffect, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
