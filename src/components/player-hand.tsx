@@ -24,6 +24,8 @@ import { useParams } from 'next/navigation';
 import { GameContextType } from '@/components/GameContext';
 import { passTurnToNextPlayer, pushPlayerAction, updatePlayerLastAction } from '@/lib/supabase';
 import { useEffect, useState } from 'react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 export function PlayerHand({ gameContext }: { gameContext: GameContextType }) {
   const params = useParams();
@@ -35,6 +37,9 @@ export function PlayerHand({ gameContext }: { gameContext: GameContextType }) {
 
   const [numPointsToGive, setNumPointsToGive] = useState(1);
   const [givePointsPopoverOpen, setGivePointsPopoverOpen] = useState(false);
+
+  // Add new state for rules dialog
+  const [showRules, setShowRules] = useState(false);
 
   useEffect(() => {
     if (!playerId || !gameContext?.sessionid) return;
@@ -175,9 +180,28 @@ export function PlayerHand({ gameContext }: { gameContext: GameContextType }) {
 
   return (
     <div className="w-full max-w-4xl mx-auto p-4">
-      <h2 className="text-2xl font-bold mb-4">
-        {currentPlayer.username}&apos;s Hand
-      </h2>
+      <div className="flex justify-between items-center mb-4">
+        <h2 className="text-2xl font-bold">
+          {currentPlayer.username}&apos;s Hand
+        </h2>
+        
+        {/* Updated Rules Dialog */}
+        <Dialog open={showRules} onOpenChange={setShowRules}>
+          <DialogTrigger asChild>
+            <Button variant="outline">Game Rules</Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Game Rules</DialogTitle>
+            </DialogHeader>
+            <div className="prose dark:prose-invert mt-4">
+              <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                {gameContext.gameData.game_rules || 'No rules available for this game.'}
+              </ReactMarkdown>
+            </div>
+          </DialogContent>
+        </Dialog>
+      </div>
       <div className="flex flex-wrap gap-4 mb-6">
         {playerCards.map((card, index) => (
           <Dialog key={`${card.id}-${index}`}>
