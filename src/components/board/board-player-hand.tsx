@@ -16,6 +16,7 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { TbCards, TbCoin, TbPlugConnectedX } from 'react-icons/tb';
 
 interface BoardPlayerHandProps {
   player: SessionPlayer;
@@ -35,7 +36,8 @@ const BoardPlayerHand: FC<BoardPlayerHandProps> = ({
   const gameContext = useGame();
   const position = usePlayerPosition(index, totalPlayers);
   const [isActive, setIsActive] = useState(true);
-  
+  const [hoveredCardIndex, setHoveredCardIndex] = useState<number | null>(null);
+
   useEffect(() => {
     const checkActivity = () => {
       const lastAction = new Date(player.time_last_action).getTime();
@@ -44,12 +46,8 @@ const BoardPlayerHand: FC<BoardPlayerHandProps> = ({
       setIsActive(timeDiff <= 30000); // 30 seconds in milliseconds
     };
 
-    // Check immediately
     checkActivity();
-
-    // Set up interval to check every second
     const interval = setInterval(checkActivity, 1000);
-
     return () => clearInterval(interval);
   }, [player.time_last_action]);
 
@@ -76,60 +74,136 @@ const BoardPlayerHand: FC<BoardPlayerHandProps> = ({
     }
   };
 
+  const handleMouseEnter = (idx: number) => {
+    setHoveredCardIndex(idx);
+  };
+
+  const handleMouseLeave = () => {
+    setHoveredCardIndex(null);
+  };
+
+  // Determine spacing
+  const overlapping = playerCards.length > 3;
+  const baseSpacing = overlapping ? 20 : 56;
+
+  // Determine z-index based on hover
+  const getZIndex = (cardIndex: number): number => {
+    if (hoveredCardIndex === null) {
+      return cardIndex; 
+    }
+    const distance = Math.abs(cardIndex - hoveredCardIndex);
+    // The hovered card gets the highest z-index, neighbors slightly less, etc.
+    // Start from a high base and decrement by distance
+    return 999 - distance;
+  };
+
   return (
     <div
       onClick={() => onSelect(player.playerid)}
       style={position}
       className="flex flex-col items-center text-center cursor-pointer absolute transform -translate-x-1/2 -translate-y-1/2"
     >
-      <div className={`
-        text-xs sm:text-sm font-semibold mb-1 
-        ${isActive ? 'text-green-600' : 'text-red-600'} 
-        ${player.is_turn ? 'ring-2 ring-yellow-400 rounded-full px-2 py-1 bg-yellow-50' : ''}
-      `}>
-        {player.username} {!isActive && '(Disconnected)'}
-        {player.is_turn && ' 🎲'}
+      <div
+        className={`mb-2 bg-white rounded-lg shadow-md p-2 ${player.is_turn ? 'bg-yellow-50' : ''} hover:bg-yellow-100`}
+      >
+        <div className={`
+          text-sm font-semibold flex flex-col gap-1
+          ${isActive ? 'text-green-600' : 'text-red-600'} 
+        `}>
+          <div className="flex items-center justify-center">
+            {player.username} 
+            {!isActive && <div className="ml-1 mr-1"><TbPlugConnectedX size={14} /></div>}
+            {player.is_turn}
+          </div>
+          <div className="flex items-center justify-center text-xs text-gray-600">
+            <div className="mr-1"><TbCards size={12} /></div>
+            <span className="mr-2">{playerCards.length}</span>
+            <div className="mr-1"><TbCoin size={12} /></div>
+            <span>{player.num_points || 0}</span>
+          </div>
+        </div>
       </div>
 
-      <div className="text-xs sm:text-sm font-semibold mb-2">
-        Points: {player.num_points || 0} | Cards: {playerCards.length}
-      </div>
+      <div className="relative flex justify-center items-center mt-2">
+        <div
+          className="relative"
+          style={{
+            width: `${overlapping ? (playerCards.length - 1) * 20 + 56 : playerCards.length * 56}px`,
+            height: '80px'
+          }}
+        >
+          {playerCards.map((card, cardIndex) => {
+            const isHovered = hoveredCardIndex === cardIndex;
 
-      <div className="relative flex justify-center items-center mt-2 gap-2">
-        {playerCards.map((card) => (
-          <Dialog key={`card-${card.sessioncardid}-${card.cardid}`}>
-            <DialogTrigger asChild>
-              <Card
-                onClick={handleCardClick}
-                className={`w-8 h-12 sm:w-10 sm:h-14 md:w-12 md:h-16 lg:w-14 lg:h-20 
-                  ${isActive ? 'bg-gray-200' : 'bg-gray-400'} shadow-md flex items-center justify-center
-                  cursor-pointer hover:shadow-lg transition-shadow`}
-              >
-                {card.isRevealed && (
-                  <div className="px-0.5 w-full">
-                    <span className="text-[4px] sm:text-[6px] md:text-[8px] truncate block text-center">
-                      {card.name}
-                    </span>
-                  </div>
-                )}
-              </Card>
-            </DialogTrigger>
-            <DialogContent onClick={handleCardClick}>
-              <DialogHeader>
-                <DialogTitle>{card.name}</DialogTitle>
-              </DialogHeader>
-              <div className="flex justify-center mt-4">
-                <DialogClose asChild>
-                  <Button
-                    onClick={() => handleReveal(card.sessioncardid)}
+            // Adjust positions to create spacing when hovering a card
+            let leftOffset = cardIndex * baseSpacing;
+
+            if (hoveredCardIndex !== null) {
+              // The hovered card stays in place, others shift away
+              const distance = Math.abs(cardIndex - hoveredCardIndex);
+              // Shift by a factor depending on distance from the hovered card.
+              // Closer cards shift more to make room.
+              const shift = (20 - distance * 5);
+              if (cardIndex < hoveredCardIndex) {
+                leftOffset -= shift;
+              } else if (cardIndex > hoveredCardIndex) {
+                leftOffset += shift;
+              }
+            }
+
+            const isTopCard = cardIndex === playerCards.length - 1;
+            const showOnEdge = overlapping && card.isRevealed && !isTopCard;
+
+            return (
+              <Dialog key={`card-${card.sessioncardid}-${card.cardid}`}>
+                <DialogTrigger asChild>
+                  <Card
+                    onMouseEnter={() => handleMouseEnter(cardIndex)}
+                    onMouseLeave={handleMouseLeave}
+                    onClick={handleCardClick}
+                    className={`
+                      absolute
+                      w-14 h-20
+                      ${isActive ? 'bg-gray-200' : 'bg-gray-400'} 
+                      shadow-md flex items-center justify-center
+                      cursor-pointer transition-all duration-200
+                      ${isHovered ? '-translate-y-2' : ''}
+                    `}
+                    style={{
+                      left: `${leftOffset}px`,
+                      zIndex: getZIndex(cardIndex),
+                    }}
                   >
-                    {card.isRevealed ? 'Hide Card' : 'Reveal Card'}
-                  </Button>
-                </DialogClose>
-              </div>
-            </DialogContent>
-          </Dialog>
-        ))}
+                    {card.isRevealed && (
+                      <div
+                        className={`
+                          text-[8px] truncate block transition-all absolute
+                          ${showOnEdge && !isHovered
+                            ? 'left-2 top-[70%] -translate-y-1/2 -rotate-90 origin-left'
+                            : 'left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full text-center'}
+                        `}
+                      >
+                        {card.name}
+                      </div>
+                    )}
+                  </Card>
+                </DialogTrigger>
+                <DialogContent onClick={handleCardClick}>
+                  <DialogHeader>
+                    <DialogTitle>{card.name}</DialogTitle>
+                  </DialogHeader>
+                  <div className="flex justify-center mt-4">
+                    <DialogClose asChild>
+                      <Button onClick={() => handleReveal(card.sessioncardid)}>
+                        {card.isRevealed ? 'Hide Card' : 'Reveal Card'}
+                      </Button>
+                    </DialogClose>
+                  </div>
+                </DialogContent>
+              </Dialog>
+            );
+          })}
+        </div>
       </div>
     </div>
   );

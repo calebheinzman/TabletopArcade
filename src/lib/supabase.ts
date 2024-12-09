@@ -44,6 +44,7 @@ export interface CustomGameData {
   is_turn_based: boolean;
   lock_turn: boolean;
   max_cards_per_player: number;
+  game_rules: string;
 }
 
 export interface DeckData {
@@ -61,6 +62,8 @@ export interface CardData {
   count: number;
   description: string;
   deckName: string;
+  front_image_url: string;
+  back_image_url: string;
 }
 
 export interface Player {
