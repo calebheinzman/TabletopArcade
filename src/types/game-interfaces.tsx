@@ -52,8 +52,8 @@ export interface CardData {
   count: number;
   description: string;
   deckName: string;
-  front_image_url: string;
-  back_image_url: string;
+  front_img_url: string;
+  back_img_url: string;
 }
 
 export interface Player {
@@ -103,7 +103,7 @@ export interface SessionPlayer {
   num_points: number;
   player_order: number;
   is_turn: boolean;
-  time_last_action: string; 
+  time_last_action: string;
 }
 
 export interface PlayerAction {

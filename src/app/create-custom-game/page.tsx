@@ -119,7 +119,8 @@ export default function CreateCustomGamePage() {
       face_up_player_discard_piles_row: faceUpPlayerDiscardPiles.rows,
       face_up_player_discard_piles_columbs: faceUpPlayerDiscardPiles.columns,
       face_down_player_discard_piles_row: faceDownPlayerDiscardPiles.rows,
-      face_down_player_discard_piles_columbs: faceDownPlayerDiscardPiles.columns,
+      face_down_player_discard_piles_columbs:
+        faceDownPlayerDiscardPiles.columns,
       is_turn_based: false,
       lock_turn: false,
       max_cards_per_player: 0,
@@ -152,12 +153,7 @@ export default function CreateCustomGamePage() {
     );
 
     try {
-      const result = await createCustomGame(
-        gameData,
-        deckData,
-        cardData,
-        []
-      );
+      const result = await createCustomGame(gameData, deckData, cardData, []);
       if (result.success) {
         console.log('Game created successfully:', result.gameId);
         router.push('/game-select');

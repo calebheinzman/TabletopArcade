@@ -1,6 +1,6 @@
 // mockGameActions.ts
 import { GameContextType } from '@/components/GameContext';
-import { Session, SessionCard, SessionPlayer, SessionState } from '@/types/game-interfaces';
+import { Session, SessionCard, SessionPlayer } from '@/types/game-interfaces';
 
 // Shuffle function
 function shuffle<T>(array: T[]): T[] {
@@ -14,39 +14,29 @@ function shuffle<T>(array: T[]): T[] {
 
 // Initialize session states and subscribers
 
-const subscribers: {
-  [sessionId: string]: Array<(state: SessionState) => void>;
-} = {};
-
 function generateDeck(gameContext: GameContextType): SessionCard[] {
-	const allCards: SessionCard[] = [];
-	let cardPosition = 0;
+  if (!gameContext.decks) return [];
 
-	if (!gameContext.decks) return [];
-  var idx = 0;
-	gameContext.decks.forEach(deck => {
-		if (!deck.cards) return;
+  let cardPosition = 0;
 
-		deck.cards.forEach(card => {
-			// Create multiple copies based on card count
-			for (let i = 0; i < card.count; i++) {
-				allCards.push({
-					sessionid: 0,  // Will be set when initializing session
-					sessioncardid: idx,
+  // Use flatMap to iterate through decks and cards, and generate copies for each card based on count
+  const allCards = gameContext.decks.flatMap(
+    (deck) =>
+      deck.cards?.flatMap((card) =>
+        Array.from({ length: card.count }, (_, idx) => ({
+          sessionid: 0, // Will be set when initializing session
+          sessioncardid: cardPosition + idx, // Use cardPosition to track the sessioncardid
           cardid: card.cardid,
-					cardPosition: cardPosition++,
-					playerid: 0,   // Empty means card is in deck
-					deckid: deck.deckid,
-          isRevealed: false
-				});
-        idx++;
-			}
-		});
-	});
+          cardPosition: cardPosition++, // Increment position for each card
+          playerid: 0, // Empty means card is in deck
+          deckid: deck.deckid,
+          isRevealed: false,
+        }))
+      ) ?? [] // In case no cards exist for a deck, return an empty array
+  );
 
-	return shuffle(allCards);
+  return shuffle(allCards);
 }
-
 
 export function initializeSession(gameContext: GameContextType) {
   const { sessionid, sessionPlayers } = gameContext;
@@ -55,7 +45,7 @@ export function initializeSession(gameContext: GameContextType) {
   const deck = generateDeck(gameContext);
 
   // Update all cards with the sessionId
-  deck.forEach(card => {
+  deck.forEach((card) => {
     card.sessionid = sessionid;
   });
 
@@ -66,7 +56,7 @@ export function initializeSession(gameContext: GameContextType) {
   const players = sessionPlayers.map((player: SessionPlayer) => ({
     ...player,
     sessionid: sessionid,
-    num_points: gameContext.gameData.starting_num_points || 0  // Initialize with starting points
+    num_points: gameContext.gameData.starting_num_points || 0, // Initialize with starting points
   }));
 
   // Create the initial session state
@@ -76,11 +66,12 @@ export function initializeSession(gameContext: GameContextType) {
     num_points: gameContext.gameData.num_points,
     num_players: players.length,
     num_cards: deck.length,
-    is_live: false
+    is_live: false,
   };
 
   // Assign starting cards to players in round-robin fashion
-  const totalStartingCards = gameContext.gameData.starting_num_cards * players.length;
+  const totalStartingCards =
+    gameContext.gameData.starting_num_cards * players.length;
   deck.forEach((card, index) => {
     if (index < totalStartingCards) {
       const player = players[index % players.length];
@@ -102,4 +93,3 @@ export function initializeSession(gameContext: GameContextType) {
 
   return deck; // Return the deck so we can insert it into Supabase
 }
-

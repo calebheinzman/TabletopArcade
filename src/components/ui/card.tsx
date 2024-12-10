@@ -1,26 +1,81 @@
-import * as React from 'react';
-
 import { cn } from '@/lib/utils';
+import * as React from 'react';
 
 // Define the props type for the Card component
 interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
   isRevealed?: boolean;
+  front?: { content: React.ReactNode; className?: string };
+  back?: { content: React.ReactNode; className?: string };
+  children?: React.ReactNode; // Fallback content when front/back is not provided
 }
 
 const Card = React.forwardRef<HTMLDivElement, CardProps>(
-  ({ className, isRevealed, ...props }, ref) => (
+  ({ className, isRevealed, front, back, children, ...props }, ref) => (
     <div
       ref={ref}
       className={cn(
-        'rounded-xl border bg-card text-card-foreground shadow',
-        isRevealed && 'bg-blue',
+        'rounded-xl border bg-card text-card-foreground shadow transform-style-3d transition-transform duration-500',
+        isRevealed ? '' : 'rotate-y-180',
         className
       )}
       {...props}
-    />
+    >
+      {children || (
+        <>
+          {front && (
+            <CardFront className={front.className}>{front.content}</CardFront>
+          )}
+          {back && (
+            <CardBack className={back.className}>{back.content}</CardBack>
+          )}
+        </>
+      )}
+    </div>
   )
 );
 Card.displayName = 'Card';
+
+const CardFront = ({
+  children,
+  className,
+}: {
+  children?: React.ReactNode;
+  className?: string;
+}) => (
+  <div
+    className={cn(
+      'absolute w-full h-full bg-card text-card-foreground shadow flex items-center justify-center backface-hidden',
+      className
+    )}
+    style={{
+      WebkitBackfaceVisibility: 'hidden',
+      backfaceVisibility: 'hidden',
+    }}
+  >
+    {children}
+  </div>
+);
+
+const CardBack = ({
+  children,
+  className,
+}: {
+  children?: React.ReactNode;
+  className?: string;
+}) => (
+  <div
+    className={cn(
+      'absolute w-full h-full rounded-xl bg-gray-300 text-card-foreground shadow flex items-center justify-center rotate-y-180 backface-hidden',
+      className
+    )}
+    style={{
+      WebkitBackfaceVisibility: 'hidden',
+      backfaceVisibility: 'hidden',
+    }}
+  >
+    {children}
+  </div>
+);
 
 const CardHeader = React.forwardRef<
   HTMLDivElement,

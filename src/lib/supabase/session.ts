@@ -1,23 +1,21 @@
-import { supabase } from './index';
 import { GameContextType } from '@/components/GameContext';
-import { 
-  GameTemplate, 
-  GameTemplateNameAndId, 
-  CustomGameData, 
-  DeckData, 
-  CardData, 
-  Player, 
-  SessionCard 
+import {
+  CardData,
+  CustomGameData,
+  DeckData,
+  GameTemplate,
+  GameTemplateNameAndId,
+  SessionCard,
 } from '@/types/game-interfaces';
-import { insertSessionCards } from './card';
-import { setFirstPlayerTurn } from './player';
 import { initializeSession } from '../defaultGameState';
+import { insertSessionCards } from './card';
+import { supabase } from './index';
+import { setFirstPlayerTurn } from './player';
 
 export async function createCustomGame(
   gameData: CustomGameData,
   decks: DeckData[],
-  cards: CardData[][],
-  players: Player[]
+  cards: CardData[][]
 ) {
   try {
     const { data: gameDataResult, error: gameError } = await supabase
@@ -45,6 +43,7 @@ export async function createCustomGame(
         const deckCards = cards.find((c) => c[0].deckName === deckName);
         if (deckCards) {
           const { error: cardError } = await supabase.from('card').insert(
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
             deckCards.map(({ deckName, ...card }) => ({
               ...card,
               deckid: deckId,
@@ -66,21 +65,31 @@ export async function createCustomGame(
     const { data: playerData, error: playerError } = await supabase
       .from('player')
       .select('*')
-      .in('sessionid', sessionData.map(session => session.sessionid));
+      .in(
+        'sessionid',
+        sessionData.map((session) => session.sessionid)
+      );
 
     if (playerError) throw playerError;
 
-    const { data: playerActionsData, error: playerActionsError } = await supabase
-      .from('player_actions')
-      .select('*')
-      .in('sessionid', sessionData.map(session => session.sessionid));
+    const { data: playerActionsData, error: playerActionsError } =
+      await supabase
+        .from('player_actions')
+        .select('*')
+        .in(
+          'sessionid',
+          sessionData.map((session) => session.sessionid)
+        );
 
     if (playerActionsError) throw playerActionsError;
 
     const { data: sessionCardsData, error: sessionCardsError } = await supabase
       .from('session_cards')
       .select('*')
-      .in('sessionid', sessionData.map(session => session.sessionid));
+      .in(
+        'sessionid',
+        sessionData.map((session) => session.sessionid)
+      );
 
     if (sessionCardsError) throw sessionCardsError;
 
@@ -100,90 +109,93 @@ export async function createCustomGame(
 }
 
 export async function fetchGameTemplate(templateId: GameTemplate['id']) {
-    try {
-      const { data: gameData, error: gameError } = await supabase
-        .from('game')
-        .select(
-          `
+  try {
+    const { data: gameData, error: gameError } = await supabase
+      .from('game')
+      .select(
+        `
           *,
           decks:deck(
             *,
             cards:card(*)
           )
         `
-        )
-        .eq('gameid', templateId)
-        .single();
+      )
+      .eq('gameid', templateId)
+      .single();
 
-      if (gameError) throw gameError;
+    if (gameError) throw gameError;
 
-      return gameData;
-    } catch (error) {
-      console.error('Error fetching game template:', error);
-      return null;
-    }
+    return gameData;
+  } catch (error) {
+    console.error('Error fetching game template:', error);
+    return null;
+  }
 }
 
-export async function createSessionFromGameTemplateId(templateId: GameTemplate['id']) {
-    try {
-      const gameData = await fetchGameTemplate(templateId);
+export async function createSessionFromGameTemplateId(
+  templateId: GameTemplate['id']
+) {
+  try {
+    const gameData = await fetchGameTemplate(templateId);
 
-      if (!gameData) throw new Error('Failed to fetch game template data.');
-      
-      const sessionData = {
-        gameid: gameData.gameid,
-        num_points: gameData.num_points,
-        num_players: 0,
-        num_cards: gameData.decks[0].cards.length,
-        is_live: false
-      };
+    if (!gameData) throw new Error('Failed to fetch game template data.');
 
-      const { data: sessionResult, error: sessionError } = await supabase
-        .from('session')
-        .insert(sessionData)
-        .select('sessionid')
-        .single();
+    const sessionData = {
+      gameid: gameData.gameid,
+      num_points: gameData.num_points,
+      num_players: 0,
+      num_cards: gameData.decks[0].cards.length,
+      is_live: false,
+    };
 
-      if (sessionError) throw sessionError;
+    const { data: sessionResult, error: sessionError } = await supabase
+      .from('session')
+      .insert(sessionData)
+      .select('sessionid')
+      .single();
 
-      return { error: null, sessionId: sessionResult.sessionid };
-    } catch (error) {
-      console.error('Error creating session from game:', error);
-      return { sessionId: null, error: 'Failed to create session from game' };
-    }
+    if (sessionError) throw sessionError;
+
+    return { error: null, sessionId: sessionResult.sessionid };
+  } catch (error) {
+    console.error('Error creating session from game:', error);
+    return { sessionId: null, error: 'Failed to create session from game' };
+  }
 }
 
-export async function createSession(sessionId: number, sessionCards: SessionCard[]) {
+export async function createSession(
+  sessionId: number,
+  sessionCards: SessionCard[]
+) {
   await insertSessionCards(sessionId, sessionCards);
 }
 
 export async function fetchGameNames(): Promise<GameTemplateNameAndId[] | []> {
-    try {
-      const { data, error } = await supabase
-        .from('game')
-        .select('name, gameid');
+  try {
+    const { data, error } = await supabase.from('game').select('name, gameid');
 
-      if (error) throw error;
+    if (error) throw error;
 
-      return data.map((game) => ({ ...game, id: game.gameid }));
-    } catch (error) {
-      console.error('Error fetching game names:', error);
-      return [];
-    }
+    return data.map((game) => ({ ...game, id: game.gameid }));
+  } catch (error) {
+    console.error('Error fetching game names:', error);
+    return [];
+  }
 }
 
 export async function fetchGameSession(sessionId: string) {
-    const { data, error } = await supabase
-      .from('session')
-      .select('*')
-      .eq('id', sessionId)
-      .single();
+  const { data, error } = await supabase
+    .from('session')
+    .select('*')
+    .eq('id', sessionId)
+    .single();
 
-    if (error) {
-      console.error('Error fetching game state:', error);
-    }
+  if (error) {
+    console.error('Error fetching game state:', error);
+  }
 
-    return data;
+  return data;
 }
 
 export async function fetchGameData(sessionId: number) {
@@ -198,19 +210,21 @@ export async function fetchGameData(sessionId: number) {
     return { gameData: null, gameId: null };
   }
 
-  return { 
-    gameData: sessionData.game as CustomGameData, 
-    gameId: sessionData.gameid 
+  return {
+    gameData: sessionData.game as CustomGameData,
+    gameId: sessionData.gameid,
   };
 }
 
 export async function fetchDecksAndCards(gameId: number) {
   const { data: decksData, error: decksError } = await supabase
     .from('deck')
-    .select(`
+    .select(
+      `
       *,
       cards:card(*)
-    `)
+    `
+    )
     .eq('gameid', gameId);
 
   if (decksError) {
@@ -219,7 +233,7 @@ export async function fetchDecksAndCards(gameId: number) {
   }
 
   const decks = decksData as DeckData[];
-  const cards = decks.map(deck => deck.cards as CardData[]);
+  const cards = decks.map((deck) => deck.cards as CardData[]);
 
   return { decks, cards };
 }
@@ -239,7 +253,10 @@ export async function fetchSession(sessionId: number) {
   return data;
 }
 
-export async function updateSessionPoints(sessionId: number, newPointCount: number) {
+export async function updateSessionPoints(
+  sessionId: number,
+  newPointCount: number
+) {
   const { error } = await supabase
     .from('session')
     .update({ num_points: newPointCount })
@@ -248,24 +265,24 @@ export async function updateSessionPoints(sessionId: number, newPointCount: numb
   if (error) throw error;
 }
 
-export async function resetGame(gameContext: GameContextType, generateNewDeck: () => SessionCard[]): Promise<void> {
+export async function resetGame(gameContext: GameContextType): Promise<void> {
   try {
     const newDeck = initializeSession(gameContext);
-    
+
     const { error: deleteError } = await supabase
       .from('session_cards')
       .delete()
       .eq('sessionid', gameContext.sessionid);
-    
+
     if (deleteError) throw deleteError;
 
     await insertSessionCards(gameContext.sessionid, newDeck);
 
     const { error: playerError } = await supabase
       .from('player')
-      .update({ 
+      .update({
         num_points: gameContext.gameData.starting_num_points || 0,
-        is_turn: false 
+        is_turn: false,
       })
       .eq('sessionid', gameContext.sessionid);
 
@@ -273,15 +290,14 @@ export async function resetGame(gameContext: GameContextType, generateNewDeck: (
 
     const { error: sessionError } = await supabase
       .from('session')
-      .update({ 
-        num_points: gameContext.gameData.num_points
+      .update({
+        num_points: gameContext.gameData.num_points,
       })
       .eq('sessionid', gameContext.sessionid);
 
     if (sessionError) throw sessionError;
 
     await setFirstPlayerTurn(gameContext.sessionid);
-
   } catch (error) {
     console.error('Error resetting game:', error);
     throw error;
