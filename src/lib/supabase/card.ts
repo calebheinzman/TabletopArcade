@@ -28,6 +28,8 @@ export async function updateSessionCards(updates: {
   sessioncardid: number;
   cardPosition: number;
   playerid: number | null;
+  pile_id?: number | null;
+  isRevealed?: boolean;
 }[]) {
   const { error } = await supabase
     .from('session_cards')

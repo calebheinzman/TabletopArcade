@@ -30,6 +30,7 @@ export interface CustomGameData {
   pass_cards: boolean;
   claim_turns: boolean;
   deal_all_cards: boolean;
+  lock_player_discard: boolean;
 }
 
 export interface DeckData {
@@ -81,6 +82,7 @@ export interface Session {
   num_players: number;
   num_cards: number;
   is_live: boolean;
+  locked_player_discard: boolean;
 }
 
 export interface SessionCard {
@@ -91,6 +93,7 @@ export interface SessionCard {
   playerid: number;
   deckid: number;
   isRevealed: boolean;
+  pile_id: number | null;
 }
 
 export interface SessionPlayer {
@@ -118,4 +121,5 @@ export interface DiscardPile {
   game_id: number;
   x_pos: number;
   y_pos: number;
+  pile_name: string;
 }

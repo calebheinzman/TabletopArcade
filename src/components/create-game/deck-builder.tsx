@@ -142,9 +142,13 @@ export default function DeckBuilder({
         const newCards: CardData[] = lines.slice(1)
           .filter(line => line.trim())
           .map((line) => {
-            const values = line.split(',');
+            const values = line.split(',').map(value => value.trim());
             console.log('Values:', values);
             
+            const dropOrderIndex = headers.indexOf('drop order');
+            const dropOrderValue = dropOrderIndex !== -1 ? 
+              parseInt(values[dropOrderIndex]) : 0;
+
             const cardData: CardData = {
               deckid: 0,
               cardid: 0,
@@ -155,7 +159,7 @@ export default function DeckBuilder({
               deckName: deck.name,
               front_img_url: '',
               back_img_url: '',
-              drop_order: parseInt(values[headers.indexOf('drop_order')]) || 0,
+              drop_order: isNaN(dropOrderValue) ? 0 : dropOrderValue,
             };
 
             console.log('Card Data:', cardData);
