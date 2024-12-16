@@ -160,3 +160,19 @@ export async function fetchSessionCards(sessionId: number) {
 
   return sessionCards as SessionCard[];
 }
+
+export async function fetchAllDecks() {
+  const { data, error } = await supabase
+    .from('deck')
+    .select(`
+      *,
+      cards:card(*)
+    `);
+
+  if (error) {
+    console.error('Error fetching decks:', error);
+    return [];
+  }
+
+  return data;
+}

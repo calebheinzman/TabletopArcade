@@ -7,7 +7,8 @@ import {
   DeckData, 
   CardData, 
   Player, 
-  SessionCard 
+  SessionCard, 
+  DiscardPile 
 } from '@/types/game-interfaces';
 import { insertSessionCards } from './card';
 import { setFirstPlayerTurn } from './player';
@@ -17,7 +18,7 @@ export async function createCustomGame(
   gameData: CustomGameData,
   decks: DeckData[],
   cards: CardData[][],
-  players: Player[]
+  discardPiles: DiscardPile[]
 ) {
   try {
     const { data: gameDataResult, error: gameError } = await supabase
@@ -30,10 +31,28 @@ export async function createCustomGame(
 
     const gameId = gameDataResult.gameid;
 
+    // Insert discard piles if they exist
+    if (discardPiles && discardPiles.length > 0) {
+      const discardPilesWithGameId = discardPiles.map(({ pile_id, ...pile }) => ({
+        ...pile,
+        game_id: gameId
+      }));
+
+      const { error: discardPileError } = await supabase
+        .from('discard_pile')
+        .insert(discardPilesWithGameId);
+
+      if (discardPileError) throw discardPileError;
+    }
+
     for (const deck of decks) {
       const { data: deckDataResult, error: deckError } = await supabase
         .from('deck')
-        .insert({ ...deck, gameid: gameId, num_cards: 0 })
+        .insert({ 
+          gameid: gameId, 
+          deckname: deck.deckname,
+          num_cards: 0
+        })
         .select('deckid, deckname')
         .single();
 
@@ -41,18 +60,19 @@ export async function createCustomGame(
 
       const deckName = deckDataResult.deckname;
       const deckId = deckDataResult.deckid;
-      if (cards.length > 0) {
-        const deckCards = cards.find((c) => c[0].deckName === deckName);
-        if (deckCards) {
-          const { error: cardError } = await supabase.from('card').insert(
-            deckCards.map(({ deckName, ...card }) => ({
-              ...card,
-              deckid: deckId,
-            }))
-          );
+      
+      // Check if there are cards for this specific deck
+      const deckCards = cards.find((cardSet) => cardSet && cardSet.length > 0 && cardSet[0]?.deckName === deckName);
+      if (deckCards && deckCards.length > 0) {
+        const { error: cardError } = await supabase.from('card').insert(
+          deckCards.map(({ deckName, ...card }) => ({
+            ...card,
+            deckid: deckId,
+            drop_order: card.drop_order || 0,
+          }))
+        );
 
-          if (cardError) throw cardError;
-        }
+        if (cardError) throw cardError;
       }
     }
 
