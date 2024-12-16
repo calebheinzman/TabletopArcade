@@ -77,6 +77,7 @@ export interface GameContextType {
     pile_id?: number | null;
     isRevealed?: boolean;
   }[]) => Promise<void>;
+  pickupFromDiscardPile: (playerId: number, pileId: number) => Promise<void>;
 }
 
 const initialGameContext: GameContextType = {
@@ -97,6 +98,7 @@ const initialGameContext: GameContextType = {
   revealCard: async (playerId: number, sessionCardId: number) => {},
   discardPiles: [],
   updateSessionCards: async (updates) => {},
+  pickupFromDiscardPile: async (playerId: number, pileId: number) => {},
 };
 
 // Context
@@ -267,28 +269,48 @@ export function GameProvider({
         return;
       }
 
+      // Get remaining deck cards, excluding the top card
       const deckCards = gameContext.sessionCards
-        .filter(card => card.cardPosition > 1 && !card.pile_id)
+        .filter(card => 
+          card.cardPosition > 1 && 
+          !card.pile_id && 
+          card.sessioncardid !== topCard.sessioncardid
+        )
         .sort((a, b) => a.cardPosition - b.cardPosition);
 
+      // Create updates array with unique sessioncardids
       const updates = [
+        // Update for the drawn card
         {
           sessionid: gameContext.sessionid,
           sessioncardid: topCard.sessioncardid,
           cardPosition: 0,
           playerid: playerId,
-          pile_id: null
+          pile_id: null,
+          isRevealed: false
         },
+        // Updates for remaining deck cards
         ...deckCards.map((card, index) => ({
           sessionid: gameContext.sessionid,
           sessioncardid: card.sessioncardid,
           cardPosition: index + 1,
           playerid: null,
-          pile_id: null
+          pile_id: null,
+          isRevealed: false
         }))
       ];
 
-      await updateSessionCards(updates);
+      // Verify no duplicate sessioncardids
+      const sessionCardIds = new Set();
+      const uniqueUpdates = updates.filter(update => {
+        if (sessionCardIds.has(update.sessioncardid)) {
+          return false;
+        }
+        sessionCardIds.add(update.sessioncardid);
+        return true;
+      });
+
+      await updateSessionCards(uniqueUpdates);
     } catch (error) {
       console.error('Error drawing card:', error);
       throw new Error('Failed to draw card');
@@ -454,6 +476,30 @@ export function GameProvider({
     }
   };
 
+  const pickupFromDiscardPile = async (playerId: number, pileId: number) => {
+    try {
+      // Get all cards from the specified pile for this player
+      const pileCards = gameContext.sessionCards.filter(
+        card => card.pile_id === pileId && card.playerid === playerId
+      );
+
+      // Create updates array to move cards to player's hand
+      const updates = pileCards.map(card => ({
+        sessionid: gameContext.sessionid,
+        sessioncardid: card.sessioncardid,
+        cardPosition: 0,
+        playerid: playerId,
+        pile_id: null,
+        isRevealed: false
+      }));
+
+      await updateSessionCards(updates);
+    } catch (error) {
+      console.error('Error picking up cards from discard pile:', error);
+      throw new Error('Failed to pickup cards from discard pile');
+    }
+  };
+
   const contextValue = {
     ...gameContext,
     drawCard,
@@ -472,6 +518,7 @@ export function GameProvider({
     }[]) => {
       await updateSessionCards(updates);
     },
+    pickupFromDiscardPile,
   };
 
   return (

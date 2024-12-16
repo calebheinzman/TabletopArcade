@@ -160,7 +160,8 @@ export async function createSessionFromGameTemplateId(templateId: GameTemplate['
         num_points: gameData.num_points,
         num_players: 0,
         num_cards: gameData.decks[0].cards.length,
-        is_live: false
+        is_live: false,
+        locked_player_discard: false
       };
 
       const { data: sessionResult, error: sessionError } = await supabase

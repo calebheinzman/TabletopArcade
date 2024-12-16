@@ -488,10 +488,44 @@ export function PlayerHand({ gameContext }: { gameContext: GameContextType }) {
 
                     return (
                       <div key={pile.pile_id} className="border rounded-lg p-4">
-                        <h3 className="font-medium mb-2">
-                          {pile.pile_name || `Discard Pile ${pile.pile_id}`} 
-                          ({pileCards.length} cards)
-                        </h3>
+                        <div className="flex justify-between items-center mb-2">
+                          <h3 className="font-medium">
+                            {pile.pile_name || `Discard Pile ${pile.pile_id}`} 
+                            ({pileCards.length} cards)
+                          </h3>
+                          {/* Add pickup button */}
+                          {!gameContext.session.locked_player_discard && (
+                            <Button
+                              size="sm"
+                              onClick={async () => {
+                                try {
+                                  const currentHandSize = playerCards.length;
+                                  const pileSize = pileCards.length;
+                                  const maxCards = gameContext.gameData.max_cards_per_player;
+                                  
+                                  if (currentHandSize + pileSize > maxCards) {
+                                    alert(`Cannot pickup cards: Would exceed maximum hand size of ${maxCards}`);
+                                    return;
+                                  }
+
+                                  await gameContext.pickupFromDiscardPile(playerId, pile.pile_id);
+                                  await pushPlayerAction(
+                                    gameContext.sessionid,
+                                    playerId,
+                                    `Picked up all cards from discard pile ${pile.pile_name || pile.pile_id}`
+                                  );
+                                  setShowDiscardPileDialog(false);
+                                } catch (error) {
+                                  console.error('Error picking up cards:', error);
+                                }
+                              }}
+                              disabled={pileCards.length === 0 || 
+                                        playerCards.length + pileCards.length > gameContext.gameData.max_cards_per_player}
+                            >
+                              Pick Up All Cards
+                            </Button>
+                          )}
+                        </div>
                         <div className="space-y-2 max-h-48 overflow-y-auto">
                           {pileCards.map((card, index) => {
                             const deck = gameContext.decks.find(d => d.deckid === card.deckid);
