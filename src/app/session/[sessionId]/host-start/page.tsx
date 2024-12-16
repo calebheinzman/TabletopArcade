@@ -54,9 +54,6 @@ export default function HostStartPage() {
 
       if (updateError) throw updateError;
 
-      await fetch(`/api/games/${sessionId}/start`, {
-        method: 'POST',
-      });
       router.push(`/session/${sessionId}/board`);
     } catch (error) {
       console.error('Failed to start game:', error);

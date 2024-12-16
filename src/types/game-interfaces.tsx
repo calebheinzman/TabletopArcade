@@ -19,22 +19,17 @@ export interface CustomGameData {
   starting_num_points: number;
   can_discard: boolean;
   can_reveal: boolean;
-  can_give_points: boolean;
-  can_give_cards: boolean;
   can_draw_cards: boolean;
   can_draw_points: boolean;
-  face_up_board_discard_piles_row: number | null;
-  face_up_board_discard_piles_columbs: number | null;
-  face_down_board_discard_piles_row: number | null;
-  face_down_board_discard_piles_columbs: number | null;
-  face_up_player_discard_piles_row: number | null;
-  face_up_player_discard_piles_columbs: number | null;
-  face_down_player_discard_piles_row: number | null;
-  face_down_player_discard_piles_columbs: number | null;
-  is_turn_based: boolean;
+  turn_based: boolean;
   lock_turn: boolean;
   max_cards_per_player: number;
   game_rules: string;
+  redeal_cards: boolean;
+  tags: string | null;
+  pass_cards: boolean;
+  claim_turns: boolean;
+  deal_all_cards: boolean;
 }
 
 export interface DeckData {
@@ -52,8 +47,10 @@ export interface CardData {
   count: number;
   description: string;
   deckName: string;
-  front_image_url: string;
-  back_image_url: string;
+  type: string;
+  front_img_url: string;
+  back_img_url: string;
+  drop_order: number;
 }
 
 export interface Player {
@@ -111,4 +108,14 @@ export interface PlayerAction {
   sessionid: number;
   description: string;
   action_id: number;
+}
+
+export interface DiscardPile {
+  pile_id: number;
+  is_player: boolean;
+  is_face_up: boolean;
+  hide_values: boolean;
+  game_id: number;
+  x_pos: number;
+  y_pos: number;
 }
