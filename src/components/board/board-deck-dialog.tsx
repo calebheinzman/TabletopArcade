@@ -26,14 +26,18 @@ const BoardDeckDialog: FC<BoardDeckDialogProps> = ({
 }) => {
   const gameContext = useGame();
 
+  const actualDeckCount = gameContext.sessionCards.filter(card => 
+    card.cardPosition > 0 && !card.pile_id
+  ).length;
+
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 scale-75 sm:scale-90 md:scale-100 cursor-pointer">
-          <div className="w-16 h-24 sm:w-18 sm:h-26 md:w-20 md:h-28 bg-white/90 border border-gray-300 rounded-lg shadow-lg flex items-center justify-center text-gray-700 text-base sm:text-lg font-semibold transition-all">
-            <div className="absolute -bottom-1 -right-1 w-full h-full bg-gray-100 rounded-lg border border-gray-300 -z-10" />
-            <div className="absolute -bottom-2 -right-2 w-full h-full bg-gray-50 rounded-lg border border-gray-300 -z-20" />
-            {deckCount}
+        <div className="cursor-pointer relative w-16 h-24 sm:w-18 sm:h-26 md:w-20 md:h-28">
+          <div className="absolute -bottom-2 -right-2 w-full h-full bg-gray-50 rounded-lg border border-gray-300" />
+          <div className="absolute -bottom-1 -right-1 w-full h-full bg-gray-100 rounded-lg border border-gray-300" />
+          <div className="absolute top-0 left-0 w-full h-full bg-white border border-gray-300 rounded-lg shadow-lg flex items-center justify-center text-gray-700 text-base sm:text-lg font-semibold">
+            {actualDeckCount}
           </div>
           <div className="absolute top-0 left-0 w-full h-full bg-transparent rounded-lg hover:shadow-xl hover:scale-100 transition-all" />
         </div>
@@ -56,7 +60,7 @@ const BoardDeckDialog: FC<BoardDeckDialogProps> = ({
               <Button
                 key={player.playerid}
                 onClick={() => onDrawCard(player.playerid)}
-                disabled={atMaxCards || deckCount === 0}
+                disabled={atMaxCards || actualDeckCount === 0}
                 className={atMaxCards ? "opacity-50" : ""}
               >
                 {player.username} ({playerCardCount}/{gameContext.gameData.max_cards_per_player})

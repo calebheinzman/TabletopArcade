@@ -13,6 +13,7 @@ import {
 import { insertSessionCards } from './card';
 import { setFirstPlayerTurn } from './player';
 import { initializeSession } from '../defaultGameState';
+import { updateSessionCards } from './card';
 
 export async function createCustomGame(
   gameData: CustomGameData,
@@ -31,18 +32,22 @@ export async function createCustomGame(
 
     const gameId = gameDataResult.gameid;
 
-    // Insert discard piles if they exist
+    // Insert discard piles first to get their IDs
+    let discardPileIds: number[] = [];
     if (discardPiles && discardPiles.length > 0) {
       const discardPilesWithGameId = discardPiles.map(({ pile_id, ...pile }) => ({
         ...pile,
         game_id: gameId
       }));
 
-      const { error: discardPileError } = await supabase
+      const { data: discardPileData, error: discardPileError } = await supabase
         .from('discard_pile')
-        .insert(discardPilesWithGameId);
+        .insert(discardPilesWithGameId)
+        .select('pile_id');
 
       if (discardPileError) throw discardPileError;
+      
+      discardPileIds = discardPileData.map(pile => pile.pile_id);
     }
 
     for (const deck of decks) {
@@ -99,7 +104,7 @@ export async function createCustomGame(
 
     const { data: sessionCardsData, error: sessionCardsError } = await supabase
       .from('session_cards')
-      .select('*')
+      .select('*, pile_id')
       .in('sessionid', sessionData.map(session => session.sessionid));
 
     if (sessionCardsError) throw sessionCardsError;
@@ -270,17 +275,63 @@ export async function updateSessionPoints(sessionId: number, newPointCount: numb
 
 export async function resetGame(gameContext: GameContextType, generateNewDeck: () => SessionCard[]): Promise<void> {
   try {
-    const newDeck = initializeSession(gameContext);
-    
-    const { error: deleteError } = await supabase
-      .from('session_cards')
-      .delete()
-      .eq('sessionid', gameContext.sessionid);
-    
-    if (deleteError) throw deleteError;
+    // Get all existing session cards
+    const existingCards = [...gameContext.sessionCards];
 
-    await insertSessionCards(gameContext.sessionid, newDeck);
+    // Shuffle the array of existing cards
+    for (let i = existingCards.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [existingCards[i], existingCards[j]] = [existingCards[j], existingCards[i]];
+    }
 
+    // Prepare updates for all cards
+    const updates: {
+      sessionid: number;
+      sessioncardid: number;
+      cardPosition: number;
+      playerid: number | null;
+      pile_id: null;
+      isRevealed: boolean;
+    }[] = [];
+
+    let currentCardIndex = 0;
+
+    // If starting_num_cards > 0, deal cards to players
+    if (gameContext.gameData.starting_num_cards > 0) {
+      // Deal cards to each player
+      for (const player of gameContext.sessionPlayers) {
+        for (let i = 0; i < gameContext.gameData.starting_num_cards; i++) {
+          if (currentCardIndex < existingCards.length) {
+            updates.push({
+              sessionid: gameContext.sessionid,
+              sessioncardid: existingCards[currentCardIndex].sessioncardid,
+              cardPosition: 0,
+              playerid: player.playerid,
+              pile_id: null,
+              isRevealed: false
+            });
+            currentCardIndex++;
+          }
+        }
+      }
+    }
+
+    // Update remaining cards as deck cards
+    for (let i = currentCardIndex; i < existingCards.length; i++) {
+      updates.push({
+        sessionid: gameContext.sessionid,
+        sessioncardid: existingCards[i].sessioncardid,
+        cardPosition: i - currentCardIndex + 1,
+        playerid: null,
+        pile_id: null,
+        isRevealed: false
+      });
+    }
+
+    // Update all cards in a single operation
+    await updateSessionCards(updates);
+
+    // Reset player points and turns
     const { error: playerError } = await supabase
       .from('player')
       .update({ 
@@ -291,6 +342,7 @@ export async function resetGame(gameContext: GameContextType, generateNewDeck: (
 
     if (playerError) throw playerError;
 
+    // Reset session points
     const { error: sessionError } = await supabase
       .from('session')
       .update({ 

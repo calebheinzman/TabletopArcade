@@ -17,6 +17,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { TbCards, TbCoin, TbPlugConnectedX } from 'react-icons/tb';
+import BoardDiscardPile from '@/components/board/board-discard-pile';
 
 interface BoardPlayerHandProps {
   player: SessionPlayer;
@@ -97,15 +98,21 @@ const BoardPlayerHand: FC<BoardPlayerHandProps> = ({
     return 999 - distance;
   };
 
+  // Get player's discard piles
+  const playerDiscardPiles = gameContext.discardPiles.filter(pile => pile.is_player);
+
   return (
     <div
-      onClick={() => onSelect(player.playerid)}
+      className="flex flex-col items-center text-center absolute transform -translate-x-1/2 -translate-y-1/2"
       style={position}
-      className="flex flex-col items-center text-center cursor-pointer absolute transform -translate-x-1/2 -translate-y-1/2"
     >
       <div
-        className={`mb-2 bg-white rounded-lg shadow-md p-2 ${player.is_turn ? 'bg-yellow-50' : ''} hover:bg-yellow-100`}
-        style={{ marginTop: '20px', marginBottom: '20px' }}
+        onClick={() => onSelect(player.playerid)}
+        className={`
+          mb-2 bg-white rounded-lg shadow-md p-2 cursor-pointer
+          ${player.is_turn ? 'bg-yellow-50' : ''} 
+          hover:bg-yellow-100
+        `}
       >
         <div className={`
           text-sm font-semibold flex flex-col gap-1
@@ -125,87 +132,108 @@ const BoardPlayerHand: FC<BoardPlayerHandProps> = ({
         </div>
       </div>
 
-      <div className="relative flex justify-center items-center mt-2">
-        <div
-          className="relative"
-          style={{
-            width: `${overlapping ? (playerCards.length - 1) * 20 + 56 : playerCards.length * 56}px`,
-            height: '80px'
-          }}
-        >
-          {playerCards.map((card, cardIndex) => {
-            const isHovered = hoveredCardIndex === cardIndex;
+      {playerCards.length > 0 && (
+        <div className="relative flex justify-center items-center mt-2 mb-4">
+          <div
+            className="relative"
+            style={{
+              width: `${overlapping ? (playerCards.length - 1) * 20 + 56 : playerCards.length * 56}px`,
+              height: '80px'
+            }}
+          >
+            {playerCards.map((card, cardIndex) => {
+              const isHovered = hoveredCardIndex === cardIndex;
 
-            // Adjust positions to create spacing when hovering a card
-            let leftOffset = cardIndex * baseSpacing;
+              // Adjust positions to create spacing when hovering a card
+              let leftOffset = cardIndex * baseSpacing;
 
-            if (hoveredCardIndex !== null) {
-              // The hovered card stays in place, others shift away
-              const distance = Math.abs(cardIndex - hoveredCardIndex);
-              // Shift by a factor depending on distance from the hovered card.
-              // Closer cards shift more to make room.
-              const shift = (20 - distance * 5);
-              if (cardIndex < hoveredCardIndex) {
-                leftOffset -= shift;
-              } else if (cardIndex > hoveredCardIndex) {
-                leftOffset += shift;
+              if (hoveredCardIndex !== null) {
+                // The hovered card stays in place, others shift away
+                const distance = Math.abs(cardIndex - hoveredCardIndex);
+                // Shift by a factor depending on distance from the hovered card.
+                // Closer cards shift more to make room.
+                const shift = (20 - distance * 5);
+                if (cardIndex < hoveredCardIndex) {
+                  leftOffset -= shift;
+                } else if (cardIndex > hoveredCardIndex) {
+                  leftOffset += shift;
+                }
               }
-            }
 
-            const isTopCard = cardIndex === playerCards.length - 1;
-            const showOnEdge = overlapping && card.isRevealed && !isTopCard;
+              const isTopCard = cardIndex === playerCards.length - 1;
+              const showOnEdge = overlapping && card.isRevealed && !isTopCard;
 
-            return (
-              <Dialog key={`card-${card.sessioncardid}-${card.cardid}`}>
-                <DialogTrigger asChild>
-                  <Card
-                    onMouseEnter={() => handleMouseEnter(cardIndex)}
-                    onMouseLeave={handleMouseLeave}
-                    onClick={handleCardClick}
-                    className={`
-                      absolute
-                      w-14 h-20
-                      ${isActive ? 'bg-gray-200' : 'bg-gray-400'} 
-                      shadow-md flex items-center justify-center
-                      cursor-pointer transition-all duration-200
-                      ${isHovered ? '-translate-y-2' : ''}
-                    `}
-                    style={{
-                      left: `${leftOffset}px`,
-                      zIndex: getZIndex(cardIndex),
-                    }}
-                  >
-                    {card.isRevealed && (
-                      <div
-                        className={`
-                          text-[8px] truncate block transition-all absolute
-                          ${showOnEdge && !isHovered
-                            ? 'left-2 top-[70%] -translate-y-1/2 -rotate-90 origin-left'
-                            : 'left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full text-center'}
-                        `}
-                      >
-                        {card.name}
-                      </div>
-                    )}
-                  </Card>
-                </DialogTrigger>
-                <DialogContent onClick={handleCardClick}>
-                  <DialogHeader>
-                    <DialogTitle>{card.name}</DialogTitle>
-                  </DialogHeader>
-                  <div className="flex justify-center mt-4">
-                    <DialogClose asChild>
-                      <Button onClick={() => handleReveal(card.sessioncardid)}>
-                        {card.isRevealed ? 'Hide Card' : 'Reveal Card'}
-                      </Button>
-                    </DialogClose>
-                  </div>
-                </DialogContent>
-              </Dialog>
-            );
-          })}
+              return (
+                <Dialog key={`card-${card.sessioncardid}-${card.cardid}`}>
+                  <DialogTrigger asChild>
+                    <Card
+                      onMouseEnter={() => handleMouseEnter(cardIndex)}
+                      onMouseLeave={handleMouseLeave}
+                      onClick={handleCardClick}
+                      className={`
+                        absolute
+                        w-14 h-20
+                        ${isActive ? 'bg-gray-200' : 'bg-gray-400'} 
+                        shadow-md flex items-center justify-center
+                        cursor-pointer transition-all duration-200
+                        ${isHovered ? '-translate-y-2' : ''}
+                      `}
+                      style={{
+                        left: `${leftOffset}px`,
+                        zIndex: getZIndex(cardIndex),
+                      }}
+                    >
+                      {card.isRevealed && (
+                        <div
+                          className={`
+                            text-[8px] truncate block transition-all absolute
+                            ${showOnEdge && !isHovered
+                              ? 'left-2 top-[70%] -translate-y-1/2 -rotate-90 origin-left'
+                              : 'left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full text-center'}
+                          `}
+                        >
+                          {card.name}
+                        </div>
+                      )}
+                    </Card>
+                  </DialogTrigger>
+                  <DialogContent onClick={handleCardClick}>
+                    <DialogHeader>
+                      <DialogTitle>{card.name}</DialogTitle>
+                    </DialogHeader>
+                    <div className="flex justify-center mt-4">
+                      <DialogClose asChild>
+                        <Button onClick={() => handleReveal(card.sessioncardid)}>
+                          {card.isRevealed ? 'Hide Card' : 'Reveal Card'}
+                        </Button>
+                      </DialogClose>
+                    </div>
+                  </DialogContent>
+                </Dialog>
+              );
+            })}
+          </div>
         </div>
-      </div>
+      )}
+
+      {playerDiscardPiles.length > 0 && (
+        <div 
+          className={`${playerCards.length === 0 ? 'mt-2' : 'mt-4'}`}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="flex gap-4">
+            {playerDiscardPiles.map((pile) => (
+              <BoardDiscardPile
+                key={pile.pile_id}
+                pile={pile}
+                playerId={player.playerid}
+                className="w-14 h-20"
+                variant="player"
+              />
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -73,7 +73,10 @@ export default function CreateCustomGamePage() {
   const [currentView, setCurrentView] = useState<'main' | 'deck' | 'discard'>('main');
   const [selectedDeckForEdit, setSelectedDeckForEdit] = useState<string | null>(null);
   const [dealAllCards, setDealAllCards] = useState(false);
-
+  const [maxCardsPerPlayer, setMaxCardsPerPlayer] = useState(52);
+  const [maxPoints, setMaxPoints] = useState(0);
+  const [startingPoints, setStartingPoints] = useState(0);
+  const [lockPlayerDiscard, setLockPlayerDiscard] = useState(false);
   const navigateToDeckBuilder = (deckName?: string) => {
     setSelectedDeckForEdit(deckName || null);
     setCurrentView('deck');
@@ -126,24 +129,25 @@ export default function CreateCustomGamePage() {
   const createGame = async () => {
     const gameData = {
       name,
-      num_points: points,
+      num_points: maxPoints,
+      starting_num_points: startingPoints,
       num_dice: dice,
       num_players: players,
       starting_num_cards: startingCards,
-      starting_num_points: 0,
       can_discard: canDiscardCard,
       can_reveal: canRevealCard,
       can_draw_cards: canDrawCard,
       can_draw_points: canDrawPoint,
       turn_based: false,
       lock_turn: false,
-      max_cards_per_player: 0,
+      max_cards_per_player: maxCardsPerPlayer,
       game_rules: gameRules,
       redeal_cards: redealCards,
       tags: tagList.join(','),
       pass_cards: passCards,
       claim_turns: claimTurns,
-      deal_all_cards: dealAllCards
+      deal_all_cards: dealAllCards,
+      lock_player_discard: lockPlayerDiscard
     };
 
     const deckData: DeckData[] = decks.map((deck) => ({
@@ -464,12 +468,22 @@ export default function CreateCustomGamePage() {
               
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
-                  <Label htmlFor="points">Number of Points</Label>
+                  <Label htmlFor="maxPoints">Maximum Points</Label>
                   <Input
-                    id="points"
+                    id="maxPoints"
                     type="number"
-                    value={points}
-                    onChange={(e) => setPoints(parseInt(e.target.value))}
+                    value={maxPoints}
+                    onChange={(e) => setMaxPoints(parseInt(e.target.value))}
+                    min={0}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="startingPoints">Starting Points</Label>
+                  <Input
+                    id="startingPoints"
+                    type="number"
+                    value={startingPoints}
+                    onChange={(e) => setStartingPoints(parseInt(e.target.value))}
                     min={0}
                   />
                 </div>
@@ -481,16 +495,6 @@ export default function CreateCustomGamePage() {
                     value={dice}
                     onChange={(e) => setDice(parseInt(e.target.value))}
                     min={0}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="players">Number of Players</Label>
-                  <Input
-                    id="players"
-                    type="number"
-                    value={players}
-                    onChange={(e) => setPlayers(parseInt(e.target.value))}
-                    min={2}
                   />
                 </div>
               </div>
@@ -508,7 +512,12 @@ export default function CreateCustomGamePage() {
                   <Switch
                     id="dealAllCards"
                     checked={dealAllCards}
-                    onCheckedChange={setDealAllCards}
+                    onCheckedChange={(checked) => {
+                      setDealAllCards(checked);
+                      if (checked) {
+                        setStartingCards(0);
+                      }
+                    }}
                   />
                   <Label htmlFor="dealAllCards">Deal All Cards</Label>
                 </div>
@@ -528,8 +537,21 @@ export default function CreateCustomGamePage() {
                 <Input
                   id="startingCards"
                   type="number"
-                  value={startingCards}
+                  value={dealAllCards ? -1 : startingCards}
                   onChange={(e) => setStartingCards(parseInt(e.target.value))}
+                  min={1}
+                  disabled={dealAllCards}
+                  className={dealAllCards ? "opacity-50 cursor-not-allowed" : ""}
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="maxCardsPerPlayer">Maximum Cards Per Player</Label>
+                <Input
+                  id="maxCardsPerPlayer"
+                  type="number"
+                  value={maxCardsPerPlayer}
+                  onChange={(e) => setMaxCardsPerPlayer(parseInt(e.target.value))}
                   min={1}
                 />
               </div>
@@ -582,6 +604,14 @@ export default function CreateCustomGamePage() {
                     onCheckedChange={setClaimTurns}
                   />
                   <Label htmlFor="claimTurns">Claim Turns</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Switch
+                    id="lockPlayerDiscard"
+                    checked={lockPlayerDiscard}
+                    onCheckedChange={setLockPlayerDiscard}
+                  />
+                  <Label htmlFor="lockPlayerDiscard">Lock Player Discard</Label>
                 </div>
               </div>
             </div>

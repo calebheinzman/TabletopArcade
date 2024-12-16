@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/button';
 import { pushPlayerAction } from '@/lib/supabase/player';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import BoardDeckDialog from '@/components/board/board-deck-dialog';
+import BoardDiscardPile from '@/components/board/board-discard-pile';
 
 const BoardContent: React.FC = () => {
   const gameContext = useGame();
@@ -67,16 +68,11 @@ const BoardContent: React.FC = () => {
     }
   };
 
-  const handleDiscardCard = async (playerId: number) => {
-    const playerCard = gameContext.sessionCards.find(
-      card => card.playerid === playerId
-    );
-    if (playerCard) {
-      try {
-        await gameContext.discardCard(playerId, playerCard.sessioncardid);
-      } catch (error) {
-        console.error('Error discarding card:', error);
-      }
+  const handleDiscardCard = async (playerId: number, sessionCardId: number, pileId?: number) => {
+    try {
+      await gameContext.discardCard(playerId, sessionCardId, pileId);
+    } catch (error) {
+      console.error('Error discarding card:', error);
     }
   };
 
@@ -128,7 +124,7 @@ const BoardContent: React.FC = () => {
             players={sortedPlayers}
             onDrawCard={handleDrawCard}
             onGivePoint={handleDrawPoint}
-            onDiscardCard={handleDiscardCard}
+            onDiscardCard={(playerId) => handleDiscardCard(playerId, 0)}
             onShuffle={handleShuffle}
             onReset={handleReset}
           />
@@ -147,12 +143,35 @@ const BoardContent: React.FC = () => {
 
             {/* Add a padding container around the game content */}
             <div className="p-24 py-32">
-              {/* Central Deck Display */}
-              <BoardDeckDialog
-                deckCount={deckCount}
-                players={sortedPlayers}
-                onDrawCard={handleDrawCard}
-              />
+              {/* Central Deck Area */}
+              <div className="flex items-center justify-center gap-8">
+                <div className="flex items-center space-x-8">
+                  <BoardDeckDialog
+                    deckCount={deckCount}
+                    players={sortedPlayers}
+                    onDrawCard={handleDrawCard}
+                  />
+                  
+                  {/* Discard Piles */}
+                  <div className="flex space-x-4 items-center">
+                    {gameContext.discardPiles
+                      .filter(pile => !pile.is_player)
+                      .map((pile) => {
+                        const cardsInPile = gameContext.sessionCards.filter(
+                          card => card.cardPosition === -pile.pile_id
+                        ).length;
+                        
+                        return (
+                          <BoardDiscardPile
+                            key={pile.pile_id}
+                            pile={pile}
+                            variant="board"
+                          />
+                        );
+                      })}
+                  </div>
+                </div>
+              </div>
 
               {/* Players */}
               <BoardPlayerHands
