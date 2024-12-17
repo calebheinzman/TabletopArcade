@@ -66,7 +66,7 @@ export interface GameContextType {
   drawCard: (playerId: number) => Promise<void>;
   drawPoints: (playerId: number, quantity: number) => Promise<void>;
   givePoints: (fromPlayerId: number, toUsername: string, quantity: number) => Promise<void>;
-  discardCard: (playerId: number, sessionCardId: number, pileId?: number) => Promise<void>;
+  discardCard: (playerId: number, sessionCardId: number, pileId?: number, targetPlayerId?: number) => Promise<void>;
   shuffleDeck: () => Promise<void>;
   revealCard: (playerId: number, sessionCardId: number) => Promise<void>;
   updateSessionCards: (updates: {
@@ -93,7 +93,7 @@ const initialGameContext: GameContextType = {
   drawCard: async (playerId: number) => {},
   drawPoints: async (playerId: number, quantity: number) => {},
   givePoints: async (fromPlayerId: number, toUsername: string, quantity: number) => {},
-  discardCard: async (playerId: number, sessionCardId: number, pileId?: number) => {},
+  discardCard: async (playerId: number, sessionCardId: number, pileId?: number, targetPlayerId?: number) => {},
   shuffleDeck: async () => {},
   revealCard: async (playerId: number, sessionCardId: number) => {},
   discardPiles: [],
@@ -417,24 +417,41 @@ export function GameProvider({
     }
   };
 
-  const discardCard = async (playerId: number, sessionCardId: number, pileId?: number) => {
+  const discardCard = async (playerId: number, sessionCardId: number, pileId?: number, targetPlayerId?: number) => {
     try {
       if (pileId !== undefined) {
         const discardPile = gameContext.discardPiles.find(p => p.pile_id === pileId);
-        
-        // Get all cards currently in this pile
-        const cardsInPile = gameContext.sessionCards.filter(
-          card => card.pile_id === pileId
-        );
+        if (!discardPile) throw new Error('Discard pile not found');
 
-        // Update positions of existing cards in pile (increment their positions)
-        const updates = cardsInPile.map(card => ({
+        // Get all cards currently in this pile
+        const cardsInPile = gameContext.sessionCards.filter(card => {
+          if (discardPile.is_player) {
+            // For player piles, match both pile_id and playerid
+            return card.pile_id === pileId && card.playerid === targetPlayerId;
+          } else {
+            // For board piles, just match pile_id
+            return card.pile_id === pileId;
+          }
+        });
+
+        // Determine the playerid value for the updates
+        const newPlayerId: number | null = discardPile.is_player ? (targetPlayerId ?? null) : null;
+
+        // Update positions of existing cards in pile
+        const updates: {
+          sessionid: number;
+          sessioncardid: number;
+          cardPosition: number;
+          playerid: number | null;
+          pile_id?: number | null;
+          isRevealed?: boolean;
+        }[] = cardsInPile.map(card => ({
           sessionid: gameContext.sessionid,
           sessioncardid: card.sessioncardid,
           cardPosition: card.cardPosition + 1,
-          playerid: null,
+          playerid: newPlayerId,
           pile_id: pileId,
-          isRevealed: discardPile?.is_face_up ?? false
+          isRevealed: discardPile.is_face_up
         }));
 
         // Add the new card at position 1
@@ -442,9 +459,9 @@ export function GameProvider({
           sessionid: gameContext.sessionid,
           sessioncardid: sessionCardId,
           cardPosition: 1,
-          playerid: null,
+          playerid: newPlayerId,
           pile_id: pileId,
-          isRevealed: discardPile?.is_face_up ?? false
+          isRevealed: discardPile.is_face_up
         });
         
         await updateSessionCards(updates);

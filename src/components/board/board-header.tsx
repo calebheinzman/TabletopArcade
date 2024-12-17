@@ -133,6 +133,92 @@ const BoardHeader: React.FC<BoardHeaderProps> = ({
     }
   };
 
+  const handleRedealCards = async () => {
+    if (!gameContext) return;
+
+    const existingCards = [...gameContext.sessionCards];
+
+    // Sort cards by drop_order if deal_all_cards is true
+    if (gameContext.gameData.deal_all_cards) {
+      existingCards.sort((a, b) => {
+        const cardA = gameContext.cards.flat().find(c => c.cardid === a.cardid);
+        const cardB = gameContext.cards.flat().find(c => c.cardid === b.cardid);
+        return (cardB?.drop_order || 0) - (cardA?.drop_order || 0);
+      });
+    }
+
+    // Shuffle the array of existing cards
+    for (let i = existingCards.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [existingCards[i], existingCards[j]] = [existingCards[j], existingCards[i]];
+    }
+
+    const updates: {
+      sessionid: number;
+      sessioncardid: number;
+      cardPosition: number;
+      playerid: number | null;
+      pile_id: null;
+      isRevealed: boolean;
+    }[] = [];
+
+    let currentCardIndex = 0;
+
+    if (gameContext.gameData.deal_all_cards) {
+      // Calculate cards per player (rounded down)
+      const cardsPerPlayer = Math.floor(existingCards.length / gameContext.sessionPlayers.length);
+      
+      // Deal cards to each player
+      for (const player of gameContext.sessionPlayers) {
+        for (let i = 0; i < cardsPerPlayer; i++) {
+          if (currentCardIndex < existingCards.length) {
+            updates.push({
+              sessionid: gameContext.sessionid,
+              sessioncardid: existingCards[currentCardIndex].sessioncardid,
+              cardPosition: 0,
+              playerid: player.playerid,
+              pile_id: null,
+              isRevealed: false
+            });
+            currentCardIndex++;
+          }
+        }
+      }
+    } else if (gameContext.gameData.starting_num_cards > 0) {
+      // Deal specific number of cards
+      for (const player of gameContext.sessionPlayers) {
+        for (let i = 0; i < gameContext.gameData.starting_num_cards; i++) {
+          if (currentCardIndex < existingCards.length) {
+            updates.push({
+              sessionid: gameContext.sessionid,
+              sessioncardid: existingCards[currentCardIndex].sessioncardid,
+              cardPosition: 0,
+              playerid: player.playerid,
+              pile_id: null,
+              isRevealed: false
+            });
+            currentCardIndex++;
+          }
+        }
+      }
+    }
+
+    // Update remaining cards as deck cards
+    for (let i = currentCardIndex; i < existingCards.length; i++) {
+      updates.push({
+        sessionid: gameContext.sessionid,
+        sessioncardid: existingCards[i].sessioncardid,
+        cardPosition: i - currentCardIndex + 1,
+        playerid: null,
+        pile_id: null,
+        isRevealed: false
+      });
+    }
+
+    // Update all cards in a single operation
+    await gameContext.updateSessionCards(updates);
+  };
+
   return (
     <div className="flex flex-col sm:flex-row justify-between items-center mb-4 gap-4">
       <div className="flex gap-2">
@@ -146,6 +232,14 @@ const BoardHeader: React.FC<BoardHeaderProps> = ({
           className="self-start"
         >
           Reset Game
+        </Button>
+        <Button
+          onClick={handleRedealCards}
+          size="sm"
+          variant="secondary"
+          className="self-start"
+        >
+          Redeal Cards
         </Button>
       </div>
       <div className="space-x-2 self-end">

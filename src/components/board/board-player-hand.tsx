@@ -21,6 +21,7 @@ import { TbCards, TbCoin, TbPlugConnectedX } from 'react-icons/tb';
 import BoardDiscardPile from '@/components/board/board-discard-pile';
 import { updateSessionCards } from '@/lib/supabase/card';
 import { discardAndShuffleCard } from '@/lib/supabase/card';
+import { pushPlayerAction } from '@/lib/supabase/player';
 
 interface BoardPlayerHandProps {
   player: SessionPlayer;
@@ -121,12 +122,6 @@ const BoardPlayerHand: FC<BoardPlayerHandProps> = ({
         return;
       }
 
-      // Only check session.locked_player_discard if game setting is enabled
-      if (gameContext.gameData.lock_player_discard && gameContext.session.locked_player_discard) {
-        console.log('Player discarding is currently locked');
-        return;
-      }
-
       // Get all cards in the target pile (if it exists)
       const cardsInPile = gameContext.sessionCards.filter(card => {
         if (pileId === undefined) {
@@ -152,25 +147,18 @@ const BoardPlayerHand: FC<BoardPlayerHandProps> = ({
         // Determine the playerid value
         const newPlayerId: number | null = discardPile.is_player ? (targetPlayerId ?? null) : null;
 
-        // Update positions of existing cards in pile
-        const updates = cardsInPile.map(card => ({
-          sessionid: gameContext.sessionid,
-          sessioncardid: card.sessioncardid,
-          cardPosition: card.cardPosition + 1,
-          playerid: newPlayerId,
-          pile_id: pileId,
-          isRevealed: discardPile.is_face_up
-        }));
+        // Get the highest position in the pile
+        const maxPosition = Math.max(...cardsInPile.map(card => card.cardPosition), 0);
 
-        // Add the new card at position 1
-        updates.push({
+        // Add the new card at the highest position + 1
+        const updates = [{
           sessionid: gameContext.sessionid,
           sessioncardid: cardId,
-          cardPosition: 1,
+          cardPosition: maxPosition + 1,
           playerid: newPlayerId,
           pile_id: pileId,
           isRevealed: discardPile.is_face_up
-        });
+        }];
 
         await updateSessionCards(updates);
       } else {
@@ -181,6 +169,12 @@ const BoardPlayerHand: FC<BoardPlayerHandProps> = ({
           gameContext.sessionCards
         );
       }
+
+      await pushPlayerAction(
+        gameContext.sessionid,
+        playerId,
+        `Discarded card`
+      );
     } catch (error) {
       console.error('Error discarding card:', error);
     }
@@ -311,13 +305,13 @@ const BoardPlayerHand: FC<BoardPlayerHandProps> = ({
                               <h4 className="text-sm font-semibold">Discard to:</h4>
                               {gameContext.discardPiles.map((pile) => {
                                 if (pile.is_player) {
-                                  return gameContext.sessionPlayers.map(player => (
-                                    <DialogClose key={`${pile.pile_id}-${player.playerid}`} asChild>
+                                  return gameContext.sessionPlayers.map(sessionPlayer => (
+                                    <DialogClose key={`${pile.pile_id}-${sessionPlayer.playerid}`} asChild>
                                       <Button
                                         variant="outline"
-                                        onClick={() => handleDiscard(player.playerid, card.sessioncardid, pile.pile_id, player.playerid)}
+                                        onClick={() => handleDiscard(player.playerid, card.sessioncardid, pile.pile_id, sessionPlayer.playerid)}
                                       >
-                                        {player.playerid === player.playerid ? 'Your Pile' : `${player.username}'s Pile`}
+                                        {`${sessionPlayer.username}'s Discard`}
                                       </Button>
                                     </DialogClose>
                                   ));
