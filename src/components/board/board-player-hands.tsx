@@ -21,9 +21,9 @@ const BoardPlayerHands: FC<BoardPlayerHandsProps> = ({
   const { sessionCards } = useGame();
 
   return (
-    <>
+    <div className="absolute inset-0 m-16">
       {players.map((player) => (
-        <div key={`player-${player.playerid}`} className="my-4">
+        <div key={`player-${player.playerid}`}>
           <BoardPlayerHand
             player={player}
             index={player.player_order ? player.player_order - 1 : 0}
@@ -33,7 +33,7 @@ const BoardPlayerHands: FC<BoardPlayerHandsProps> = ({
           />
         </div>
       ))}
-    </>
+    </div>
   );
 };
 

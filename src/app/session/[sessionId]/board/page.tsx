@@ -142,9 +142,9 @@ const BoardContent: React.FC = () => {
             </Button>
 
             {/* Add a padding container around the game content */}
-            <div className="p-24 py-32">
-              {/* Central Deck Area */}
-              <div className="flex items-center justify-center gap-8">
+            <div className="p-16 py-24">
+              {/* Central Deck Area - add more top margin */}
+              <div className="flex items-center justify-center gap-8 mb-8 mt-16">
                 <div className="flex items-center space-x-8">
                   <BoardDeckDialog
                     deckCount={deckCount}
@@ -157,10 +157,6 @@ const BoardContent: React.FC = () => {
                     {gameContext.discardPiles
                       .filter(pile => !pile.is_player)
                       .map((pile) => {
-                        const cardsInPile = gameContext.sessionCards.filter(
-                          card => card.cardPosition === -pile.pile_id
-                        ).length;
-                        
                         return (
                           <BoardDiscardPile
                             key={pile.pile_id}

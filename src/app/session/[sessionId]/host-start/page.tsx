@@ -27,25 +27,51 @@ export default function HostStartPage() {
 
   const startGame = async () => {
     try {
-      // Use initializeSession instead of local generateDeck
       const deck = initializeSession(gameContext);
       
-      // Assign starting cards to players
-      const totalStartingCards = gameContext.gameData.starting_num_cards * players.length;
-      deck.forEach((card, index) => {
-        if (index < totalStartingCards) {
-          const player = players[index % players.length];
-          card.playerid = player.playerid;
-          card.cardPosition = 0;
-        } else {
-          card.cardPosition = index - totalStartingCards + 1;
-          card.playerid = 0;
-        }
-      });
+      if (gameContext.gameData.deal_all_cards) {
+        // Sort cards by drop_order (highest first)
+        deck.sort((a, b) => {
+          const cardA = gameContext.cards.flat().find(c => c.cardid === a.cardid);
+          const cardB = gameContext.cards.flat().find(c => c.cardid === b.cardid);
+          return (cardB?.drop_order || 0) - (cardA?.drop_order || 0);
+        });
+
+        // Calculate cards per player (rounded down)
+        const cardsPerPlayer = Math.floor(deck.length / players.length);
+        
+        deck.forEach((card, index) => {
+          if (index < cardsPerPlayer * players.length) {
+            const playerIndex = Math.floor(index / cardsPerPlayer);
+            card.playerid = players[playerIndex].playerid;
+            card.cardPosition = 0;
+          } else {
+            card.cardPosition = index - (cardsPerPlayer * players.length) + 1;
+            card.playerid = 0;
+          }
+        });
+      } else {
+        // Original logic for dealing specific number of cards
+        const totalStartingCards = gameContext.gameData.starting_num_cards * players.length;
+        deck.forEach((card, index) => {
+          if (index < totalStartingCards) {
+            const player = players[index % players.length];
+            card.playerid = player.playerid;
+            card.cardPosition = 0;
+          } else {
+            card.cardPosition = index - totalStartingCards + 1;
+            card.playerid = 0;
+          }
+        });
+      }
 
       // Create session with the generated deck
       await createSession(gameContext.sessionid, deck);
-      await setFirstPlayerTurn(parseInt(sessionId as string));
+
+      // Only set first player turn if claim_turn is false
+      if (!gameContext.gameData.claim_turns) {
+        await setFirstPlayerTurn(parseInt(sessionId as string));
+      }
       
       const { error: updateError } = await supabase
         .from('session')

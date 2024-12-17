@@ -13,6 +13,8 @@ import {
 } from '@/components/ui/dialog';
 import { FC } from 'react';
 import { useGame } from '@/components/GameContext';
+import { claimTurn } from '@/lib/supabase/player';
+import { pushPlayerAction } from '@/lib/supabase/player';
 
 interface BoardPlayerActionsDialogProps {
   isOpen: boolean;
@@ -47,6 +49,21 @@ const BoardPlayerActionsDialog: FC<BoardPlayerActionsDialogProps> = ({
   ).length;
   const deckCount = gameContext.sessionCards.filter(card => card.cardPosition > 0).length;
   const atMaxCards = playerCardCount >= (gameContext.gameData.max_cards_per_player || 0);
+  
+  const canAssignTurn = isHost && gameContext.gameData.claim_turns;
+  
+  const handleAssignTurn = async () => {
+    try {
+      await claimTurn(gameContext.sessionid, playerId);
+      await pushPlayerAction(
+        gameContext.sessionid,
+        playerId,
+        `Turn assigned to ${playerName} by host`
+      );
+    } catch (error) {
+      console.error('Error assigning turn:', error);
+    }
+  };
 
   return (
     <Dialog open={isOpen} onOpenChange={isOpen ? onClose : undefined}>
@@ -98,15 +115,27 @@ const BoardPlayerActionsDialog: FC<BoardPlayerActionsDialogProps> = ({
           </div>
         </div>
         <DialogFooter className="flex justify-between">
-          {isHost && (
-            <Button 
-              variant="default"
-              onClick={() => onEndTurn(playerId)}
-              disabled={!is_turn}
-            >
-              End Player Turn
-            </Button>
-          )}
+          <div className="flex gap-2">
+            {isHost && (
+              <>
+                <Button 
+                  variant="default"
+                  onClick={() => onEndTurn(playerId)}
+                  disabled={!is_turn}
+                >
+                  End Player Turn
+                </Button>
+                {canAssignTurn && (
+                  <Button
+                    variant="secondary"
+                    onClick={handleAssignTurn}
+                  >
+                    Assign Turn
+                  </Button>
+                )}
+              </>
+            )}
+          </div>
           <Button variant="secondary" onClick={onClose}>
             Close
           </Button>

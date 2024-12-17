@@ -31,6 +31,7 @@ export interface CustomGameData {
   claim_turns: boolean;
   deal_all_cards: boolean;
   lock_player_discard: boolean;
+  can_pass_points: boolean;
 }
 
 export interface DeckData {

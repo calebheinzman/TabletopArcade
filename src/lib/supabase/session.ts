@@ -276,8 +276,16 @@ export async function updateSessionPoints(sessionId: number, newPointCount: numb
 
 export async function resetGame(gameContext: GameContextType, generateNewDeck: () => SessionCard[]): Promise<void> {
   try {
-    // Get all existing session cards
     const existingCards = [...gameContext.sessionCards];
+
+    // Sort cards by drop_order if deal_all_cards is true
+    if (gameContext.gameData.deal_all_cards) {
+      existingCards.sort((a, b) => {
+        const cardA = gameContext.cards.flat().find(c => c.cardid === a.cardid);
+        const cardB = gameContext.cards.flat().find(c => c.cardid === b.cardid);
+        return (cardB?.drop_order || 0) - (cardA?.drop_order || 0);
+      });
+    }
 
     // Shuffle the array of existing cards
     for (let i = existingCards.length - 1; i > 0; i--) {
@@ -285,7 +293,6 @@ export async function resetGame(gameContext: GameContextType, generateNewDeck: (
       [existingCards[i], existingCards[j]] = [existingCards[j], existingCards[i]];
     }
 
-    // Prepare updates for all cards
     const updates: {
       sessionid: number;
       sessioncardid: number;
@@ -297,9 +304,28 @@ export async function resetGame(gameContext: GameContextType, generateNewDeck: (
 
     let currentCardIndex = 0;
 
-    // If starting_num_cards > 0, deal cards to players
-    if (gameContext.gameData.starting_num_cards > 0) {
+    if (gameContext.gameData.deal_all_cards) {
+      // Calculate cards per player (rounded down)
+      const cardsPerPlayer = Math.floor(existingCards.length / gameContext.sessionPlayers.length);
+      
       // Deal cards to each player
+      for (const player of gameContext.sessionPlayers) {
+        for (let i = 0; i < cardsPerPlayer; i++) {
+          if (currentCardIndex < existingCards.length) {
+            updates.push({
+              sessionid: gameContext.sessionid,
+              sessioncardid: existingCards[currentCardIndex].sessioncardid,
+              cardPosition: 0,
+              playerid: player.playerid,
+              pile_id: null,
+              isRevealed: false
+            });
+            currentCardIndex++;
+          }
+        }
+      }
+    } else if (gameContext.gameData.starting_num_cards > 0) {
+      // Original logic for dealing specific number of cards
       for (const player of gameContext.sessionPlayers) {
         for (let i = 0; i < gameContext.gameData.starting_num_cards; i++) {
           if (currentCardIndex < existingCards.length) {
@@ -332,12 +358,12 @@ export async function resetGame(gameContext: GameContextType, generateNewDeck: (
     // Update all cards in a single operation
     await updateSessionCards(updates);
 
-    // Reset player points and turns
+    // Reset player points and turns - modified to handle claim_turn
     const { error: playerError } = await supabase
       .from('player')
       .update({ 
         num_points: gameContext.gameData.starting_num_points || 0,
-        is_turn: false 
+        is_turn: gameContext.gameData.claim_turns ? false : false // All players start with is_turn false if claim_turn is true
       })
       .eq('sessionid', gameContext.sessionid);
 
@@ -353,7 +379,10 @@ export async function resetGame(gameContext: GameContextType, generateNewDeck: (
 
     if (sessionError) throw sessionError;
 
-    await setFirstPlayerTurn(gameContext.sessionid);
+    // Only set first player turn if claim_turn is false
+    if (!gameContext.gameData.claim_turns) {
+      await setFirstPlayerTurn(gameContext.sessionid);
+    }
 
   } catch (error) {
     console.error('Error resetting game:', error);

@@ -16,6 +16,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { useGame } from '@/components/GameContext';
 import { resetGame } from '@/lib/supabase/session';
 import { supabase } from '@/lib/supabase';
+import { Input } from '../ui/input';
 
 interface BoardHeaderProps {
   deckCount: number;
@@ -38,7 +39,8 @@ const BoardHeader: React.FC<BoardHeaderProps> = ({
 }) => {
   const router = useRouter();
   const gameContext = useGame();
-  const [numPointsToGive, setNumPointsToGive] = useState(1);
+  const [numPointsToGive, setNumPointsToGive] = useState<number>(1);
+  const [customPoints, setCustomPoints] = useState<string>('');
 
   const getPlayerCardCount = (playerId: number) => {
     return gameContext?.sessionCards.filter(card => card.playerid === playerId).length || 0;
@@ -120,6 +122,17 @@ const BoardHeader: React.FC<BoardHeaderProps> = ({
     }
   };
 
+  const handleCustomPointsChange = (value: string) => {
+    // Only allow positive numbers
+    if (/^\d*$/.test(value)) {
+      setCustomPoints(value);
+      const numValue = parseInt(value);
+      if (!isNaN(numValue) && numValue > 0) {
+        setNumPointsToGive(numValue);
+      }
+    }
+  };
+
   return (
     <div className="flex flex-col sm:flex-row justify-between items-center mb-4 gap-4">
       <div className="flex gap-2">
@@ -136,95 +149,114 @@ const BoardHeader: React.FC<BoardHeaderProps> = ({
         </Button>
       </div>
       <div className="space-x-2 self-end">
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button size="sm" disabled={deckCount === 0}>
-              Draw Card ({deckCount})
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-56">
-            <div className="grid gap-2">
-              {players.map((player) => (
-                <Button
-                  key={player.playerid}
-                  onClick={() => onDrawCard(player.playerid)}
-                  size="sm"
-                  disabled={isPlayerAtMaxCards(player.playerid) || deckCount === 0}
-                  className={
-                    (isPlayerAtMaxCards(player.playerid) || deckCount === 0) 
-                      ? "opacity-50" 
-                      : ""
-                  }
-                >
-                  {player.username} ({getPlayerCardCount(player.playerid)}/{gameContext?.gameData.max_cards_per_player})
-                </Button>
-              ))}
-            </div>
-          </PopoverContent>
-        </Popover>
-
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button size="sm">Give Points</Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-56">
-            <div className="flex flex-col">
-              <span className="mb-2">Select Number of Points</span>
-              <div className="flex space-x-2 mb-2">
-                {[1, 2, 3].map((num) => (
-                  <Button
-                    key={num}
-                    size="sm"
-                    variant={numPointsToGive === num ? 'default' : 'outline'}
-                    onClick={() => setNumPointsToGive(num)}
-                  >
-                    {num}
-                  </Button>
-                ))}
-              </div>
+        {gameContext.gameData.can_draw_cards && (
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button size="sm" disabled={deckCount === 0}>
+                Draw Card ({deckCount})
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-56">
               <div className="grid gap-2">
                 {players.map((player) => (
                   <Button
                     key={player.playerid}
-                    onClick={() => onGivePoint(player.playerid, numPointsToGive)}
+                    onClick={() => onDrawCard(player.playerid)}
                     size="sm"
+                    disabled={isPlayerAtMaxCards(player.playerid) || deckCount === 0}
+                    className={
+                      (isPlayerAtMaxCards(player.playerid) || deckCount === 0) 
+                        ? "opacity-50" 
+                        : ""
+                    }
+                  >
+                    {player.username} ({getPlayerCardCount(player.playerid)}/{gameContext?.gameData.max_cards_per_player})
+                  </Button>
+                ))}
+              </div>
+            </PopoverContent>
+          </Popover>
+        )}
+
+        {gameContext.gameData.can_draw_points && (
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button size="sm">Give Points</Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-56">
+              <div className="flex flex-col">
+                <span className="mb-2">Select Number of Points</span>
+                <div className="flex space-x-2 mb-2">
+                  {[1, 2, 3].map((num) => (
+                    <Button
+                      key={num}
+                      size="sm"
+                      variant={numPointsToGive === num ? 'default' : 'outline'}
+                      onClick={() => {
+                        setNumPointsToGive(num);
+                        setCustomPoints('');
+                      }}
+                    >
+                      {num}
+                    </Button>
+                  ))}
+                </div>
+                <div className="flex space-x-2 mb-2">
+                  <Input
+                    type="text"
+                    placeholder="Custom amount"
+                    value={customPoints}
+                    onChange={(e) => handleCustomPointsChange(e.target.value)}
+                    className="w-full"
+                  />
+                </div>
+                <div className="grid gap-2">
+                  {players.map((player) => (
+                    <Button
+                      key={player.playerid}
+                      onClick={() => {
+                        onGivePoint(player.playerid, numPointsToGive);
+                        setCustomPoints('');
+                        setNumPointsToGive(1);
+                      }}
+                      size="sm"
+                    >
+                      {player.username}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+            </PopoverContent>
+          </Popover>
+        )}
+
+        {gameContext.gameData.can_discard && (
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button size="sm">Discard Card</Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-56">
+              <div className="grid gap-2">
+                {players.map((player) => (
+                  <Button
+                    key={player.playerid}
+                    onClick={() => handleDiscard(player.playerid)}
+                    size="sm"
+                    disabled={getPlayerCardCount(player.playerid) === 0}
                   >
                     {player.username}
                   </Button>
                 ))}
               </div>
-            </div>
-          </PopoverContent>
-        </Popover>
+            </PopoverContent>
+          </Popover>
+        )}
 
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button 
-              size="sm"
-              disabled={!gameContext.gameData.can_discard}
-            >
-              Discard Card
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-56">
-            <div className="grid gap-2">
-              {players.map((player) => (
-                <Button
-                  key={player.playerid}
-                  onClick={() => handleDiscard(player.playerid)}
-                  size="sm"
-                  disabled={getPlayerCardCount(player.playerid) === 0}
-                >
-                  {player.username}
-                </Button>
-              ))}
-            </div>
-          </PopoverContent>
-        </Popover>
-
-        <Button size="sm" onClick={handleShuffle}>
-          Shuffle Deck
-        </Button>
+        {gameContext.gameData.redeal_cards && (
+          <Button size="sm" onClick={handleShuffle}>
+            Shuffle Deck
+          </Button>
+        )}
 
         {gameContext.gameData.lock_player_discard && (
           <Button 

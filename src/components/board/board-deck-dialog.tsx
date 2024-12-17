@@ -33,14 +33,17 @@ const BoardDeckDialog: FC<BoardDeckDialogProps> = ({
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <div className="cursor-pointer relative w-16 h-24 sm:w-18 sm:h-26 md:w-20 md:h-28">
+        <Button
+          variant="ghost"
+          className="cursor-pointer relative w-16 h-24 sm:w-18 sm:h-26 md:w-20 md:h-28 p-0"
+        >
           <div className="absolute -bottom-2 -right-2 w-full h-full bg-gray-50 rounded-lg border border-gray-300" />
           <div className="absolute -bottom-1 -right-1 w-full h-full bg-gray-100 rounded-lg border border-gray-300" />
           <div className="absolute top-0 left-0 w-full h-full bg-white border border-gray-300 rounded-lg shadow-lg flex items-center justify-center text-gray-700 text-base sm:text-lg font-semibold">
             {actualDeckCount}
           </div>
-          <div className="absolute top-0 left-0 w-full h-full bg-transparent rounded-lg hover:shadow-xl hover:scale-100 transition-all" />
-        </div>
+          <div className="absolute top-0 left-0 w-full h-full bg-transparent rounded-lg hover:shadow-xl hover:scale-100 transition-all z-10" />
+        </Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>

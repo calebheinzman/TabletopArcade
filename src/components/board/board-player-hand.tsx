@@ -14,10 +14,13 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
+  DialogDescription,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { TbCards, TbCoin, TbPlugConnectedX } from 'react-icons/tb';
 import BoardDiscardPile from '@/components/board/board-discard-pile';
+import { updateSessionCards } from '@/lib/supabase/card';
+import { discardAndShuffleCard } from '@/lib/supabase/card';
 
 interface BoardPlayerHandProps {
   player: SessionPlayer;
@@ -70,6 +73,13 @@ const BoardPlayerHand: FC<BoardPlayerHandProps> = ({
   const handleReveal = async (sessionCardId: number) => {
     try {
       await gameContext.revealCard(player.playerid, sessionCardId);
+      if (isOverflowing) {
+        setRevealedCards(prev => 
+          prev.includes(sessionCardId) 
+            ? prev.filter(id => id !== sessionCardId)
+            : [...prev, sessionCardId]
+        );
+      }
     } catch (error) {
       console.error('Error revealing card:', error);
     }
@@ -83,9 +93,12 @@ const BoardPlayerHand: FC<BoardPlayerHandProps> = ({
     setHoveredCardIndex(null);
   };
 
-  // Determine spacing
-  const overlapping = playerCards.length > 3;
-  const baseSpacing = overlapping ? 20 : 56;
+  // Modify spacing logic
+  const isOverflowing = playerCards.length > 8;
+  const baseSpacing = isOverflowing ? 8 : (playerCards.length > 3 ? 20 : 56);
+
+  // Add new state for revealed cards when overflowing
+  const [revealedCards, setRevealedCards] = useState<number[]>([]);
 
   // Determine z-index based on hover
   const getZIndex = (cardIndex: number): number => {
@@ -101,6 +114,78 @@ const BoardPlayerHand: FC<BoardPlayerHandProps> = ({
   // Get player's discard piles
   const playerDiscardPiles = gameContext.discardPiles.filter(pile => pile.is_player);
 
+  const handleDiscard = async (playerId: number, cardId: number, pileId?: number, targetPlayerId?: number) => {
+    try {
+      if (!gameContext.gameData.can_discard) {
+        console.log('Discarding is not allowed in this game');
+        return;
+      }
+
+      // Only check session.locked_player_discard if game setting is enabled
+      if (gameContext.gameData.lock_player_discard && gameContext.session.locked_player_discard) {
+        console.log('Player discarding is currently locked');
+        return;
+      }
+
+      // Get all cards in the target pile (if it exists)
+      const cardsInPile = gameContext.sessionCards.filter(card => {
+        if (pileId === undefined) {
+          return false; // Deck discard
+        }
+        
+        const pile = gameContext.discardPiles.find(p => p.pile_id === pileId);
+        if (!pile) return false;
+
+        if (pile.is_player) {
+          // For player piles, match both pile_id and playerid
+          return card.pile_id === pileId && card.playerid === targetPlayerId;
+        } else {
+          // For board piles, just match pile_id
+          return card.pile_id === pileId;
+        }
+      });
+
+      if (pileId !== undefined) {
+        const discardPile = gameContext.discardPiles.find(p => p.pile_id === pileId);
+        if (!discardPile) throw new Error('Discard pile not found');
+
+        // Determine the playerid value
+        const newPlayerId: number | null = discardPile.is_player ? (targetPlayerId ?? null) : null;
+
+        // Update positions of existing cards in pile
+        const updates = cardsInPile.map(card => ({
+          sessionid: gameContext.sessionid,
+          sessioncardid: card.sessioncardid,
+          cardPosition: card.cardPosition + 1,
+          playerid: newPlayerId,
+          pile_id: pileId,
+          isRevealed: discardPile.is_face_up
+        }));
+
+        // Add the new card at position 1
+        updates.push({
+          sessionid: gameContext.sessionid,
+          sessioncardid: cardId,
+          cardPosition: 1,
+          playerid: newPlayerId,
+          pile_id: pileId,
+          isRevealed: discardPile.is_face_up
+        });
+
+        await updateSessionCards(updates);
+      } else {
+        // Original shuffle behavior for deck
+        await discardAndShuffleCard(
+          gameContext.sessionid,
+          cardId,
+          gameContext.sessionCards
+        );
+      }
+    } catch (error) {
+      console.error('Error discarding card:', error);
+    }
+  };
+
   return (
     <div
       className="flex flex-col items-center text-center absolute transform -translate-x-1/2 -translate-y-1/2"
@@ -109,7 +194,7 @@ const BoardPlayerHand: FC<BoardPlayerHandProps> = ({
       <div
         onClick={() => onSelect(player.playerid)}
         className={`
-          mb-2 bg-white rounded-lg shadow-md p-2 cursor-pointer
+          mb-1 bg-white rounded-lg shadow-md p-1 cursor-pointer
           ${player.is_turn ? 'bg-yellow-50' : ''} 
           hover:bg-yellow-100
         `}
@@ -133,12 +218,23 @@ const BoardPlayerHand: FC<BoardPlayerHandProps> = ({
       </div>
 
       {playerCards.length > 0 && (
-        <div className="relative flex justify-center items-center mt-2 mb-4">
+        <div className="relative flex flex-col justify-center items-center mt-1 mb-2">
+          {/* Main hand - adjust positioning based on player location */}
           <div
             className="relative"
             style={{
-              width: `${overlapping ? (playerCards.length - 1) * 20 + 56 : playerCards.length * 56}px`,
-              height: '80px'
+              width: `${isOverflowing 
+                ? (playerCards.length - 1) * 8 + 48 + 80 // 80px total padding
+                : playerCards.length * baseSpacing}px`,
+              height: '80px',
+              left: isOverflowing 
+                ? position.left && position.left.toString().includes('-') 
+                  ? '-80px'  // For left side of board
+                  : position.top === '50%' 
+                    ? '0px'   // For top/bottom of board
+                    : '80px'  // For right side of board
+                : '0px',
+              transform: 'none'
             }}
           >
             {playerCards.map((card, cardIndex) => {
@@ -161,7 +257,7 @@ const BoardPlayerHand: FC<BoardPlayerHandProps> = ({
               }
 
               const isTopCard = cardIndex === playerCards.length - 1;
-              const showOnEdge = overlapping && card.isRevealed && !isTopCard;
+              const showOnEdge = isOverflowing && card.isRevealed && !isTopCard;
 
               return (
                 <Dialog key={`card-${card.sessioncardid}-${card.cardid}`}>
@@ -201,24 +297,88 @@ const BoardPlayerHand: FC<BoardPlayerHandProps> = ({
                     <DialogHeader>
                       <DialogTitle>{card.name}</DialogTitle>
                     </DialogHeader>
-                    <div className="flex justify-center mt-4">
+                    <div className="flex flex-col gap-4 mt-4">
                       <DialogClose asChild>
                         <Button onClick={() => handleReveal(card.sessioncardid)}>
                           {card.isRevealed ? 'Hide Card' : 'Reveal Card'}
                         </Button>
                       </DialogClose>
+
+                      {gameContext.gameData.can_discard && (
+                        <div className="flex flex-col gap-2">
+                          {gameContext.discardPiles.length > 0 ? (
+                            <>
+                              <h4 className="text-sm font-semibold">Discard to:</h4>
+                              {gameContext.discardPiles.map((pile) => {
+                                if (pile.is_player) {
+                                  return gameContext.sessionPlayers.map(player => (
+                                    <DialogClose key={`${pile.pile_id}-${player.playerid}`} asChild>
+                                      <Button
+                                        variant="outline"
+                                        onClick={() => handleDiscard(player.playerid, card.sessioncardid, pile.pile_id, player.playerid)}
+                                      >
+                                        {player.playerid === player.playerid ? 'Your Pile' : `${player.username}'s Pile`}
+                                      </Button>
+                                    </DialogClose>
+                                  ));
+                                } else {
+                                  return (
+                                    <DialogClose key={pile.pile_id} asChild>
+                                      <Button
+                                        variant="outline"
+                                        onClick={() => handleDiscard(player.playerid, card.sessioncardid, pile.pile_id)}
+                                      >
+                                        {pile.pile_name || `Discard Pile ${pile.pile_id}`}
+                                        {pile.is_face_up ? ' (Face Up)' : ' (Face Down)'}
+                                      </Button>
+                                    </DialogClose>
+                                  );
+                                }
+                              })}
+                            </>
+                          ) : (
+                            <DialogClose asChild>
+                              <Button
+                                variant="outline"
+                                onClick={() => handleDiscard(player.playerid, card.sessioncardid)}
+                              >
+                                Discard to Deck
+                              </Button>
+                            </DialogClose>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </DialogContent>
                 </Dialog>
               );
             })}
           </div>
+
+          {/* Revealed cards section when overflowing */}
+          {isOverflowing && revealedCards.length > 0 && (
+            <div className="mt-4 flex flex-wrap gap-2 justify-center max-w-[300px]">
+              {playerCards
+                .filter(card => revealedCards.includes(card.sessioncardid))
+                .map(card => (
+                  <Card
+                    key={`revealed-${card.sessioncardid}`}
+                    className="w-14 h-20 bg-gray-200 shadow-md flex items-center justify-center"
+                    onClick={handleCardClick}
+                  >
+                    <div className="text-[8px] px-1 text-center">
+                      {card.name}
+                    </div>
+                  </Card>
+                ))}
+            </div>
+          )}
         </div>
       )}
 
       {playerDiscardPiles.length > 0 && (
         <div 
-          className={`${playerCards.length === 0 ? 'mt-2' : 'mt-4'}`}
+          className={`${playerCards.length === 0 ? 'mt-1' : 'mt-2'}`}
           onClick={(e) => e.stopPropagation()}
         >
           <div className="flex gap-4">

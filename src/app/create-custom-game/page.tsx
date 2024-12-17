@@ -77,6 +77,9 @@ export default function CreateCustomGamePage() {
   const [maxPoints, setMaxPoints] = useState(0);
   const [startingPoints, setStartingPoints] = useState(0);
   const [lockPlayerDiscard, setLockPlayerDiscard] = useState(false);
+  const [turnBased, setTurnBased] = useState(false);
+  const [lockTurn, setLockTurn] = useState(false);
+  const [canPassPoints, setCanPassPoints] = useState(false);
   const navigateToDeckBuilder = (deckName?: string) => {
     setSelectedDeckForEdit(deckName || null);
     setCurrentView('deck');
@@ -138,8 +141,8 @@ export default function CreateCustomGamePage() {
       can_reveal: canRevealCard,
       can_draw_cards: canDrawCard,
       can_draw_points: canDrawPoint,
-      turn_based: false,
-      lock_turn: false,
+      turn_based: turnBased,
+      lock_turn: lockTurn,
       max_cards_per_player: maxCardsPerPlayer,
       game_rules: gameRules,
       redeal_cards: redealCards,
@@ -147,7 +150,8 @@ export default function CreateCustomGamePage() {
       pass_cards: passCards,
       claim_turns: claimTurns,
       deal_all_cards: dealAllCards,
-      lock_player_discard: lockPlayerDiscard
+      lock_player_discard: lockPlayerDiscard,
+      can_pass_points: canPassPoints,
     };
 
     const deckData: DeckData[] = decks.map((deck) => ({
@@ -522,6 +526,25 @@ export default function CreateCustomGamePage() {
                   <Label htmlFor="dealAllCards">Deal All Cards</Label>
                 </div>
               </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="flex items-center space-x-2">
+                  <Switch
+                    id="turnBased"
+                    checked={turnBased}
+                    onCheckedChange={setTurnBased}
+                  />
+                  <Label htmlFor="turnBased">Turn Based</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Switch
+                    id="lockTurn"
+                    checked={lockTurn}
+                    onCheckedChange={setLockTurn}
+                  />
+                  <Label htmlFor="lockTurn">Lock Turn</Label>
+                </div>
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -612,6 +635,14 @@ export default function CreateCustomGamePage() {
                     onCheckedChange={setLockPlayerDiscard}
                   />
                   <Label htmlFor="lockPlayerDiscard">Lock Player Discard</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Switch
+                    id="canPassPoints"
+                    checked={canPassPoints}
+                    onCheckedChange={setCanPassPoints}
+                  />
+                  <Label htmlFor="canPassPoints">Can Pass Points</Label>
                 </div>
               </div>
             </div>
