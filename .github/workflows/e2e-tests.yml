@@ -12,6 +12,9 @@ jobs:
   e2e:
     runs-on: ubuntu-latest
 
+    environment: # Use the GitHub production environment
+      name: production
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
