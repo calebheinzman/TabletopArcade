@@ -17,6 +17,14 @@ import { useGame } from '@/components/GameContext';
 import { resetGame } from '@/lib/supabase/session';
 import { supabase } from '@/lib/supabase';
 import { Input } from '../ui/input';
+import { updateSessionCards } from '@/lib/supabase/card';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 
 interface BoardHeaderProps {
   deckCount: number;
@@ -41,6 +49,11 @@ const BoardHeader: React.FC<BoardHeaderProps> = ({
   const gameContext = useGame();
   const [numPointsToGive, setNumPointsToGive] = useState<number>(1);
   const [customPoints, setCustomPoints] = useState<string>('');
+  const [drawnCard, setDrawnCard] = useState<{
+    playerName: string;
+    cardName: string;
+    description: string;
+  } | null>(null);
 
   const getPlayerCardCount = (playerId: number) => {
     return gameContext?.sessionCards.filter(card => card.playerid === playerId).length || 0;
@@ -219,6 +232,110 @@ const BoardHeader: React.FC<BoardHeaderProps> = ({
     await gameContext.updateSessionCards(updates);
   };
 
+  const handleToggleHandHidden = async () => {
+    if (!gameContext) return;
+
+    try {
+      // Update session hand_hidden status
+      const { error: sessionError } = await supabase
+        .from('session')
+        .update({ 
+          hand_hidden: !gameContext.session.hand_hidden 
+        })
+        .eq('sessionid', gameContext.sessionid);
+
+      if (sessionError) throw sessionError;
+
+      // Get all cards assigned to players
+      const playerCards = gameContext.sessionCards.filter(card => 
+        card.playerid !== null && card.playerid !== 0
+      );
+
+      // Update card_hidden for all player cards
+      const updates = playerCards.map(card => ({
+        sessionid: gameContext.sessionid,
+        sessioncardid: card.sessioncardid,
+        cardPosition: card.cardPosition,
+        playerid: card.playerid,
+        pile_id: card.pile_id,
+        card_hidden: !gameContext.session.hand_hidden
+      }));
+
+      if (updates.length > 0) {
+        await updateSessionCards(updates);
+      }
+    } catch (error) {
+      console.error('Error toggling hand hidden:', error);
+    }
+  };
+
+  const handleRevealAllCards = async () => {
+    if (!gameContext) return;
+
+    // Get all player cards
+    const playerCards = gameContext.sessionCards.filter(card => card.playerid !== null && card.playerid !== 0);
+    
+    // Count revealed vs hidden cards to determine minority state
+    const revealedCount = playerCards.filter(card => card.isRevealed).length;
+    const hiddenCount = playerCards.length - revealedCount;
+    
+    // Set all cards to the minority state
+    const shouldReveal = revealedCount <= hiddenCount;
+
+    // Update all player cards
+    const updates = playerCards.map(card => ({
+      sessionid: gameContext.sessionid,
+      sessioncardid: card.sessioncardid,
+      cardPosition: card.cardPosition,
+      playerid: card.playerid,
+      pile_id: card.pile_id,
+      isRevealed: shouldReveal
+    }));
+
+    try {
+      await updateSessionCards(updates);
+    } catch (error) {
+      console.error('Error toggling all cards revealed:', error);
+    }
+  };
+
+  const handleDrawCard = async (playerId: number) => {
+    if (!gameContext) return;
+
+    try {
+      // Store the current number of cards
+      const previousCardCount = getPlayerCardCount(playerId);
+      
+      // Draw the card
+      await onDrawCard(playerId);
+
+      // If hands are hidden, wait briefly then check for the new card
+      if (gameContext.session.hand_hidden) {
+        // Small delay to ensure the card has been added
+        setTimeout(() => {
+          const currentCards = gameContext.sessionCards.filter(card => card.playerid === playerId);
+          if (currentCards.length > previousCardCount) {
+            // Get the newest card
+            const newCard = currentCards[currentCards.length - 1];
+            const deck = gameContext.decks.find(d => d.deckid === newCard.deckid);
+            const cardDetails = deck?.cards.find(c => c.cardid === newCard.cardid);
+            const player = players.find(p => p.playerid === playerId);
+
+            if (cardDetails && player) {
+              setDrawnCard({
+                playerName: player.username,
+                cardName: cardDetails.name || 'Unknown Card',
+                description: cardDetails.description || '',
+              });
+            }
+          }
+        }, 100);
+      }
+    } catch (error) {
+      console.error('Error drawing card:', error);
+    }
+  };
+
   return (
     <div className="flex flex-col sm:flex-row justify-between items-center mb-4 gap-4">
       <div className="flex gap-2">
@@ -233,14 +350,16 @@ const BoardHeader: React.FC<BoardHeaderProps> = ({
         >
           Reset Game
         </Button>
-        <Button
-          onClick={handleRedealCards}
-          size="sm"
-          variant="secondary"
-          className="self-start"
-        >
-          Redeal Cards
-        </Button>
+        {gameContext.gameData.redeal_cards && (
+          <Button
+            onClick={handleRedealCards}
+            size="sm"
+            variant="secondary"
+            className="self-start"
+          >
+            Redeal Cards
+          </Button>
+        )}
       </div>
       <div className="space-x-2 self-end">
         {gameContext.gameData.can_draw_cards && (
@@ -255,7 +374,7 @@ const BoardHeader: React.FC<BoardHeaderProps> = ({
                 {players.map((player) => (
                   <Button
                     key={player.playerid}
-                    onClick={() => onDrawCard(player.playerid)}
+                    onClick={() => handleDrawCard(player.playerid)}
                     size="sm"
                     disabled={isPlayerAtMaxCards(player.playerid) || deckCount === 0}
                     className={
@@ -361,8 +480,41 @@ const BoardHeader: React.FC<BoardHeaderProps> = ({
             {gameContext.session.locked_player_discard ? "Unlock Player Discard" : "Lock Player Discard"}
           </Button>
         )}
+
+        {gameContext.gameData.hide_hand && (
+          <Button 
+            size="sm" 
+            variant={gameContext.session.hand_hidden ? "destructive" : "default"}
+            onClick={handleToggleHandHidden}
+          >
+            {gameContext.session.hand_hidden ? "Show Hands" : "Hide Hands"}
+          </Button>
+        )}
+
+        {gameContext.gameData.reveal_hands && (
+          <Button 
+            size="sm" 
+            onClick={handleRevealAllCards}
+          >
+            Reveal All Hands
+          </Button>
+        )}
       </div>
 
+      {/* Drawn Card Dialog */}
+      <Dialog open={drawnCard !== null} onOpenChange={() => setDrawnCard(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{drawnCard?.playerName} Drew a Card</DialogTitle>
+            <DialogDescription>
+              <div className="mt-4">
+                <h3 className="font-bold">{drawnCard?.cardName}</h3>
+                <p className="mt-2">{drawnCard?.description}</p>
+              </div>
+            </DialogDescription>
+          </DialogHeader>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

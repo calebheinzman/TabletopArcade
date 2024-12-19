@@ -115,7 +115,7 @@ const BoardContent: React.FC = () => {
   return (
     <div className="flex flex-col items-center justify-start min-h-screen bg-gray-100 p-2 sm:p-4">
       {/* Main container for board and action feed */}
-      <div className="w-full max-w-6xl mx-auto flex h-[90vh] gap-4">
+      <div className="w-full max-w-7xl mx-auto flex h-[90vh] gap-4">
         {/* Board and related components */}
         <div className="flex flex-col flex-grow relative">
           {/* Header Section */}
@@ -130,7 +130,7 @@ const BoardContent: React.FC = () => {
           />
 
           {/* Game Board */}
-          <div className="relative flex-grow bg-white rounded-lg shadow-xl border border-gray-200 overflow-hidden w-full p-8">
+          <div className="relative flex-grow bg-white rounded-lg shadow-xl border border-gray-200 overflow-hidden w-full p-4 sm:p-8">
             {/* Toggle Action Feed Button */}
             <Button
               size="sm"
@@ -141,10 +141,10 @@ const BoardContent: React.FC = () => {
               {isActionFeedOpen ? 'Hide Actions' : 'Show Actions'}
             </Button>
 
-            {/* Add a padding container around the game content */}
-            <div className="p-16 py-24">
-              {/* Central Deck Area - add more top margin */}
-              <div className="flex items-center justify-center gap-8 mb-8 mt-16">
+            {/* Reduced padding container around the game content */}
+            <div className="p-4 sm:p-8 md:p-12">
+              {/* Central Deck Area - reduced top margin */}
+              <div className="flex items-center justify-center gap-8 mb-4 sm:mb-8 mt-8 sm:mt-12">
                 <div className="flex items-center space-x-8">
                   <BoardDeckDialog
                     deckCount={deckCount}

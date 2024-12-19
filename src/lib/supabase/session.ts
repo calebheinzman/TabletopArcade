@@ -124,30 +124,29 @@ export async function createCustomGame(
   }
 }
 
-export async function fetchGameTemplate(templateId: GameTemplate['id']) {
-    try {
-      const { data: gameData, error: gameError } = await supabase
-        .from('game')
-        .select(
-          `
-          *,
-          decks:deck(
-            *,
-            cards:card(*)
-          )
-        `
-        )
-        .eq('gameid', templateId)
-        .single();
+export const fetchGameTemplate = async (gameId: number) => {
+  try {
+    // Fetch game template
+    const { data: gameData, error: gameError } = await supabase
+      .from('game')
+      .select(`
+        *,
+        decks:deck(*,
+          cards:card(*)
+        ),
+        discard_piles:discard_pile(*)
+      `)
+      .eq('gameid', gameId)
+      .single();
 
-      if (gameError) throw gameError;
+    if (gameError) throw gameError;
+    return gameData;
 
-      return gameData;
-    } catch (error) {
-      console.error('Error fetching game template:', error);
-      return null;
-    }
-}
+  } catch (error) {
+    console.error('Error fetching game template:', error);
+    return null;
+  }
+};
 
 export async function createSessionFromGameTemplateId(templateId: GameTemplate['id']) {
     try {
@@ -187,7 +186,7 @@ export async function fetchGameNames(): Promise<GameTemplateNameAndId[] | []> {
     try {
       const { data, error } = await supabase
         .from('game')
-        .select('name, gameid');
+        .select('name, gameid, tags');
 
       if (error) throw error;
 
@@ -293,7 +292,7 @@ export async function resetGame(gameContext: GameContextType, generateNewDeck: (
       [existingCards[i], existingCards[j]] = [existingCards[j], existingCards[i]];
     }
 
-    const updates: {
+    const cardUpdates: {
       sessionid: number;
       sessioncardid: number;
       cardPosition: number;
@@ -312,7 +311,7 @@ export async function resetGame(gameContext: GameContextType, generateNewDeck: (
       for (const player of gameContext.sessionPlayers) {
         for (let i = 0; i < cardsPerPlayer; i++) {
           if (currentCardIndex < existingCards.length) {
-            updates.push({
+            cardUpdates.push({
               sessionid: gameContext.sessionid,
               sessioncardid: existingCards[currentCardIndex].sessioncardid,
               cardPosition: 0,
@@ -329,7 +328,7 @@ export async function resetGame(gameContext: GameContextType, generateNewDeck: (
       for (const player of gameContext.sessionPlayers) {
         for (let i = 0; i < gameContext.gameData.starting_num_cards; i++) {
           if (currentCardIndex < existingCards.length) {
-            updates.push({
+            cardUpdates.push({
               sessionid: gameContext.sessionid,
               sessioncardid: existingCards[currentCardIndex].sessioncardid,
               cardPosition: 0,
@@ -345,7 +344,7 @@ export async function resetGame(gameContext: GameContextType, generateNewDeck: (
 
     // Update remaining cards as deck cards
     for (let i = currentCardIndex; i < existingCards.length; i++) {
-      updates.push({
+      cardUpdates.push({
         sessionid: gameContext.sessionid,
         sessioncardid: existingCards[i].sessioncardid,
         cardPosition: i - currentCardIndex + 1,
@@ -355,8 +354,27 @@ export async function resetGame(gameContext: GameContextType, generateNewDeck: (
       });
     }
 
+    // Reset session points and hand visibility settings
+    const { error: sessionError } = await supabase
+      .from('session')
+      .update({ 
+        num_points: gameContext.gameData.num_points,
+        hand_hidden: false,           // Reset hand visibility
+        locked_player_discard: false  // Reset locked player discard
+      })
+      .eq('sessionid', gameContext.sessionid);
+
+    if (sessionError) throw sessionError;
+
+    // Reset player points, turns, and card reveal status
+    const finalCardUpdates = cardUpdates.map(update => ({
+      ...update,
+      isRevealed: false,  // Ensure all cards are hidden when game resets
+      card_hidden: false  // Reset card hidden state to default
+    }));
+
     // Update all cards in a single operation
-    await updateSessionCards(updates);
+    await updateSessionCards(finalCardUpdates);
 
     // Reset player points and turns - modified to handle claim_turn
     const { error: playerError } = await supabase
@@ -368,16 +386,6 @@ export async function resetGame(gameContext: GameContextType, generateNewDeck: (
       .eq('sessionid', gameContext.sessionid);
 
     if (playerError) throw playerError;
-
-    // Reset session points
-    const { error: sessionError } = await supabase
-      .from('session')
-      .update({ 
-        num_points: gameContext.gameData.num_points
-      })
-      .eq('sessionid', gameContext.sessionid);
-
-    if (sessionError) throw sessionError;
 
     // Only set first player turn if claim_turn is false
     if (!gameContext.gameData.claim_turns) {

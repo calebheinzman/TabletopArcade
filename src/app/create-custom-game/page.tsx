@@ -7,9 +7,15 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { createCustomGame } from '@/lib/supabase/session';
 import { CardData, DeckData, DiscardPile } from '@/types/game-interfaces';
-import { X } from 'lucide-react';
+import { X, Info } from 'lucide-react';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useState, KeyboardEvent, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import {
@@ -48,8 +54,22 @@ interface CardSettings {
   hide_values: boolean;
 }
 
+const InfoTooltip = ({ content }: { content: string }) => (
+  <TooltipProvider>
+    <Tooltip>
+      <TooltipTrigger>
+        <Info className="h-4 w-4 ml-2 text-muted-foreground" />
+      </TooltipTrigger>
+      <TooltipContent>
+        <p className="max-w-xs">{content}</p>
+      </TooltipContent>
+    </Tooltip>
+  </TooltipProvider>
+);
+
 export default function CreateCustomGamePage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [decks, setDecks] = useState<Deck[]>([]);
   const [cards, setCards] = useState<CustomCard[]>([]);
   const [name, setName] = useState('Custom Game');
@@ -80,6 +100,11 @@ export default function CreateCustomGamePage() {
   const [turnBased, setTurnBased] = useState(false);
   const [lockTurn, setLockTurn] = useState(false);
   const [canPassPoints, setCanPassPoints] = useState(false);
+  const [creatorName, setCreatorName] = useState('');
+  const [hideHand, setHideHand] = useState(false);
+  const [revealHands, setRevealHands] = useState(false);
+  const [tradeCards, setTradeCards] = useState(false);
+  const [peakCards, setPeakCards] = useState(false);
   const navigateToDeckBuilder = (deckName?: string) => {
     setSelectedDeckForEdit(deckName || null);
     setCurrentView('deck');
@@ -152,6 +177,11 @@ export default function CreateCustomGamePage() {
       deal_all_cards: dealAllCards,
       lock_player_discard: lockPlayerDiscard,
       can_pass_points: canPassPoints,
+      creator_name: creatorName,
+      hide_hand: hideHand,
+      reveal_hands: revealHands,
+      trade_cards: tradeCards,
+      peak_cards: peakCards,
     };
 
     const deckData: DeckData[] = decks.map((deck) => ({
@@ -233,6 +263,78 @@ export default function CreateCustomGamePage() {
     deck.deckname.toLowerCase().includes(deckSearch.toLowerCase())
   );
 
+  useEffect(() => {
+    if (searchParams.has('name')) {
+      setName(searchParams.get('name') || '');
+      const rulesFromUrl = searchParams.get('rules');
+      if (rulesFromUrl) {
+        try {
+          const decodedRules = decodeURIComponent(rulesFromUrl);
+          setGameRules(decodedRules);
+        } catch (error) {
+          console.error('Error decoding rules:', error);
+          setGameRules(rulesFromUrl);
+        }
+      }
+      setTagList(searchParams.get('tags')?.split(',').filter(Boolean) || []);
+      setMaxPoints(parseInt(searchParams.get('maxPoints') || '0'));
+      setStartingPoints(parseInt(searchParams.get('startingPoints') || '0'));
+      setDice(parseInt(searchParams.get('dice') || '0'));
+      setStartingCards(parseInt(searchParams.get('startingCards') || '0'));
+      setMaxCardsPerPlayer(parseInt(searchParams.get('maxCardsPerPlayer') || '52'));
+      setTurnBased(searchParams.get('turnBased') === 'true');
+      setLockTurn(searchParams.get('lockTurn') === 'true');
+      setDealAllCards(searchParams.get('dealAllCards') === 'true');
+      setRedealCards(searchParams.get('redealCards') === 'true');
+      setPassCards(searchParams.get('passCards') === 'true');
+      setClaimTurns(searchParams.get('claimTurns') === 'true');
+      setCanDiscardCard(searchParams.get('canDiscard') === 'true');
+      setCanRevealCard(searchParams.get('canReveal') === 'true');
+      setCanDrawCard(searchParams.get('canDrawCards') === 'true');
+      setCanDrawPoint(searchParams.get('canDrawPoints') === 'true');
+      setCanPassPoints(searchParams.get('canPassPoints') === 'true');
+      setLockPlayerDiscard(searchParams.get('lockPlayerDiscard') === 'true');
+      setCreatorName(searchParams.get('creator_name') || '');
+      setHideHand(searchParams.get('hideHand') === 'true');
+      setRevealHands(searchParams.get('revealHands') === 'true');
+      setTradeCards(searchParams.get('tradeCards') === 'true');
+      setPeakCards(searchParams.get('peakCards') === 'true');
+
+      // Handle decks and cards
+      try {
+        const decksData = JSON.parse(searchParams.get('decks') || '[]');
+        setDecks([]); // Clear existing decks
+        setCards([]); // Clear existing cards
+        
+        decksData.forEach((deck: DeckData) => {
+          const newDeckName = deck.deckname;
+          setDecks(prevDecks => [...prevDecks, { name: newDeckName }]);
+          
+          const newCards = deck.cards.map((card: CardData) => ({
+            name: card.name,
+            count: card.count,
+            description: card.description,
+            deckName: newDeckName,
+            type: card.type || '',
+            drop_order: card.drop_order || 0,
+          }));
+          
+          setCards(prevCards => [...prevCards, ...newCards]);
+        });
+
+        // Handle discard piles
+        const discardPilesData = JSON.parse(searchParams.get('discardPiles') || '[]');
+        console.log('Setting discard piles:', discardPilesData); // Debug log
+        setDiscardPiles(discardPilesData.map((pile: DiscardPile) => ({
+          ...pile,
+          pile_id: pile.pile_id || 0, // Ensure pile_id exists
+          game_id: 0, // Reset game_id for new game
+        })));
+      } catch (error) {
+        console.error('Error parsing deck or discard pile data:', error);
+      }
+    }
+  }, [searchParams]);
 
   if (currentView === 'deck') {
     return (
@@ -273,13 +375,33 @@ export default function CreateCustomGamePage() {
       <div className="w-full max-w-4xl space-y-8">
         <Card>
           <CardHeader>
-            <CardTitle>Game Name</CardTitle>
+            <CardTitle className="flex items-center">
+              Game Name
+              <InfoTooltip content="The name that will appear in the game selection menu" />
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <Input
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="Enter game name"
+              className="mb-4"
+            />
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center">
+              Creator
+              <InfoTooltip content="Your name or username as the creator of this game" />
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Input
+              value={creatorName}
+              onChange={(e) => setCreatorName(e.target.value)}
+              placeholder="Enter creator name"
               className="mb-4"
             />
           </CardContent>
@@ -472,7 +594,10 @@ export default function CreateCustomGamePage() {
               
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
-                  <Label htmlFor="maxPoints">Maximum Points</Label>
+                  <Label htmlFor="maxPoints" className="flex items-center mb-2">
+                    Maximum Points
+                    <InfoTooltip content="The total number of points available in the game. Set to 0 for no point limit." />
+                  </Label>
                   <Input
                     id="maxPoints"
                     type="number"
@@ -482,7 +607,10 @@ export default function CreateCustomGamePage() {
                   />
                 </div>
                 <div>
-                  <Label htmlFor="startingPoints">Starting Points</Label>
+                  <Label htmlFor="startingPoints" className="flex items-center mb-2">
+                    Starting Points
+                    <InfoTooltip content="The number of points each player starts with" />
+                  </Label>
                   <Input
                     id="startingPoints"
                     type="number"
@@ -492,7 +620,10 @@ export default function CreateCustomGamePage() {
                   />
                 </div>
                 <div>
-                  <Label htmlFor="dice">Number of Dice</Label>
+                  <Label htmlFor="dice" className="flex items-center mb-2">
+                    Number of Dice
+                    <InfoTooltip content="How many dice are available for players to roll" />
+                  </Label>
                   <Input
                     id="dice"
                     type="number"
@@ -510,7 +641,10 @@ export default function CreateCustomGamePage() {
                     checked={redealCards}
                     onCheckedChange={setRedealCards}
                   />
-                  <Label htmlFor="redealCards">Redeal Cards</Label>
+                  <Label htmlFor="redealCards" className="flex items-center">
+                    Redeal Cards
+                    <InfoTooltip content="Allows the deck to be reshuffled and cards to be redealt during the game" />
+                  </Label>
                 </div>
                 <div className="flex items-center space-x-2">
                   <Switch
@@ -523,7 +657,10 @@ export default function CreateCustomGamePage() {
                       }
                     }}
                   />
-                  <Label htmlFor="dealAllCards">Deal All Cards</Label>
+                  <Label htmlFor="dealAllCards" className="flex items-center">
+                    Deal All Cards
+                    <InfoTooltip content="Deals all cards at the start of the game instead of a specific number" />
+                  </Label>
                 </div>
               </div>
 
@@ -534,7 +671,10 @@ export default function CreateCustomGamePage() {
                     checked={turnBased}
                     onCheckedChange={setTurnBased}
                   />
-                  <Label htmlFor="turnBased">Turn Based</Label>
+                  <Label htmlFor="turnBased" className="flex items-center">
+                    Turn Based
+                    <InfoTooltip content="Players must take turns in order rather than playing simultaneously" />
+                  </Label>
                 </div>
                 <div className="flex items-center space-x-2">
                   <Switch
@@ -542,8 +682,35 @@ export default function CreateCustomGamePage() {
                     checked={lockTurn}
                     onCheckedChange={setLockTurn}
                   />
-                  <Label htmlFor="lockTurn">Lock Turn</Label>
+                  <Label htmlFor="lockTurn" className="flex items-center">
+                    Lock Turn
+                    <InfoTooltip content="Prevents players from taking actions when it's not their turn" />
+                  </Label>
                 </div>
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <Switch
+                  id="hideHand"
+                  checked={hideHand}
+                  onCheckedChange={setHideHand}
+                />
+                <Label htmlFor="hideHand" className="flex items-center">
+                  Hide Hand from Host
+                  <InfoTooltip content="Prevents the host from seeing players' hands during the game" />
+                </Label>
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <Switch
+                  id="revealHands"
+                  checked={revealHands}
+                  onCheckedChange={setRevealHands}
+                />
+                <Label htmlFor="revealHands" className="flex items-center">
+                  Allow Host to Reveal All Hands
+                  <InfoTooltip content="Allows the host to reveal all players' hands to everyone during the game" />
+                </Label>
               </div>
             </div>
           </CardContent>
@@ -556,7 +723,10 @@ export default function CreateCustomGamePage() {
           <CardContent>
             <div className="space-y-6">
               <div>
-                <Label htmlFor="startingCards">Starting Number of Cards</Label>
+                <Label htmlFor="startingCards" className="flex items-center mb-2">
+                  Starting Number of Cards
+                  <InfoTooltip content="How many cards each player receives at the start of the game" />
+                </Label>
                 <Input
                   id="startingCards"
                   type="number"
@@ -569,7 +739,10 @@ export default function CreateCustomGamePage() {
               </div>
 
               <div>
-                <Label htmlFor="maxCardsPerPlayer">Maximum Cards Per Player</Label>
+                <Label htmlFor="maxCardsPerPlayer" className="flex items-center mb-2">
+                  Maximum Cards Per Player
+                  <InfoTooltip content="The maximum number of cards a player can hold at once" />
+                </Label>
                 <Input
                   id="maxCardsPerPlayer"
                   type="number"
@@ -586,7 +759,10 @@ export default function CreateCustomGamePage() {
                     checked={canDiscardCard}
                     onCheckedChange={setCanDiscardCard}
                   />
-                  <Label htmlFor="canDiscardCard">Can Discard Card</Label>
+                  <Label htmlFor="canDiscardCard" className="flex items-center">
+                    Can Discard Card
+                    <InfoTooltip content="Allows players to discard cards from their hand" />
+                  </Label>
                 </div>
                 <div className="flex items-center space-x-2">
                   <Switch
@@ -594,7 +770,10 @@ export default function CreateCustomGamePage() {
                     checked={canRevealCard}
                     onCheckedChange={setCanRevealCard}
                   />
-                  <Label htmlFor="canRevealCard">Can Reveal Card in Hand</Label>
+                  <Label htmlFor="canRevealCard" className="flex items-center">
+                    Can Reveal Card in Hand
+                    <InfoTooltip content="Allows players to reveal cards in their hand to other players" />
+                  </Label>
                 </div>
                 <div className="flex items-center space-x-2">
                   <Switch
@@ -602,7 +781,10 @@ export default function CreateCustomGamePage() {
                     checked={passCards}
                     onCheckedChange={setPassCards}
                   />
-                  <Label htmlFor="passCards">Pass Cards</Label>
+                  <Label htmlFor="passCards" className="flex items-center">
+                    Pass Cards
+                    <InfoTooltip content="Allows players to pass cards to other players" />
+                  </Label>
                 </div>
                 <div className="flex items-center space-x-2">
                   <Switch
@@ -610,7 +792,10 @@ export default function CreateCustomGamePage() {
                     checked={canDrawCard}
                     onCheckedChange={setCanDrawCard}
                   />
-                  <Label htmlFor="canDrawCard">Can Draw Card</Label>
+                  <Label htmlFor="canDrawCard" className="flex items-center">
+                    Can Draw Card
+                    <InfoTooltip content="Allows players to draw cards from the deck" />
+                  </Label>
                 </div>
                 <div className="flex items-center space-x-2">
                   <Switch
@@ -618,7 +803,10 @@ export default function CreateCustomGamePage() {
                     checked={canDrawPoint}
                     onCheckedChange={setCanDrawPoint}
                   />
-                  <Label htmlFor="canDrawPoint">Can Draw Point</Label>
+                  <Label htmlFor="canDrawPoint" className="flex items-center">
+                    Can Draw Point
+                    <InfoTooltip content="Allows players to draw points from the board" />
+                  </Label>
                 </div>
                 <div className="flex items-center space-x-2">
                   <Switch
@@ -626,7 +814,10 @@ export default function CreateCustomGamePage() {
                     checked={claimTurns}
                     onCheckedChange={setClaimTurns}
                   />
-                  <Label htmlFor="claimTurns">Claim Turns</Label>
+                  <Label htmlFor="claimTurns" className="flex items-center">
+                    Claim Turns
+                    <InfoTooltip content="Allows players to claim their turn when no one currently has a turn" />
+                  </Label>
                 </div>
                 <div className="flex items-center space-x-2">
                   <Switch
@@ -634,7 +825,10 @@ export default function CreateCustomGamePage() {
                     checked={lockPlayerDiscard}
                     onCheckedChange={setLockPlayerDiscard}
                   />
-                  <Label htmlFor="lockPlayerDiscard">Lock Player Discard</Label>
+                  <Label htmlFor="lockPlayerDiscard" className="flex items-center">
+                    Lock Player Discard
+                    <InfoTooltip content="Allows the host to temporarily prevent players from accessing their discard piles" />
+                  </Label>
                 </div>
                 <div className="flex items-center space-x-2">
                   <Switch
@@ -642,8 +836,35 @@ export default function CreateCustomGamePage() {
                     checked={canPassPoints}
                     onCheckedChange={setCanPassPoints}
                   />
-                  <Label htmlFor="canPassPoints">Can Pass Points</Label>
+                  <Label htmlFor="canPassPoints" className="flex items-center">
+                    Can Pass Points
+                    <InfoTooltip content="Allows players to pass their points to other players or back to the board" />
+                  </Label>
                 </div>
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <Switch
+                  id="tradeCards"
+                  checked={tradeCards}
+                  onCheckedChange={setTradeCards}
+                />
+                <Label htmlFor="tradeCards" className="flex items-center">
+                  Trade Cards
+                  <InfoTooltip content="Allows the host to trade cards between any two players" />
+                </Label>
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <Switch
+                  id="peakCards"
+                  checked={peakCards}
+                  onCheckedChange={setPeakCards}
+                />
+                <Label htmlFor="peakCards" className="flex items-center">
+                  Peak Cards
+                  <InfoTooltip content="Allows players to peak at cards in other players' hands" />
+                </Label>
               </div>
             </div>
           </CardContent>

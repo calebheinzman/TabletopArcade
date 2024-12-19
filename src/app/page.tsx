@@ -10,7 +10,7 @@ export default function StartingPage() {
           <Button className="w-48">Join Game</Button>
         </Link>
         <Link href="/game-select">
-          <Button className="w-48">Start Game</Button>
+          <Button className="w-48 ">Start Game</Button>
         </Link>
       </div>
     </div>

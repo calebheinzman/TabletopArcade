@@ -30,12 +30,11 @@ export async function updateSessionCards(updates: {
   playerid: number | null;
   pile_id?: number | null;
   isRevealed?: boolean;
+  card_hidden?: boolean;
 }[]) {
   const { error } = await supabase
     .from('session_cards')
-    .upsert(updates, { 
-      onConflict: 'sessionid,sessioncardid'
-    });
+    .upsert(updates);
 
   if (error) throw error;
 }
