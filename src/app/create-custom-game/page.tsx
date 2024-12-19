@@ -1,5 +1,6 @@
 'use client';
 
+import { Suspense } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -28,11 +29,7 @@ import {
 import { fetchAllDecks } from '@/lib/supabase/card';
 import DeckBuilder from '../../components/create-game/deck-builder';
 import DiscardPileBuilder from '../../components/create-game/discard-pile-builder';
-
-const MDEditor = dynamic(
-  () => import('@uiw/react-md-editor'),
-  { ssr: false }
-);
+import MDEditor from '@uiw/react-md-editor';
 
 interface CustomCard {
   name: string;
@@ -68,6 +65,14 @@ const InfoTooltip = ({ content }: { content: string }) => (
 );
 
 export default function CreateCustomGamePage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <CreateCustomGameContent />
+    </Suspense>
+  );
+}
+
+function CreateCustomGameContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [decks, setDecks] = useState<Deck[]>([]);

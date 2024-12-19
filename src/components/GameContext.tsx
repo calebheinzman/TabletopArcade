@@ -10,9 +10,6 @@ import {
 
 import {
   updatePlayerPoints,
-  passTurnToNextPlayer,
-  pushPlayerAction,
-  updatePlayerLastAction,
   fetchInitialPlayers,
   fetchPlayerActions,
 } from '@/lib/supabase/player';
@@ -109,7 +106,7 @@ const handlePlayerUpdate = (
   currentPlayers: SessionPlayer[],
   payload: any
 ): SessionPlayer[] => {
-  let updatedPlayers = [...currentPlayers];
+  const updatedPlayers = [...currentPlayers];
   
   switch (payload.eventType) {
     case 'INSERT':

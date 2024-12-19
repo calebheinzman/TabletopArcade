@@ -274,7 +274,7 @@ const DiscardPileGridSelector: React.FC<DiscardPileGridSelectorProps> = ({
             const cardData = getCardSettings(r, c);
 
             let cellClasses = 'relative w-24 h-36 rounded-sm cursor-pointer transition-all';
-            let cellStyle: React.CSSProperties = {};
+            const cellStyle: React.CSSProperties = {};
 
             if (isGhostCell) {
               // Ghost cell styling

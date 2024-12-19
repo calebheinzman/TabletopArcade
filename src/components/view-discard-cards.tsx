@@ -136,7 +136,7 @@ export function ViewDiscardCards({
                               className="mb-1 w-full"
                               onClick={() => handleMoveSingleCardToPile(card, targetPile.pile_id, player.playerid)}
                             >
-                              {player.username}'s {targetPile.pile_name || 'Pile'}
+                              {player.username}&apos;s {targetPile.pile_name || 'Pile'}
                             </Button>
                           ))
                         ) : (
@@ -186,7 +186,7 @@ export function ViewDiscardCards({
                     onClick={() => onMoveToOtherPile(targetPile.pile_id, player.playerid)}
                     disabled={pileCards.length === 0}
                   >
-                    Move All to {player.username}'s {targetPile.pile_name || 'Pile'}
+                    Move All to {player.username}&apos;s {targetPile.pile_name || 'Pile'}
                   </Button>
                 ))
               ) : (

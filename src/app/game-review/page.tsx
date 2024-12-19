@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { fetchGameTemplate } from '@/lib/supabase/session';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import dynamic from 'next/dynamic';
 import { createSessionFromGameTemplateId } from '@/lib/supabase/session';
 import { ChevronDown, ChevronUp, Copy } from 'lucide-react';
@@ -20,6 +20,14 @@ interface Deck {
 }
 
 export default function GameReviewPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <GameReviewContent />
+    </Suspense>
+  );
+}
+
+function GameReviewContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [gameData, setGameData] = useState<any>(null);

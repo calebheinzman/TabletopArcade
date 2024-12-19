@@ -1,8 +1,14 @@
 import { supabase } from './index';
 import { RealtimePostgresChangesPayload } from '@supabase/supabase-js';
-import { SessionPlayer } from '@/types/game-interfaces';
+import { SessionPlayer, PlayerAction, Session } from '@/types/game-interfaces';
 
-export function subscribeToPlayerActions(sessionId: number, callback: (payload: RealtimePostgresChangesPayload<any>) => void) {
+interface SupabasePayload<T> {
+  new: T;
+  old: T;
+  eventType: 'INSERT' | 'UPDATE' | 'DELETE';
+}
+
+export function subscribeToPlayerActions(sessionId: number, callback: (payload: SupabasePayload<PlayerAction>) => void) {
   const subscription = supabase
     .channel(`public:player_actions:sessionid=${sessionId}`)
     .on(
@@ -13,9 +19,13 @@ export function subscribeToPlayerActions(sessionId: number, callback: (payload: 
         table: 'player_actions',
         filter: `sessionid=eq.${sessionId}`,
       },
-      (payload) => {
+      (payload: RealtimePostgresChangesPayload<PlayerAction>) => {
         console.log('Change received in player_actions:', payload);
-        callback(payload);
+        callback({
+          new: payload.new as PlayerAction,
+          old: payload.old as PlayerAction,
+          eventType: payload.eventType
+        });
       }
     )
     .subscribe();
@@ -23,7 +33,7 @@ export function subscribeToPlayerActions(sessionId: number, callback: (payload: 
   return subscription;
 }
 
-export function subscribeToSession(sessionId: number, callback: (payload: RealtimePostgresChangesPayload<any>) => void) {
+export function subscribeToSession(sessionId: number, callback: (payload: SupabasePayload<Session>) => void) {
   const subscription = supabase
     .channel(`public:session:sessionid=${sessionId}`)
     .on(
@@ -34,9 +44,13 @@ export function subscribeToSession(sessionId: number, callback: (payload: Realti
         table: 'session',
         filter: `sessionid=eq.${sessionId}`,
       },
-      (payload) => {
+      (payload: RealtimePostgresChangesPayload<Session>) => {
         console.log('Change received in session:', payload);
-        callback(payload);
+        callback({
+          new: payload.new as Session,
+          old: payload.old as Session,
+          eventType: payload.eventType
+        });
       }
     )
     .subscribe();
@@ -67,7 +81,7 @@ export function subscribeToSessionCards(sessionId: number, callback: (payload: R
 
 export function subscribeToPlayer(
   sessionId: number,
-  callback: (payload: RealtimePostgresChangesPayload<SessionPlayer>) => void
+  callback: (payload: SupabasePayload<SessionPlayer>) => void
 ) {
   console.log('Setting up player subscription for sessionId:', sessionId);
   
@@ -80,9 +94,13 @@ export function subscribeToPlayer(
         table: 'player',
         filter: `sessionid=eq.${sessionId}`,
       },
-      (payload) => {
+      (payload: RealtimePostgresChangesPayload<SessionPlayer>) => {
         console.log('Player change detected:', payload);
-        callback(payload as RealtimePostgresChangesPayload<SessionPlayer>);
+        callback({
+          new: payload.new as SessionPlayer,
+          old: payload.old as SessionPlayer,
+          eventType: payload.eventType
+        });
       }
     )
     .subscribe((status, err) => {
