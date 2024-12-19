@@ -34,7 +34,9 @@ export async function updateSessionCards(updates: {
 }[]) {
   const { error } = await supabase
     .from('session_cards')
-    .upsert(updates);
+    .upsert(updates, {
+      onConflict: 'sessionid,sessioncardid'
+    });
 
   if (error) throw error;
 }

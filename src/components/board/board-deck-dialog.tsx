@@ -16,7 +16,7 @@ import { useGame } from '@/components/GameContext';
 interface BoardDeckDialogProps {
   deckCount: number;
   players: SessionPlayer[];
-  onDrawCard: (playerId: number) => void;
+  onDrawCard: (playerId: number, card_hidden: boolean) => void;
 }
 
 const BoardDeckDialog: FC<BoardDeckDialogProps> = ({
@@ -29,6 +29,11 @@ const BoardDeckDialog: FC<BoardDeckDialogProps> = ({
   const actualDeckCount = gameContext.sessionCards.filter(card => 
     card.cardPosition > 0 && !card.pile_id
   ).length;
+
+  const handleDrawCard = (playerId: number) => {
+    onDrawCard(playerId, gameContext.session.hand_hidden);
+    // Close dialog code...
+  };
 
   return (
     <Dialog>
@@ -58,11 +63,11 @@ const BoardDeckDialog: FC<BoardDeckDialogProps> = ({
               card.playerid === player.playerid
             ).length;
             const atMaxCards = playerCardCount >= (gameContext.gameData.max_cards_per_player || 0);
-            
+            console.log('gameContext.session.hand_hidden', gameContext.session.hand_hidden);
             return (
               <Button
                 key={player.playerid}
-                onClick={() => onDrawCard(player.playerid)}
+                onClick={() => handleDrawCard(player.playerid)}
                 disabled={atMaxCards || actualDeckCount === 0}
                 className={atMaxCards ? "opacity-50" : ""}
               >

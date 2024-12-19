@@ -40,9 +40,9 @@ const BoardContent: React.FC = () => {
   );
 
   // Handler functions for adjusting points and points
-  const handleDrawCard = async (playerId: number) => {
+  const handleDrawCard = async (playerId: number, card_hidden: boolean) => {
     try {
-      await gameContext.drawCard(playerId);
+      await gameContext.drawCard(playerId, card_hidden);
     } catch (error) {
       console.error('Error drawing card:', error);
     }
@@ -178,9 +178,11 @@ const BoardContent: React.FC = () => {
             </div>
 
             {/* Game Points Display */}
-            <div className="absolute top-4 left-4 bg-yellow-400 text-black px-4 py-2 rounded-full text-sm sm:text-base font-bold">
-              Points: {gamePoints}
-            </div>
+            {gamePoints > 0 && (
+              <div className="absolute top-4 left-4 bg-yellow-400 text-black px-4 py-2 rounded-full text-sm sm:text-base font-bold">
+                Points: {gamePoints}
+              </div>
+            )}
           </div>
 
           {/* Player Actions Dialog */}

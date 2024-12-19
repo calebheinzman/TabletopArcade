@@ -27,7 +27,7 @@ interface BoardPlayerActionsDialogProps {
   onIncreasePoint: () => void;
   onDecreasePoint: () => void;
   onEndTurn: (playerId: number) => void;
-  onDrawCard: (playerId: number) => void;
+  onDrawCard: (playerId: number, card_hidden: boolean) => void;
 }
 
 const BoardPlayerActionsDialog: FC<BoardPlayerActionsDialogProps> = ({
@@ -65,6 +65,10 @@ const BoardPlayerActionsDialog: FC<BoardPlayerActionsDialogProps> = ({
     }
   };
 
+  const handleDrawCard = () => {
+    onDrawCard(playerId, gameContext.session.hand_hidden);
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={isOpen ? onClose : undefined}>
       <DialogContent>
@@ -75,36 +79,38 @@ const BoardPlayerActionsDialog: FC<BoardPlayerActionsDialogProps> = ({
           </DialogDescription>
         </DialogHeader>
         <div className="flex flex-col gap-4 mt-4">
-          {/* Points Control */}
-          <div className="flex items-center justify-between">
-            <span className="font-semibold">Points:</span>
-            <div className="flex items-center gap-2">
-              <Button
-                onClick={onDecreasePoint}
-                disabled={points === 0}
-                size="sm"
-                variant="destructive"
-              >
-                -
-              </Button>
-              <span className="text-sm">{points}</span>
-              <Button
-                onClick={onIncreasePoint}
-                disabled={false}
-                size="sm"
-                variant="default"
-              >
-                +
-              </Button>
+          {/* Points Control - Only show if points are enabled */}
+          {(gameContext.gameData.num_points > 0 && gameContext.session.num_points > 0) && (
+            <div className="flex items-center justify-between">
+              <span className="font-semibold">Points:</span>
+              <div className="flex items-center gap-2">
+                <Button
+                  onClick={onDecreasePoint}
+                  disabled={points === 0}
+                  size="sm"
+                  variant="destructive"
+                >
+                  -
+                </Button>
+                <span className="text-sm">{points}</span>
+                <Button
+                  onClick={onIncreasePoint}
+                  disabled={false}
+                  size="sm"
+                  variant="default"
+                >
+                  +
+                </Button>
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Draw Card Control */}
           <div className="flex items-center justify-between">
             <span className="font-semibold">Cards:</span>
             <div className="flex items-center gap-2">
               <Button
-                onClick={() => onDrawCard(playerId)}
+                onClick={handleDrawCard}
                 disabled={atMaxCards || deckCount === 0}
                 size="sm"
                 variant="default"

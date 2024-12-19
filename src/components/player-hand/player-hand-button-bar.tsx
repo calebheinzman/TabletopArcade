@@ -179,6 +179,9 @@ export function PlayerHandButtonBar({
     if (!tradeFrom.cardId || !tradeTo.cardId) return;
 
     try {
+      const fromCard = gameContext.sessionCards.find(c => c.sessioncardid === tradeFrom.cardId);
+      const toCard = gameContext.sessionCards.find(c => c.sessioncardid === tradeTo.cardId);
+
       const updates = [
         {
           sessionid: gameContext.sessionid,
@@ -187,7 +190,7 @@ export function PlayerHandButtonBar({
           playerid: tradeTo.playerId,
           pile_id: null,
           isRevealed: false,
-          card_hidden: false
+          card_hidden: toCard?.card_hidden ?? false
         },
         {
           sessionid: gameContext.sessionid,
@@ -196,7 +199,7 @@ export function PlayerHandButtonBar({
           playerid: tradeFrom.playerId,
           pile_id: null,
           isRevealed: false,
-          card_hidden: false
+          card_hidden: fromCard?.card_hidden ?? false
         }
       ];
 
@@ -510,12 +513,12 @@ export function PlayerHandButtonBar({
                       <SelectContent>
                         {gameContext.sessionCards
                           .filter(card => card.playerid === tradeFrom.playerId && card.pile_id === null)
-                          .map((card) => {
+                          .map((card, index) => {
                             const deck = gameContext.decks.find(d => d.deckid === card.deckid);
                             const cardDetails = deck?.cards.find(c => c.cardid === card.cardid);
                             return (
                               <SelectItem key={card.sessioncardid} value={card.sessioncardid.toString()}>
-                                {cardDetails?.name || 'Unknown Card'}
+                                {gameContext.session.hand_hidden ? `Card ${index + 1}` : (cardDetails?.name || 'Unknown Card')}
                               </SelectItem>
                             );
                           })}
@@ -547,12 +550,12 @@ export function PlayerHandButtonBar({
                       <SelectContent>
                         {gameContext.sessionCards
                           .filter(card => card.playerid === tradeTo.playerId && card.pile_id === null)
-                          .map((card) => {
+                          .map((card, index) => {
                             const deck = gameContext.decks.find(d => d.deckid === card.deckid);
                             const cardDetails = deck?.cards.find(c => c.cardid === card.cardid);
                             return (
                               <SelectItem key={card.sessioncardid} value={card.sessioncardid.toString()}>
-                                {cardDetails?.name || 'Unknown Card'}
+                                {gameContext.session.hand_hidden ? `Card ${index + 1}` : (cardDetails?.name || 'Unknown Card')}
                               </SelectItem>
                             );
                           })}
@@ -580,13 +583,64 @@ export function PlayerHandButtonBar({
                 <Button>Peak at Card</Button>
               </DialogTrigger>
               <DialogContent>
-                {/* ... Peak Dialog Content ... */}
+                <DialogHeader>
+                  <DialogTitle>Peak at Card</DialogTitle>
+                  <DialogDescription>
+                    Select a player and card to peak at
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="flex flex-col gap-4 mt-4">
+                  <Select onValueChange={(value) => setPeakTarget({ ...peakTarget, playerId: parseInt(value) })}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select player" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {gameContext.sessionPlayers
+                        .filter(player => player.playerid !== playerId)
+                        .map((player) => (
+                          <SelectItem key={player.playerid} value={player.playerid.toString()}>
+                            {player.username}
+                          </SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
+
+                  {peakTarget.playerId !== -1 && (
+                    <Select onValueChange={(value) => setPeakTarget({ ...peakTarget, cardId: parseInt(value) })}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select card" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {gameContext.sessionCards
+                          .filter(card => card.playerid === peakTarget.playerId && card.pile_id === null)
+                          .map((card, index) => (
+                            <SelectItem key={card.sessioncardid} value={card.sessioncardid.toString()}>
+                              Card {index + 1}
+                            </SelectItem>
+                          ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+
+                  <Button 
+                    onClick={handlePeakCard}
+                    disabled={!peakTarget.cardId}
+                  >
+                    Peak at Card
+                  </Button>
+                </div>
               </DialogContent>
             </Dialog>
 
             <Dialog open={peakedCard !== null} onOpenChange={() => setPeakedCard(null)}>
               <DialogContent>
-                {/* ... Peaked Card Content ... */}
+                <DialogHeader>
+                  <DialogTitle>Peaked Card</DialogTitle>
+                </DialogHeader>
+                <div className="mt-4">
+                  <h3 className="font-bold">{peakedCard?.name}</h3>
+                  <p className="mt-2">{peakedCard?.description}</p>
+                </div>
               </DialogContent>
             </Dialog>
           </>

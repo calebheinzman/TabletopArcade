@@ -20,17 +20,26 @@ interface PlayerHandHeaderProps {
   gameRules?: string;
   showRules: boolean;
   setShowRules: (show: boolean) => void;
+  showPoints?: boolean;
 }
 
-export function PlayerHandHeader({ currentPlayer, gameRules, showRules, setShowRules }: PlayerHandHeaderProps) {
+export function PlayerHandHeader({ 
+  currentPlayer, 
+  gameRules, 
+  showRules, 
+  setShowRules, 
+  showPoints 
+}: PlayerHandHeaderProps) {
   return (
     <div className="flex justify-between items-center p-2 md:px-6 lg:px-8">
       <h2 className="text-2xl font-bold">{currentPlayer.username}&apos;s Hand</h2>
       <div className="flex items-center gap-4">
-        <div className="flex items-center text-lg">
-          <div className="mr-2"><TbCoin size={24} /></div>
-          <span className="font-semibold">{currentPlayer.num_points || 0}</span>
-        </div>
+        {showPoints && (
+          <div className="flex items-center text-lg">
+            <div className="mr-2"><TbCoin size={24} /></div>
+            <span className="font-semibold">{currentPlayer.num_points || 0}</span>
+          </div>
+        )}
         <div className="portrait:block landscape:hidden">
           {gameRules && (
             <Dialog open={showRules} onOpenChange={setShowRules}>

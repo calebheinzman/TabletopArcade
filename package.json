@@ -23,6 +23,7 @@
     "@tailwindcss/typography": "^0.5.15",
     "@uiw/react-markdown-preview": "^4.2.2",
     "@uiw/react-md-editor": "^4.0.5",
+    "@vercel/analytics": "^1.4.1",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "lucide-react": "^0.461.0",

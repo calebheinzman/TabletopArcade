@@ -60,7 +60,7 @@ export interface GameContextType {
   playerActions: PlayerAction[];
   session: Session;
   sessionPlayers: SessionPlayer[];
-  drawCard: (playerId: number) => Promise<void>;
+  drawCard: (playerId: number, card_hidden: boolean) => Promise<void>;
   drawPoints: (playerId: number, quantity: number) => Promise<void>;
   givePoints: (fromPlayerId: number, toUsername: string, quantity: number) => Promise<void>;
   discardCard: (playerId: number, sessionCardId: number, pileId?: number, targetPlayerId?: number) => Promise<void>;
@@ -87,7 +87,7 @@ const initialGameContext: GameContextType = {
   playerActions: [],
   session: {} as Session,
   sessionPlayers: [],
-  drawCard: async (playerId: number) => {},
+  drawCard: async (playerId: number, card_hidden: boolean) => {},
   drawPoints: async (playerId: number, quantity: number) => {},
   givePoints: async (fromPlayerId: number, toUsername: string, quantity: number) => {},
   discardCard: async (playerId: number, sessionCardId: number, pileId?: number, targetPlayerId?: number) => {},
@@ -254,7 +254,7 @@ export function GameProvider({
   }, [sessionId]);
   console.log('gameContext', gameContext);
 
-  const drawCard = async (playerId: number) => {
+  const drawCard = async (playerId: number, card_hidden: boolean = false) => {
     try {
       // Only get cards from main deck (positive cardPosition and no pile_id)
       const topCard = gameContext.sessionCards
@@ -284,7 +284,8 @@ export function GameProvider({
           cardPosition: 0,
           playerid: playerId,
           pile_id: null,
-          isRevealed: false
+          isRevealed: false,
+          card_hidden
         },
         // Updates for remaining deck cards
         ...deckCards.map((card, index) => ({
@@ -296,6 +297,12 @@ export function GameProvider({
           isRevealed: false
         }))
       ];
+      console.log('updates', updates);
+      console.log('gameContext.session.hand_hidden', gameContext.session.hand_hidden);
+      console.log('card_hidden', card_hidden);
+      console.log('playerId', playerId);
+      console.log('gameContext.sessionCards', gameContext.sessionCards);
+      console.log('gameContext.sessionCards[0]', gameContext.sessionCards[0]);
 
       // Verify no duplicate sessioncardids
       const sessionCardIds = new Set();

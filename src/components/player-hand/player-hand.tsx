@@ -271,30 +271,19 @@ export function PlayerHand({ gameContext }: { gameContext: GameContextType }) {
     }
   };
 
-  const handleDrawCard = async (hidden: boolean = false) => {
+  const handleDrawCard = async (card_hidden: boolean = false) => {
     try {
-      const previousCardCount = playerCards.length;
-      await gameContext.drawCard(playerId);
-      const newCards = gameContext.sessionCards.filter(card => 
-        card.playerid === playerId && 
-        card.pile_id === null
-      );
-      
-      if (newCards.length > previousCardCount) {
-        const newCard = newCards[newCards.length - 1];
-        
-        if (hidden) {
-          await updateSessionCards([{
-            sessionid: gameContext.sessionid,
-            sessioncardid: newCard.sessioncardid,
-            cardPosition: newCard.cardPosition,
-            playerid: playerId,
-            pile_id: null,
-            card_hidden: true
-          }]);
-        } else if (gameContext.session.hand_hidden) {
-          const deck = gameContext.decks.find(d => d.deckid === newCard.deckid);
-          const cardDetails = deck?.cards.find(c => c.cardid === newCard.cardid);
+      await gameContext.drawCard(playerId, card_hidden);
+
+      // Only show card dialog for normal draws in hidden hand games
+      if (!card_hidden && gameContext.session.hand_hidden) {
+        const drawnCard = gameContext.sessionCards
+          .filter(card => card.playerid === playerId && card.pile_id === null)
+          .sort((a, b) => b.sessioncardid - a.sessioncardid)[0];
+
+        if (drawnCard) {
+          const deck = gameContext.decks.find(d => d.deckid === drawnCard.deckid);
+          const cardDetails = deck?.cards.find(c => c.cardid === drawnCard.cardid);
           if (cardDetails) {
             setDrawnCard({
               name: cardDetails.name || 'Unknown Card',
@@ -307,7 +296,7 @@ export function PlayerHand({ gameContext }: { gameContext: GameContextType }) {
       await pushPlayerAction(
         gameContext.sessionid,
         playerId,
-        hidden ? "Drew a hidden card" : "Drew a card"
+        card_hidden ? "Drew a hidden card" : "Drew a card"
       );
     } catch (error) {
       console.error('Error drawing card:', error);

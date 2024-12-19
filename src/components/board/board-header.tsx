@@ -29,7 +29,7 @@ import {
 interface BoardHeaderProps {
   deckCount: number;
   players: SessionPlayer[];
-  onDrawCard: (playerId: number) => void;
+  onDrawCard: (playerId: number, card_hidden: boolean) => void;
   onGivePoint: (playerId: number, quantity: number) => void;
   onDiscardCard: (playerId: number) => void;
   onShuffle: () => void;
@@ -306,8 +306,8 @@ const BoardHeader: React.FC<BoardHeaderProps> = ({
       // Store the current number of cards
       const previousCardCount = getPlayerCardCount(playerId);
       
-      // Draw the card
-      await onDrawCard(playerId);
+      // Draw the card, passing in the hand_hidden status
+      await gameContext.drawCard(playerId, gameContext.session.hand_hidden);
 
       // If hands are hidden, wait briefly then check for the new card
       if (gameContext.session.hand_hidden) {
