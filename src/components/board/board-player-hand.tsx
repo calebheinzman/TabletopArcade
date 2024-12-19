@@ -180,6 +180,28 @@ const BoardPlayerHand: FC<BoardPlayerHandProps> = ({
     }
   };
 
+  const handlePassCard = async (fromPlayerId: number, cardId: number, targetPlayerId: number) => {
+    try {
+      const updates = [{
+        sessionid: gameContext.sessionid,
+        sessioncardid: cardId,
+        cardPosition: 0,
+        playerid: targetPlayerId,
+        pile_id: null,
+        isRevealed: false
+      }];
+
+      await updateSessionCards(updates);
+      await pushPlayerAction(
+        gameContext.sessionid,
+        fromPlayerId,
+        `Passed a card to ${gameContext.sessionPlayers.find(p => p.playerid === targetPlayerId)?.username}`
+      );
+    } catch (error) {
+      console.error('Error passing card:', error);
+    }
+  };
+
   return (
     <div
       className="flex flex-col items-center text-center absolute transform -translate-x-1/2 -translate-y-1/2"
@@ -189,7 +211,7 @@ const BoardPlayerHand: FC<BoardPlayerHandProps> = ({
         onClick={() => onSelect(player.playerid)}
         className={`
           mb-1 bg-white rounded-lg shadow-md p-1 cursor-pointer
-          ${player.is_turn ? 'bg-yellow-50' : ''} 
+          ${gameContext.gameData.turn_based && player.is_turn ? 'bg-yellow-50' : ''} 
           hover:bg-yellow-100
         `}
       >
@@ -340,6 +362,24 @@ const BoardPlayerHand: FC<BoardPlayerHandProps> = ({
                               </Button>
                             </DialogClose>
                           )}
+                        </div>
+                      )}
+
+                      {gameContext.gameData.pass_cards && (
+                        <div className="flex flex-col gap-2">
+                          <h4 className="text-sm font-semibold">Pass card to:</h4>
+                          {gameContext.sessionPlayers
+                            .filter(sessionPlayer => sessionPlayer.playerid !== player.playerid)
+                            .map(targetPlayer => (
+                              <DialogClose key={targetPlayer.playerid} asChild>
+                                <Button
+                                  variant="outline"
+                                  onClick={() => handlePassCard(player.playerid, card.sessioncardid, targetPlayer.playerid)}
+                                >
+                                  Pass to {targetPlayer.username}
+                                </Button>
+                              </DialogClose>
+                            ))}
                         </div>
                       )}
                     </div>

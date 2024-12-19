@@ -6,8 +6,9 @@ export interface GameTemplate {
 }
 
 export interface GameTemplateNameAndId {
-  id: GameTemplate['id'];
-  name: GameTemplate['name'];
+  id: string;
+  name: string;
+  tags?: string[];
 }
 
 export interface CustomGameData {
@@ -32,6 +33,11 @@ export interface CustomGameData {
   deal_all_cards: boolean;
   lock_player_discard: boolean;
   can_pass_points: boolean;
+  creator_name: string;
+  hide_hand: boolean;
+  reveal_hands: boolean;
+  trade_cards: boolean;
+  peak_cards: boolean;
 }
 
 export interface DeckData {
@@ -84,6 +90,7 @@ export interface Session {
   num_cards: number;
   is_live: boolean;
   locked_player_discard: boolean;
+  hand_hidden: boolean;
 }
 
 export interface SessionCard {
@@ -95,6 +102,7 @@ export interface SessionCard {
   deckid: number;
   isRevealed: boolean;
   pile_id: number | null;
+  card_hidden: boolean;
 }
 
 export interface SessionPlayer {

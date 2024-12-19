@@ -13,6 +13,13 @@ import {
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { DiscardPile } from '@/types/game-interfaces';
+import { Info } from 'lucide-react';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface CardSettings {
   row: number;
@@ -32,6 +39,19 @@ interface DiscardPileGridSelectorProps {
   cardBackImage?: string;
 }
 
+const InfoTooltip = ({ content }: { content: string }) => (
+  <TooltipProvider>
+    <Tooltip>
+      <TooltipTrigger>
+        <Info className="h-4 w-4 ml-2 text-muted-foreground" />
+      </TooltipTrigger>
+      <TooltipContent>
+        <p className="max-w-xs">{content}</p>
+      </TooltipContent>
+    </Tooltip>
+  </TooltipProvider>
+);
+
 const CardSettingsDialog: React.FC<{
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
@@ -44,6 +64,14 @@ const CardSettingsDialog: React.FC<{
     setLocalSettings(settings);
   }, [settings]);
 
+  const handleFaceUpChange = (checked: boolean) => {
+    setLocalSettings({
+      ...localSettings,
+      is_face_up: checked,
+      hide_values: checked ? localSettings.hide_values : true
+    });
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-sm">
@@ -54,24 +82,32 @@ const CardSettingsDialog: React.FC<{
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <Label htmlFor="is_face_up">Face Up</Label>
+          <div className="flex items-center justify-between mb-2">
+            <Label htmlFor="is_face_up" className="flex items-center">
+              Face Up
+              <InfoTooltip content="Card faces are visible." />
+            </Label>
             <Switch
               id="is_face_up"
               checked={localSettings.is_face_up}
-              onCheckedChange={(checked) =>
-                setLocalSettings({ ...localSettings, is_face_up: checked })
-              }
+              onCheckedChange={handleFaceUpChange}
             />
           </div>
-          <div className="flex items-center justify-between">
-            <Label htmlFor="hide_values">Hide Values</Label>
+          <div className="flex items-center justify-between mb-2">
+            <Label 
+              htmlFor="hide_values" 
+              className={`flex items-center ${!localSettings.is_face_up ? 'text-gray-400' : ''}`}
+            >
+              Hide Values
+              <InfoTooltip content="When enabled, all players cannot see the cards in this pile. When disabled, all cards are visible." />
+            </Label>
             <Switch
               id="hide_values"
               checked={localSettings.hide_values}
               onCheckedChange={(checked) =>
                 setLocalSettings({ ...localSettings, hide_values: checked })
               }
+              disabled={!localSettings.is_face_up}
             />
           </div>
           <Button
@@ -208,7 +244,10 @@ const DiscardPileGridSelector: React.FC<DiscardPileGridSelectorProps> = ({
 
   return (
     <div className="space-y-4">
-      <h2 className="text-lg font-semibold">{title}</h2>
+      <h2 className="text-lg font-semibold flex items-center">
+        {title}
+        <InfoTooltip content={title === "Board Discard Piles" ? "Discard piles that appear on the game board. All players can see and interact with these piles." : "Personal discard piles that each player gets. Only visible to the owning player unless face-up."} />
+      </h2>
       <div className="mb-2 text-sm text-gray-700 flex items-center space-x-2">
         <span>Selected: {finalRows} x {finalCols}</span>
         {locked && (
@@ -379,7 +418,8 @@ export default function DiscardPileBuilder({
       hide_values: card.hide_values,
       game_id: 0,
       x_pos: card.col,
-      y_pos: card.row
+      y_pos: card.row,
+      pile_name: `Board Pile ${card.row}-${card.col}`
     }));
 
     const playerPiles = playerSettings.cardSettings.map(card => ({
@@ -389,7 +429,8 @@ export default function DiscardPileBuilder({
       hide_values: card.hide_values,
       game_id: 0,
       x_pos: card.col,
-      y_pos: card.row
+      y_pos: card.row,
+      pile_name: `Player Pile ${card.row}-${card.col}`
     }));
 
     onComplete(boardPiles, playerPiles);

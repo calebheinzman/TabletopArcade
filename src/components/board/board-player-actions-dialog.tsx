@@ -50,7 +50,7 @@ const BoardPlayerActionsDialog: FC<BoardPlayerActionsDialogProps> = ({
   const deckCount = gameContext.sessionCards.filter(card => card.cardPosition > 0).length;
   const atMaxCards = playerCardCount >= (gameContext.gameData.max_cards_per_player || 0);
   
-  const canAssignTurn = isHost && gameContext.gameData.claim_turns;
+  const canAssignTurn = isHost && gameContext.gameData.claim_turns && gameContext.gameData.turn_based;
   
   const handleAssignTurn = async () => {
     try {
@@ -116,7 +116,7 @@ const BoardPlayerActionsDialog: FC<BoardPlayerActionsDialogProps> = ({
         </div>
         <DialogFooter className="flex justify-between">
           <div className="flex gap-2">
-            {isHost && (
+            {isHost && gameContext.gameData.turn_based && (
               <>
                 <Button 
                   variant="default"

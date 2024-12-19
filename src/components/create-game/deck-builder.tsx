@@ -5,10 +5,16 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { X } from 'lucide-react';
+import { X, Info } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { CardData } from '@/types/game-interfaces';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface Deck {
   name: string;
@@ -20,6 +26,19 @@ interface DeckBuilderProps {
   onComplete: (deck: Deck, cards: CardData[]) => void;
   onCancel: () => void;
 }
+
+const InfoTooltip = ({ content }: { content: string }) => (
+  <TooltipProvider>
+    <Tooltip>
+      <TooltipTrigger>
+        <Info className="h-4 w-4 ml-2 text-muted-foreground" />
+      </TooltipTrigger>
+      <TooltipContent>
+        <p className="max-w-xs">{content}</p>
+      </TooltipContent>
+    </Tooltip>
+  </TooltipProvider>
+);
 
 export default function DeckBuilder({ 
   initialDeckName, 
@@ -195,7 +214,10 @@ export default function DeckBuilder({
         <>
           <Card>
             <CardHeader>
-              <CardTitle>Import Cards via CSV</CardTitle>
+              <CardTitle className="flex items-center">
+                Import Cards via CSV
+                <InfoTooltip content="Upload a CSV file with columns: Name, Count, Type, Description, Drop Order. Makes adding multiple cards easier" />
+              </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
@@ -219,7 +241,10 @@ export default function DeckBuilder({
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="cardName">Name</Label>
+                  <Label htmlFor="cardName" className="flex items-center mb-2">
+                    Name
+                    <InfoTooltip content="The name of the card that will be displayed to players" />
+                  </Label>
                   <Input
                     id="cardName"
                     value={newCard.name}
@@ -229,7 +254,10 @@ export default function DeckBuilder({
                 </div>
                 <div className="grid grid-cols-3 gap-2">
                   <div>
-                    <Label htmlFor="cardCount">Count</Label>
+                    <Label htmlFor="cardCount" className="flex items-center mb-2">
+                      Count
+                      <InfoTooltip content="How many copies of this card should be in the deck" />
+                    </Label>
                     <Input
                       id="cardCount"
                       type="number"
@@ -239,7 +267,10 @@ export default function DeckBuilder({
                     />
                   </div>
                   <div>
-                    <Label htmlFor="cardType">Type</Label>
+                    <Label htmlFor="cardType" className="flex items-center mb-2">
+                      Type
+                      <InfoTooltip content="Category or type of card (e.g., Action, Treasure, etc.). Used for sorting in player's hand" />
+                    </Label>
                     <Input
                       id="cardType"
                       value={newCard.type}
@@ -248,7 +279,10 @@ export default function DeckBuilder({
                     />
                   </div>
                   <div>
-                    <Label htmlFor="dropOrder">Drop Order</Label>
+                    <Label htmlFor="dropOrder" className="flex items-center mb-2">
+                      Drop Order
+                      <InfoTooltip content="Determines the order cards are dealt when 'Deal All Cards' is enabled. Lower numbers are dealt first" />
+                    </Label>
                     <Input
                       id="dropOrder"
                       type="number"
@@ -260,7 +294,10 @@ export default function DeckBuilder({
                   </div>
                 </div>
                 <div className="md:col-span-2">
-                  <Label htmlFor="cardDescription">Description</Label>
+                  <Label htmlFor="cardDescription" className="flex items-center mb-2">
+                    Description
+                    <InfoTooltip content="The text that appears on the card explaining its purpose or effects" />
+                  </Label>
                   <Textarea
                     id="cardDescription"
                     value={newCard.description}
