@@ -44,9 +44,16 @@ export function PlayerHandHeader({ currentPlayer, gameRules, showRules, setShowR
                   <DialogTitle>Game Rules</DialogTitle>
                 </DialogHeader>
                 <div className="prose dark:prose-invert mt-4">
-                  <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                    {gameRules || 'No rules available for this game.'}
-                  </ReactMarkdown>
+                  <ReactMarkdown 
+                    children={gameRules || 'No rules available for this game.'} 
+                    remarkPlugins={[remarkGfm]}
+                    components={{
+                      // Ensure proper table rendering
+                      table: ({node, ...props}) => (
+                        <table className="border-collapse table-auto" {...props} />
+                      ),
+                    }}
+                  />
                 </div>
               </DialogContent>
             </Dialog>

@@ -123,18 +123,18 @@ export default function GameSelectPage() {
         </div>
       )}
 
-      <div className="space-y-6">
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-4 max-w-2xl w-full px-4">
         {filteredGames?.map((game) => (
           <Button
             key={game.id}
-            className="w-48"
+            className="w-full"
             onClick={() => handleGameSelect(game)}
           >
             {game.name}
           </Button>
         ))}
-        <Link href="/create-custom-game">
-          <Button className="w-48" variant="outline">
+        <Link href="/create-custom-game" className="w-full">
+          <Button className="w-full" variant="outline">
             Create Custom Game
           </Button>
         </Link>

@@ -70,7 +70,7 @@ export function PlayerHandButtonBar({
   const [showDiscardPileDialog, setShowDiscardPileDialog] = useState(false);
   const [showTradeDialog, setShowTradeDialog] = useState(false);
   const [tradeFrom, setTradeFrom] = useState<{ playerId: number, cardId: number | null }>({ playerId: -1, cardId: null });
-  const [tradeTo, setTradeTo] = useState<{ playerId: number, cardId: null }>({ playerId: -1, cardId: null });
+  const [tradeTo, setTradeTo] = useState<{ playerId: number, cardId: number | null }>({ playerId: -1, cardId: null });
   const [showPeakDialog, setShowPeakDialog] = useState(false);
   const [peakTarget, setPeakTarget] = useState<{ playerId: number, cardId: number | null }>({ playerId: -1, cardId: null });
   const [peakedCard, setPeakedCard] = useState<{ name: string, description: string } | null>(null);
@@ -80,7 +80,7 @@ export function PlayerHandButtonBar({
       setCustom(value);
       const numValue = parseInt(value);
       if (!isNaN(numValue) && numValue > 0) {
-        setPoints(numValue);
+        setPoints(Math.min(numValue, currentPlayer.num_points));
       }
     }
   };
@@ -319,7 +319,31 @@ export function PlayerHandButtonBar({
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-56">
-              {/* ... Draw Points Content ... */}
+              <div className="flex flex-col gap-2">
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setNumPointsToDraw(Math.max(1, numPointsToDraw - 1))}
+                  >
+                    -
+                  </Button>
+                  <Input
+                    type="text"
+                    value={customDrawPoints || numPointsToDraw}
+                    onChange={(e) => handleCustomPointsChange(e.target.value, setNumPointsToDraw, setCustomDrawPoints)}
+                    className="w-20 text-center"
+                  />
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setNumPointsToDraw(numPointsToDraw + 1)}
+                  >
+                    +
+                  </Button>
+                </div>
+                <Button onClick={handleDrawPoints}>Draw Points</Button>
+              </div>
             </PopoverContent>
           </Popover>
         )}
@@ -338,7 +362,46 @@ export function PlayerHandButtonBar({
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-56">
-              {/* ... Pass Points Content ... */}
+              <div className="flex flex-col gap-2">
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setNumPointsToGive(Math.max(1, numPointsToGive - 1))}
+                  >
+                    -
+                  </Button>
+                  <Input
+                    type="text"
+                    value={customGivePoints || numPointsToGive}
+                    onChange={(e) => handleCustomPointsChange(e.target.value, setNumPointsToGive, setCustomGivePoints)}
+                    className="w-20 text-center"
+                    max={currentPlayer.num_points}
+                  />
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setNumPointsToGive(Math.min(numPointsToGive + 1, currentPlayer.num_points))}
+                  >
+                    +
+                  </Button>
+                </div>
+                <div className="text-sm text-muted-foreground text-center">
+                  Available Points: {currentPlayer.num_points}
+                </div>
+                <Select onValueChange={handleGivePoints}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select player" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {playerNames.map((name) => (
+                      <SelectItem key={name} value={name}>
+                        {name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </PopoverContent>
           </Popover>
         )}
@@ -363,7 +426,49 @@ export function PlayerHandButtonBar({
               </Button>
             </DialogTrigger>
             <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-              {/* ... Discard Dialog Content ... */}
+              <DialogHeader>
+                <DialogTitle>Discard Piles</DialogTitle>
+              </DialogHeader>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                {gameContext.discardPiles
+                  .filter(pile => pile.is_player)
+                  .map((pile) => {
+                    const pileCards = gameContext.sessionCards.filter(card => 
+                      card.pile_id === pile.pile_id && 
+                      card.playerid === playerId  // Only show cards belonging to current player
+                    );
+                    
+                    // Only render if there are cards belonging to this player
+                    if (pileCards.length === 0) return null;
+
+                    return (
+                      <div key={pile.pile_id} className="border rounded-lg p-4">
+                        <div className="flex justify-between items-center mb-2">
+                          <h3 className="font-semibold">Your Discard Pile</h3>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handlePickUpFromDiscard(pile.pile_id)}
+                            disabled={pileCards.length === 0}
+                          >
+                            Pick Up
+                          </Button>
+                        </div>
+                        <div className="space-y-2">
+                          {pileCards.map((card) => {
+                            const deck = gameContext.decks.find(d => d.deckid === card.deckid);
+                            const cardDetails = deck?.cards.find(c => c.cardid === card.cardid);
+                            return (
+                              <div key={card.sessioncardid} className="text-sm">
+                                {cardDetails?.name || 'Unknown Card'}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  }).filter(Boolean)}  {/* Remove null entries */}
+              </div>
             </DialogContent>
           </Dialog>
         )}
@@ -375,7 +480,94 @@ export function PlayerHandButtonBar({
               <Button>Trade Cards</Button>
             </DialogTrigger>
             <DialogContent className="max-w-2xl">
-              {/* ... Trade Dialog Content ... */}
+              <DialogHeader>
+                <DialogTitle>Trade Cards</DialogTitle>
+                <DialogDescription>
+                  Select two players and their cards to trade
+                </DialogDescription>
+              </DialogHeader>
+              <div className="flex flex-col gap-4 mt-4">
+                {/* First Player Selection */}
+                <div className="space-y-2">
+                  <h4>First Player</h4>
+                  <Select onValueChange={(value) => setTradeFrom({ ...tradeFrom, playerId: parseInt(value) })}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select player" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {gameContext.sessionPlayers.map((player) => (
+                        <SelectItem key={player.playerid} value={player.playerid.toString()}>
+                          {player.username}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {tradeFrom.playerId !== -1 && (
+                    <Select onValueChange={(value) => setTradeFrom({ ...tradeFrom, cardId: parseInt(value) })}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select card" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {gameContext.sessionCards
+                          .filter(card => card.playerid === tradeFrom.playerId && card.pile_id === null)
+                          .map((card) => {
+                            const deck = gameContext.decks.find(d => d.deckid === card.deckid);
+                            const cardDetails = deck?.cards.find(c => c.cardid === card.cardid);
+                            return (
+                              <SelectItem key={card.sessioncardid} value={card.sessioncardid.toString()}>
+                                {cardDetails?.name || 'Unknown Card'}
+                              </SelectItem>
+                            );
+                          })}
+                      </SelectContent>
+                    </Select>
+                  )}
+                </div>
+
+                {/* Second Player Selection */}
+                <div className="space-y-2">
+                  <h4>Second Player</h4>
+                  <Select onValueChange={(value) => setTradeTo({ ...tradeTo, playerId: parseInt(value) })}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select player" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {gameContext.sessionPlayers.map((player) => (
+                        <SelectItem key={player.playerid} value={player.playerid.toString()}>
+                          {player.username}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {tradeTo.playerId !== -1 && (
+                    <Select onValueChange={(value) => setTradeTo({ ...tradeTo, cardId: parseInt(value) })}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select card" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {gameContext.sessionCards
+                          .filter(card => card.playerid === tradeTo.playerId && card.pile_id === null)
+                          .map((card) => {
+                            const deck = gameContext.decks.find(d => d.deckid === card.deckid);
+                            const cardDetails = deck?.cards.find(c => c.cardid === card.cardid);
+                            return (
+                              <SelectItem key={card.sessioncardid} value={card.sessioncardid.toString()}>
+                                {cardDetails?.name || 'Unknown Card'}
+                              </SelectItem>
+                            );
+                          })}
+                      </SelectContent>
+                    </Select>
+                  )}
+                </div>
+
+                <Button 
+                  onClick={handleTrade}
+                  disabled={!tradeFrom.cardId || !tradeTo.cardId}
+                >
+                  Trade Cards
+                </Button>
+              </div>
             </DialogContent>
           </Dialog>
         )}
