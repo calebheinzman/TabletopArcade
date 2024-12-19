@@ -1,0 +1,46 @@
+name: E2E Tests
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+
+    services:
+      # Start a Docker container with your app
+      app:
+        image: node:16
+        ports:
+          - "3000:3000"
+        options: >-
+          --workdir /app
+          --volume ${{ github.workspace }}:/app
+        env:
+          NODE_ENV: development
+        command: >
+          bash -c "npm install &&
+                   npm run build &&
+                   npm start"
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 16
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Run Playwright tests
+        run: npm run test:e2e
+        env:
+          CI: true

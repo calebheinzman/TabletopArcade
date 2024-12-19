@@ -109,6 +109,8 @@ export default function GameSelectPage() {
               variant={selectedTags.includes(tag) ? "default" : "outline"}
               className="cursor-pointer"
               onClick={() => toggleTag(tag)}
+              role="button"
+              aria-pressed={selectedTags.includes(tag)}
             >
               {tag}
             </Badge>

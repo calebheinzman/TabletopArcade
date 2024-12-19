@@ -94,52 +94,41 @@ function GameReviewContent() {
   const handleCloneGame = () => {
     if (!gameData) return;
     
-    // Debug logs
-    console.log('Game Data:', gameData);
-    console.log('Discard Piles:', gameData.discard_piles);
-
-    // Clone decks and cards
-    gameData.decks?.forEach((deck: DeckData) => {
-      handleDeckSelect(deck);
-    });
-
-    // Ensure we're getting the correct field name from the database
-    const discardPilesData = Array.isArray(gameData.discard_piles) 
-      ? gameData.discard_piles 
-      : [];
-
-    // Construct query params with all game data
-    const queryParams = new URLSearchParams({
+    // Store game data in sessionStorage instead of URL params
+    const gameDataToStore = {
       name: `${gameData.name} (Clone)`,
       rules: gameData.game_rules || '',
       tags: gameData.tags || '',
-      maxPoints: gameData.num_points?.toString() || '0',
-      startingPoints: gameData.starting_num_points?.toString() || '0',
-      dice: gameData.num_dice?.toString() || '0',
-      startingCards: gameData.starting_num_cards?.toString() || '0',
-      maxCardsPerPlayer: gameData.max_cards_per_player?.toString() || '52',
-      turnBased: gameData.turn_based?.toString() || 'false',
-      lockTurn: gameData.lock_turn?.toString() || 'false',
-      dealAllCards: gameData.deal_all_cards?.toString() || 'false',
-      redealCards: gameData.redeal_cards?.toString() || 'false',
-      passCards: gameData.pass_cards?.toString() || 'false',
-      claimTurns: gameData.claim_turns?.toString() || 'false',
-      canDiscard: gameData.can_discard?.toString() || 'false',
-      canReveal: gameData.can_reveal?.toString() || 'false',
-      canDrawCards: gameData.can_draw_cards?.toString() || 'false',
-      canDrawPoints: gameData.can_draw_points?.toString() || 'false',
-      canPassPoints: gameData.can_pass_points?.toString() || 'false',
-      lockPlayerDiscard: gameData.lock_player_discard?.toString() || 'false',
-      hideHand: gameData.hide_hand?.toString() || 'false',
-      decks: JSON.stringify(gameData.decks || []),
-      discardPiles: JSON.stringify(discardPilesData),
+      maxPoints: gameData.num_points || 0,
+      startingPoints: gameData.starting_num_points || 0,
+      dice: gameData.num_dice || 0,
+      startingCards: gameData.starting_num_cards || 0,
+      maxCardsPerPlayer: gameData.max_cards_per_player || 52,
+      turnBased: gameData.turn_based || false,
+      lockTurn: gameData.lock_turn || false,
+      dealAllCards: gameData.deal_all_cards || false,
+      redealCards: gameData.redeal_cards || false,
+      passCards: gameData.pass_cards || false,
+      claimTurns: gameData.claim_turns || false,
+      canDiscard: gameData.can_discard || false,
+      canReveal: gameData.can_reveal || false,
+      canDrawCards: gameData.can_draw_cards || false,
+      canDrawPoints: gameData.can_draw_points || false,
+      canPassPoints: gameData.can_pass_points || false,
+      lockPlayerDiscard: gameData.lock_player_discard || false,
+      hideHand: gameData.hide_hand || false,
       creator_name: gameData.creator_name || '',
-      tradeCards: gameData.trade_cards?.toString() || 'false',
-      peakCards: gameData.peak_cards?.toString() || 'false',
-    });
+      tradeCards: gameData.trade_cards || false,
+      peakCards: gameData.peak_cards || false,
+      decks: gameData.decks || [],
+      discardPiles: gameData.discard_piles || [],
+    };
 
-    console.log('Cloning with discard piles:', discardPilesData);
-    router.push(`/create-custom-game?${queryParams.toString()}`);
+    // Store the data in sessionStorage
+    sessionStorage.setItem('cloneGameData', JSON.stringify(gameDataToStore));
+
+    // Navigate with minimal query params
+    router.push('/create-custom-game?clone=true');
   };
 
   if (error) {

@@ -269,77 +269,75 @@ function CreateCustomGameContent() {
   );
 
   useEffect(() => {
-    if (searchParams.has('name')) {
-      setName(searchParams.get('name') || '');
-      const rulesFromUrl = searchParams.get('rules');
-      if (rulesFromUrl) {
-        try {
-          const decodedRules = decodeURIComponent(rulesFromUrl);
-          setGameRules(decodedRules);
-        } catch (error) {
-          console.error('Error decoding rules:', error);
-          setGameRules(rulesFromUrl);
-        }
-      }
-      setTagList(searchParams.get('tags')?.split(',').filter(Boolean) || []);
-      setMaxPoints(parseInt(searchParams.get('maxPoints') || '0'));
-      setStartingPoints(parseInt(searchParams.get('startingPoints') || '0'));
-      setDice(parseInt(searchParams.get('dice') || '0'));
-      setStartingCards(parseInt(searchParams.get('startingCards') || '0'));
-      setMaxCardsPerPlayer(parseInt(searchParams.get('maxCardsPerPlayer') || '52'));
-      setTurnBased(searchParams.get('turnBased') === 'true');
-      setLockTurn(searchParams.get('lockTurn') === 'true');
-      setDealAllCards(searchParams.get('dealAllCards') === 'true');
-      setRedealCards(searchParams.get('redealCards') === 'true');
-      setPassCards(searchParams.get('passCards') === 'true');
-      setClaimTurns(searchParams.get('claimTurns') === 'true');
-      setCanDiscardCard(searchParams.get('canDiscard') === 'true');
-      setCanRevealCard(searchParams.get('canReveal') === 'true');
-      setCanDrawCard(searchParams.get('canDrawCards') === 'true');
-      setCanDrawPoint(searchParams.get('canDrawPoints') === 'true');
-      setCanPassPoints(searchParams.get('canPassPoints') === 'true');
-      setLockPlayerDiscard(searchParams.get('lockPlayerDiscard') === 'true');
-      setCreatorName(searchParams.get('creator_name') || '');
-      setHideHand(searchParams.get('hideHand') === 'true');
-      setRevealHands(searchParams.get('revealHands') === 'true');
-      setTradeCards(searchParams.get('tradeCards') === 'true');
-      setPeakCards(searchParams.get('peakCards') === 'true');
-
-      // Handle decks and cards
-      try {
-        const decksData = JSON.parse(searchParams.get('decks') || '[]');
-        setDecks([]); // Clear existing decks
-        setCards([]); // Clear existing cards
+    const searchParams = new URLSearchParams(window.location.search);
+    
+    if (searchParams.get('clone') === 'true') {
+      // Load data from sessionStorage
+      const storedData = sessionStorage.getItem('cloneGameData');
+      if (storedData) {
+        const gameData = JSON.parse(storedData);
         
-        decksData.forEach((deck: DeckData) => {
-          const newDeckName = deck.deckname;
-          setDecks(prevDecks => [...prevDecks, { name: newDeckName }]);
-          
-          const newCards = deck.cards.map((card: CardData) => ({
-            name: card.name,
-            count: card.count,
-            description: card.description,
-            deckName: newDeckName,
-            type: card.type || '',
-            drop_order: card.drop_order || 0,
-          }));
-          
-          setCards(prevCards => [...prevCards, ...newCards]);
-        });
+        // Set all the state values
+        setName(gameData.name);
+        setGameRules(gameData.rules);
+        setTagList(gameData.tags?.split(',').filter(Boolean) || []);
+        setMaxPoints(gameData.maxPoints);
+        setStartingPoints(gameData.startingPoints);
+        setDice(gameData.dice);
+        setStartingCards(gameData.startingCards);
+        setMaxCardsPerPlayer(gameData.maxCardsPerPlayer);
+        setTurnBased(gameData.turnBased);
+        setLockTurn(gameData.lockTurn);
+        setDealAllCards(gameData.dealAllCards);
+        setRedealCards(gameData.redealCards);
+        setPassCards(gameData.passCards);
+        setClaimTurns(gameData.claimTurns);
+        setCanDiscardCard(gameData.canDiscard);
+        setCanRevealCard(gameData.canReveal);
+        setCanDrawCard(gameData.canDrawCards);
+        setCanDrawPoint(gameData.canDrawPoints);
+        setCanPassPoints(gameData.canPassPoints);
+        setLockPlayerDiscard(gameData.lockPlayerDiscard);
+        setCreatorName(gameData.creator_name);
+        setHideHand(gameData.hideHand);
+        setTradeCards(gameData.tradeCards);
+        setPeakCards(gameData.peakCards);
+
+        // Handle decks and cards
+        if (gameData.decks) {
+          setDecks([]);
+          setCards([]);
+          gameData.decks.forEach((deck: DeckData) => {
+            const newDeckName = deck.deckname;
+            setDecks(prevDecks => [...prevDecks, { name: newDeckName }]);
+            
+            const newCards = deck.cards.map((card: CardData) => ({
+              name: card.name,
+              count: card.count,
+              description: card.description,
+              deckName: newDeckName,
+              type: card.type || '',
+              drop_order: card.drop_order || 0,
+            }));
+            
+            setCards(prevCards => [...prevCards, ...newCards]);
+          });
+        }
 
         // Handle discard piles
-        const discardPilesData = JSON.parse(searchParams.get('discardPiles') || '[]');
-        console.log('Setting discard piles:', discardPilesData); // Debug log
-        setDiscardPiles(discardPilesData.map((pile: DiscardPile) => ({
-          ...pile,
-          pile_id: pile.pile_id || 0, // Ensure pile_id exists
-          game_id: 0, // Reset game_id for new game
-        })));
-      } catch (error) {
-        console.error('Error parsing deck or discard pile data:', error);
+        if (gameData.discardPiles) {
+          setDiscardPiles(gameData.discardPiles.map((pile: DiscardPile) => ({
+            ...pile,
+            pile_id: pile.pile_id || 0,
+            game_id: 0,
+          })));
+        }
+
+        // Clear the stored data
+        sessionStorage.removeItem('cloneGameData');
       }
     }
-  }, [searchParams]);
+  }, []);
 
   if (currentView === 'deck') {
     return (
