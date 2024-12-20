@@ -150,11 +150,24 @@ function GameReviewContent() {
   }
 
   return (
-    <div className="flex flex-col items-center justify-start min-h-screen bg-gray-100 p-4">
-      <Button onClick={() => router.back()} className="absolute top-4 left-4">
-        Back
-      </Button>
-      <h1 className="text-4xl font-bold mb-8">Game Review</h1>
+    <div className="flex flex-col items-center justify-start min-h-screen bg-gray-100 p-4 pt-8">
+      <div className="w-full max-w-4xl grid grid-cols-3 items-center mb-8 relative">
+        <div className="flex">
+          <Button onClick={() => router.back()}>
+            Back
+          </Button>
+        </div>
+        <h1 className="text-4xl font-bold text-center">Game Review</h1>
+        <div className="flex justify-end gap-2">
+          <Button onClick={handleCloneGame} variant="outline" className="flex gap-2">
+            <Copy className="h-4 w-4" />
+            Clone
+          </Button>
+          <Button onClick={handleStartGame}>
+            Start Game
+          </Button>
+        </div>
+      </div>
 
       <div className="w-full max-w-4xl space-y-8">
         <Card>
@@ -163,6 +176,17 @@ function GameReviewContent() {
           </CardHeader>
           <CardContent>
             <p className="text-lg">{gameData.name}</p>
+            {gameData.tags && (
+              <div className="mt-2">
+                <div className="flex flex-wrap gap-2">
+                  {gameData.tags.split(',').map((tag: string, index: number) => (
+                    <span key={index} className="bg-primary/10 text-primary px-2 py-1 rounded-full text-sm">
+                      {tag.trim()}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
             {gameData.creator_name && (
               <div className="mt-2 text-sm text-gray-600">
                 Created by: {gameData.creator_name}
@@ -357,16 +381,6 @@ function GameReviewContent() {
             </div>
           </CardContent>
         </Card>
-
-        <div className="flex gap-4">
-          <Button onClick={handleStartGame} className="flex-1">
-            Start Game
-          </Button>
-          <Button onClick={handleCloneGame} variant="outline" className="flex gap-2">
-            <Copy className="h-4 w-4" />
-            Clone
-          </Button>
-        </div>
       </div>
     </div>
   );
