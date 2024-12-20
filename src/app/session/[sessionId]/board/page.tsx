@@ -129,22 +129,28 @@ const BoardContent: React.FC = () => {
             onReset={handleReset}
           />
 
-          {/* Game Board */}
-          <div className="relative flex-grow bg-white rounded-lg shadow-xl border border-gray-200 overflow-hidden w-full p-4 sm:p-8">
-            {/* Toggle Action Feed Button */}
+          {/* Game Board - Reduced all padding */}
+          <div className="relative flex-grow bg-white rounded-lg shadow-xl border border-gray-200 overflow-hidden w-full p-2">
             <Button
               size="sm"
               variant="outline"
-              className="absolute top-4 right-4 z-10"
+              className="absolute top-2 right-2 z-10"
               onClick={() => setIsActionFeedOpen(!isActionFeedOpen)}
             >
               {isActionFeedOpen ? 'Hide Actions' : 'Show Actions'}
             </Button>
 
-            {/* Reduced padding container around the game content */}
-            <div className="p-4 sm:p-8 md:p-12">
-              {/* Central Deck Area - reduced top margin */}
-              <div className="flex items-center justify-center gap-8 mb-4 sm:mb-8 mt-8 sm:mt-12">
+            {/* Minimal padding container */}
+            <div className="p-2">
+              {/* Players */}
+              <BoardPlayerHands
+                players={sortedPlayers}
+                totalPlayers={sortedPlayers.length}
+                onSelectPlayer={setSelectedPlayerId}
+              />
+
+              {/* Central Deck Area - adjusted position */}
+              <div className="absolute top-[52%] left-1/2 transform -translate-x-1/2 -translate-y-1/2">
                 <div className="flex items-center space-x-8">
                   <BoardDeckDialog
                     deckCount={deckCount}
@@ -156,25 +162,16 @@ const BoardContent: React.FC = () => {
                   <div className="flex space-x-4 items-center">
                     {gameContext.discardPiles
                       .filter(pile => !pile.is_player)
-                      .map((pile) => {
-                        return (
-                          <BoardDiscardPile
-                            key={pile.pile_id}
-                            pile={pile}
-                            variant="board"
-                          />
-                        );
-                      })}
+                      .map((pile) => (
+                        <BoardDiscardPile
+                          key={pile.pile_id}
+                          pile={pile}
+                          variant="board"
+                        />
+                      ))}
                   </div>
                 </div>
               </div>
-
-              {/* Players */}
-              <BoardPlayerHands
-                players={sortedPlayers}
-                totalPlayers={sortedPlayers.length}
-                onSelectPlayer={setSelectedPlayerId}
-              />
             </div>
 
             {/* Game Points Display */}

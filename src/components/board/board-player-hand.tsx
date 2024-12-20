@@ -96,7 +96,23 @@ const BoardPlayerHand: FC<BoardPlayerHandProps> = ({
 
   // Modify spacing logic
   const isOverflowing = playerCards.length > 8;
-  const baseSpacing = isOverflowing ? 8 : (playerCards.length > 3 ? 20 : 56);
+  const baseSpacing = isOverflowing 
+    ? 8  // Tight spacing when overflowing
+    : playerCards.length > 5 
+      ? 20  // Medium spacing for 6-8 cards
+      : playerCards.length > 3 
+        ? 32  // Comfortable spacing for 4-5 cards
+        : playerCards.length > 2
+          ? 56  // Very spread out for 3 cards
+          : 96; // Maximum spacing for 1-2 cards
+  
+  // Add size calculation based on conditions
+  const uselargeCards = !isOverflowing && 
+    playerCards.length <= 5 && 
+    gameContext.discardPiles.length === 0;
+  
+  const cardWidth = uselargeCards ? 'w-24' : 'w-14';
+  const cardHeight = uselargeCards ? 'h-32' : 'h-20';
 
   // Add new state for revealed cards when overflowing
   const [revealedCards, setRevealedCards] = useState<number[]>([]);
@@ -273,7 +289,8 @@ const BoardPlayerHand: FC<BoardPlayerHandProps> = ({
               }
 
               const isTopCard = cardIndex === playerCards.length - 1;
-              const showOnEdge = isOverflowing && card.isRevealed && !isTopCard;
+              const isTightSpacing = baseSpacing <= 32; // Adjusted to include 4-card hands
+              const showOnEdge = isTightSpacing && card.isRevealed && !isTopCard;
 
               return (
                 <Dialog key={`card-${card.sessioncardid}-${card.cardid}`}>
@@ -284,7 +301,7 @@ const BoardPlayerHand: FC<BoardPlayerHandProps> = ({
                       onClick={handleCardClick}
                       className={`
                         absolute
-                        w-14 h-20
+                        ${cardWidth} ${cardHeight}
                         ${isActive ? 'bg-gray-200' : 'bg-gray-400'} 
                         shadow-md flex items-center justify-center
                         cursor-pointer transition-all duration-200
@@ -298,10 +315,11 @@ const BoardPlayerHand: FC<BoardPlayerHandProps> = ({
                       {card.isRevealed && (
                         <div
                           className={`
-                            text-[8px] truncate block transition-all absolute
+                            truncate block transition-all absolute
                             ${showOnEdge && !isHovered
-                              ? 'left-2 top-[70%] -translate-y-1/2 -rotate-90 origin-left'
-                              : 'left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full text-center'}
+                              ? 'left-2 top-[70%] -translate-y-1/2 -rotate-90 origin-left text-[8px]'
+                              : `left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full text-center
+                                 ${uselargeCards ? 'text-sm' : 'text-[8px]'}`}
                           `}
                         >
                           {card.name}
