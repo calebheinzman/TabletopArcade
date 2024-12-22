@@ -67,15 +67,18 @@ const usePlayerCards = (
   }, []);
 
   // Determine z-index based on hover
-  const getZIndex = (cardIndex: number): number => {
-    if (hoveredCardIndex === null) {
-      return cardIndex;
-    }
-    const distance = Math.abs(cardIndex - hoveredCardIndex);
-    // The hovered card gets the highest z-index, neighbors slightly less, etc.
-    // Start from a high base and decrement by distance
-    return 999 - distance;
-  };
+  const getZIndex = useCallback(
+    (cardIndex: number): number => {
+      if (hoveredCardIndex === null) {
+        return cardIndex;
+      }
+      const distance = Math.abs(cardIndex - hoveredCardIndex);
+      // The hovered card gets the highest z-index, neighbors slightly less, etc.
+      // Start from a high base and decrement by distance
+      return 999 - distance;
+    },
+    [hoveredCardIndex]
+  );
 
   const getCardStyle = useCallback(
     (cardIndex: number) => {
