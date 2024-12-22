@@ -1,5 +1,3 @@
-// components/Board/BoardContent.tsx
-
 'use client';
 
 import BoardActionFeed from '@/components/board/board-action-feed';

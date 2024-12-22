@@ -20,6 +20,7 @@ import {
   fetchSessionCards,
   updateCardRevealed,
   updateDeckOrder,
+  updateSessionCards as updateSessionCardsSupabase,
 } from '@/lib/supabase/card';
 
 import {
@@ -303,7 +304,7 @@ export function GameProvider({
 
   const updateSessionCards: GameContextType['updateSessionCards'] = useCallback(
     async (updates) => {
-      await updateSessionCards(updates);
+      await updateSessionCardsSupabase(updates);
     },
     []
   );
@@ -311,7 +312,7 @@ export function GameProvider({
   console.log('gameContext', gameContext);
 
   const drawCard: GameContextType['drawCard'] = useCallback(
-    async (playerId, card_hidden) => {
+    async (playerId: number, card_hidden: boolean = false) => {
       try {
         // Only get cards from main deck (positive cardPosition and no pile_id)
         const topCard = gameContext.sessionCards
