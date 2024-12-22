@@ -1,20 +1,19 @@
+import { Session, SessionCard } from '@/types/game-interfaces';
 import { supabase } from './index';
-import { SessionCard } from '@/types/game-interfaces';
 
-export async function insertSessionCards(sessionId: number, sessionCards: SessionCard[]) {
+export async function insertSessionCards(
+  sessionId: number,
+  sessionCards: SessionCard[]
+) {
   try {
-    const { error: cardsError } = await supabase
-      .from('session_cards')
-      .insert(
-        sessionCards.map(card => ({
-          sessionid: card.sessionid,
-          cardid: card.cardid,
-          cardPosition: card.cardPosition,
-          playerid: card.playerid ? card.playerid: null,
-          deckid: card.deckid,
-          isRevealed: card.isRevealed
-        }))
-      );
+    console.log('insertSessionCards CARDS', sessionCards);
+    const { error: cardsError } = await supabase.from('session_cards').insert(
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      sessionCards.map(({ playerid, ...card }) => ({
+        ...card,
+        sessionid: sessionId,
+      }))
+    );
 
     if (cardsError) throw cardsError;
   } catch (error) {
@@ -23,20 +22,20 @@ export async function insertSessionCards(sessionId: number, sessionCards: Sessio
   }
 }
 
-export async function updateSessionCards(updates: {
-  sessionid: number;
-  sessioncardid: number;
-  cardPosition: number;
-  playerid: number | null;
-  pile_id?: number | null;
-  isRevealed?: boolean;
-  card_hidden?: boolean;
-}[]) {
-  const { error } = await supabase
-    .from('session_cards')
-    .upsert(updates, {
-      onConflict: 'sessionid,sessioncardid'
-    });
+export async function updateSessionCards(
+  updates: {
+    sessionid: number;
+    sessioncardid: number;
+    cardPosition: number;
+    playerid: number | null;
+    pile_id?: number | null;
+    isRevealed?: boolean;
+    card_hidden?: boolean;
+  }[]
+) {
+  const { error } = await supabase.from('session_cards').upsert(updates, {
+    onConflict: 'sessionid,sessioncardid',
+  });
 
   if (error) throw error;
 }
@@ -59,19 +58,19 @@ export async function getMaxCardPosition(sessionId: number): Promise<number> {
 }
 
 export async function discardCardToDb(
-  sessionId: number, 
-  sessionCardId: number, 
+  sessionId: number,
+  sessionCardId: number,
   newPosition: number
 ): Promise<SessionCard[]> {
   const { data, error } = await supabase
     .from('session_cards')
-    .update({ 
+    .update({
       playerid: null,
-      cardPosition: newPosition 
+      cardPosition: newPosition,
     })
-    .match({ 
+    .match({
       sessionid: sessionId,
-      sessioncardid: sessionCardId 
+      sessioncardid: sessionCardId,
     })
     .select();
 
@@ -80,11 +79,11 @@ export async function discardCardToDb(
 }
 
 export async function updateDeckOrder(
-  sessionId: number, 
+  sessionId: number,
   sessionCards: SessionCard[]
 ): Promise<SessionCard[]> {
   const deckCards = sessionCards
-    .filter(card => card.cardPosition > 0)
+    .filter((card) => card.cardPosition > 0)
     .sort((a, b) => a.cardPosition - b.cardPosition);
 
   const positions = deckCards.map((_, index) => index + 1);
@@ -97,7 +96,7 @@ export async function updateDeckOrder(
     sessionid: sessionId,
     sessioncardid: card.sessioncardid,
     cardPosition: positions[index],
-    playerid: null
+    playerid: null,
   }));
 
   const { data, error } = await supabase
@@ -110,23 +109,28 @@ export async function updateDeckOrder(
 }
 
 export async function discardAndShuffleCard(
-  sessionId: number,
-  sessionCardId: number,
+  sessionId: Session['sessionId'],
+  sessionCardId: SessionCard['sessioncardid'],
   sessionCards: SessionCard[]
 ): Promise<SessionCard[]> {
   try {
-    const maxPosition = Math.max(...sessionCards.map(card => card.cardPosition));
-    const discardedCards = await discardCardToDb(sessionId, sessionCardId, maxPosition + 1);
-    
-    const updatedSessionCards = sessionCards.map(card => 
-      card.sessioncardid === sessionCardId 
+    const maxPosition = Math.max(
+      ...sessionCards.map((card) => card.cardPosition)
+    );
+    await discardCardToDb(sessionId, sessionCardId, maxPosition + 1);
+
+    const updatedSessionCards = sessionCards.map((card) =>
+      card.sessioncardid === sessionCardId
         ? { ...card, cardPosition: maxPosition + 1, playerid: null }
         : card
     );
 
-    const shuffledCards = await updateDeckOrder(sessionId, updatedSessionCards as SessionCard[]);
+    const shuffledCards = await updateDeckOrder(
+      sessionId,
+      updatedSessionCards as SessionCard[]
+    );
     console.log('Shuffled cards:', shuffledCards);
-    
+
     return shuffledCards;
   } catch (error) {
     console.error('Error in discardAndShuffleCard:', error);
@@ -142,9 +146,9 @@ export async function updateCardRevealed(
   const { error } = await supabase
     .from('session_cards')
     .update({ isRevealed })
-    .match({ 
+    .match({
       sessionid: sessionId,
-      sessioncardid: sessionCardId 
+      sessioncardid: sessionCardId,
     });
   console.log('Updated card revealed:', sessionCardId, isRevealed);
   if (error) throw error;
@@ -165,9 +169,7 @@ export async function fetchSessionCards(sessionId: number) {
 }
 
 export async function fetchAllDecks() {
-  const { data, error } = await supabase
-    .from('deck')
-    .select(`
+  const { data, error } = await supabase.from('deck').select(`
       *,
       cards:card(*)
     `);

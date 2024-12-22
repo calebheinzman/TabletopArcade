@@ -26,4 +26,3 @@ export function initializeSession(gameContext: GameContextType): SessionCard[] {
 
   return deck;
 }
-

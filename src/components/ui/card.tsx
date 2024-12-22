@@ -1,27 +1,105 @@
-import * as React from 'react';
+'use client';
 
 import { cn } from '@/lib/utils';
+import React from 'react';
 
-// Define the props type for the Card component
+// Simplified Card wrapper
 interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
-  isRevealed?: boolean;
+  children?: React.ReactNode; // Card content
 }
 
 const Card = React.forwardRef<HTMLDivElement, CardProps>(
-  ({ className, isRevealed, ...props }, ref) => (
+  ({ className, children, ...props }, ref) => (
     <div
       ref={ref}
       className={cn(
-        'rounded-xl border bg-card text-card-foreground shadow',
-        isRevealed && 'bg-blue',
+        'rounded-xl border bg-card text-card-foreground shadow transform-style-3d transition-transform duration-500',
         className
       )}
       {...props}
-    />
+    >
+      {children}
+    </div>
   )
 );
 Card.displayName = 'Card';
 
+// Front of the card
+const CardFront: React.FC<React.HTMLAttributes<HTMLDivElement>> = ({
+  children,
+  className,
+  ...props
+}) => (
+  <div
+    className={cn(
+      'absolute w-full h-full bg-card text-card-foreground shadow flex items-center justify-center backface-hidden',
+      className
+    )}
+    style={{
+      WebkitBackfaceVisibility: 'hidden',
+      backfaceVisibility: 'hidden',
+    }}
+    {...props}
+  >
+    {children}
+  </div>
+);
+CardFront.displayName = 'CardFront';
+
+// Back of the card
+const CardBack: React.FC<React.HTMLAttributes<HTMLDivElement>> = ({
+  children,
+  className,
+  ...props
+}) => (
+  <div
+    className={cn(
+      'absolute w-full h-full rounded-xl bg-gray-300 text-card-foreground shadow flex items-center justify-center rotate-y-180 backface-hidden',
+      className
+    )}
+    style={{
+      WebkitBackfaceVisibility: 'hidden',
+      backfaceVisibility: 'hidden',
+    }}
+    {...props}
+  >
+    {children}
+  </div>
+);
+CardBack.displayName = 'CardBack';
+
+// PlayingCard with flipping logic
+interface PlayingCardProps extends React.HTMLAttributes<HTMLDivElement> {
+  card: { isRevealed: boolean };
+  front: React.ReactNode;
+  back: React.ReactNode;
+}
+
+const PlayingCard: React.FC<PlayingCardProps> = ({
+  card,
+  front,
+  back,
+  className,
+  ...props
+}) => {
+  const { isRevealed } = card;
+
+  return (
+    <Card
+      className={cn(
+        'rounded-xl border bg-card text-card-foreground shadow transform-style-3d transition-transform duration-500',
+        isRevealed ? '' : 'rotate-y-180',
+        className
+      )}
+      {...props}
+    >
+      {isRevealed ? front : back}
+    </Card>
+  );
+};
+PlayingCard.displayName = 'PlayingCard';
+
+// Card Header
 const CardHeader = React.forwardRef<
   HTMLDivElement,
   React.HTMLAttributes<HTMLDivElement>
@@ -34,6 +112,7 @@ const CardHeader = React.forwardRef<
 ));
 CardHeader.displayName = 'CardHeader';
 
+// Card Title
 const CardTitle = React.forwardRef<
   HTMLDivElement,
   React.HTMLAttributes<HTMLDivElement>
@@ -46,6 +125,7 @@ const CardTitle = React.forwardRef<
 ));
 CardTitle.displayName = 'CardTitle';
 
+// Card Description
 const CardDescription = React.forwardRef<
   HTMLDivElement,
   React.HTMLAttributes<HTMLDivElement>
@@ -58,6 +138,7 @@ const CardDescription = React.forwardRef<
 ));
 CardDescription.displayName = 'CardDescription';
 
+// Card Content
 const CardContent = React.forwardRef<
   HTMLDivElement,
   React.HTMLAttributes<HTMLDivElement>
@@ -66,6 +147,7 @@ const CardContent = React.forwardRef<
 ));
 CardContent.displayName = 'CardContent';
 
+// Card Footer
 const CardFooter = React.forwardRef<
   HTMLDivElement,
   React.HTMLAttributes<HTMLDivElement>
@@ -80,9 +162,12 @@ CardFooter.displayName = 'CardFooter';
 
 export {
   Card,
+  CardBack,
   CardContent,
   CardDescription,
   CardFooter,
+  CardFront,
   CardHeader,
   CardTitle,
+  PlayingCard,
 };

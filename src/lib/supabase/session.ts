@@ -1,19 +1,16 @@
-import { supabase } from './index';
 import { GameContextType } from '@/components/GameContext';
-import { 
-  GameTemplate, 
-  GameTemplateNameAndId, 
-  CustomGameData, 
-  DeckData, 
-  CardData, 
-  Player, 
-  SessionCard, 
-  DiscardPile 
+import {
+  CardData,
+  CustomGameData,
+  DeckData,
+  DiscardPile,
+  GameTemplate,
+  GameTemplateNameAndId,
+  SessionCard,
 } from '@/types/game-interfaces';
-import { insertSessionCards } from './card';
+import { insertSessionCards, updateSessionCards } from './card';
+import { supabase } from '.';
 import { setFirstPlayerTurn } from './player';
-import { initializeSession } from '../defaultGameState';
-import { updateSessionCards } from './card';
 
 export async function createCustomGame(
   gameData: CustomGameData,
@@ -35,10 +32,12 @@ export async function createCustomGame(
     // Insert discard piles first to get their IDs
     let discardPileIds: number[] = [];
     if (discardPiles && discardPiles.length > 0) {
-      const discardPilesWithGameId = discardPiles.map(({ pile_id, ...pile }) => ({
-        ...pile,
-        game_id: gameId
-      }));
+      const discardPilesWithGameId = discardPiles.map(
+        ({ pile_id, ...pile }) => ({
+          ...pile,
+          game_id: gameId,
+        })
+      );
 
       const { data: discardPileData, error: discardPileError } = await supabase
         .from('discard_pile')
@@ -46,17 +45,17 @@ export async function createCustomGame(
         .select('pile_id');
 
       if (discardPileError) throw discardPileError;
-      
-      discardPileIds = discardPileData.map(pile => pile.pile_id);
+
+      discardPileIds = discardPileData.map((pile) => pile.pile_id);
     }
 
     for (const deck of decks) {
       const { data: deckDataResult, error: deckError } = await supabase
         .from('deck')
-        .insert({ 
-          gameid: gameId, 
+        .insert({
+          gameid: gameId,
           deckname: deck.deckname,
-          num_cards: 0
+          num_cards: 0,
         })
         .select('deckid, deckname')
         .single();
@@ -65,9 +64,12 @@ export async function createCustomGame(
 
       const deckName = deckDataResult.deckname;
       const deckId = deckDataResult.deckid;
-      
+
       // Check if there are cards for this specific deck
-      const deckCards = cards.find((cardSet) => cardSet && cardSet.length > 0 && cardSet[0]?.deckName === deckName);
+      const deckCards = cards.find(
+        (cardSet) =>
+          cardSet && cardSet.length > 0 && cardSet[0]?.deckName === deckName
+      );
       if (deckCards && deckCards.length > 0) {
         const { error: cardError } = await supabase.from('card').insert(
           deckCards.map(({ deckName, ...card }) => ({
@@ -91,21 +93,31 @@ export async function createCustomGame(
     const { data: playerData, error: playerError } = await supabase
       .from('player')
       .select('*')
-      .in('sessionid', sessionData.map(session => session.sessionid));
+      .in(
+        'sessionid',
+        sessionData.map((session) => session.sessionid)
+      );
 
     if (playerError) throw playerError;
 
-    const { data: playerActionsData, error: playerActionsError } = await supabase
-      .from('player_actions')
-      .select('*')
-      .in('sessionid', sessionData.map(session => session.sessionid));
+    const { data: playerActionsData, error: playerActionsError } =
+      await supabase
+        .from('player_actions')
+        .select('*')
+        .in(
+          'sessionid',
+          sessionData.map((session) => session.sessionid)
+        );
 
     if (playerActionsError) throw playerActionsError;
 
     const { data: sessionCardsData, error: sessionCardsError } = await supabase
       .from('session_cards')
       .select('*, pile_id')
-      .in('sessionid', sessionData.map(session => session.sessionid));
+      .in(
+        'sessionid',
+        sessionData.map((session) => session.sessionid)
+      );
 
     if (sessionCardsError) throw sessionCardsError;
 
@@ -129,86 +141,92 @@ export const fetchGameTemplate = async (gameId: number) => {
     // Fetch game template
     const { data: gameData, error: gameError } = await supabase
       .from('game')
-      .select(`
+      .select(
+        `
         *,
         decks:deck(*,
           cards:card(*)
         ),
         discard_piles:discard_pile(*)
-      `)
+      `
+      )
       .eq('gameid', gameId)
       .single();
 
     if (gameError) throw gameError;
     return gameData;
-
   } catch (error) {
     console.error('Error fetching game template:', error);
     return null;
   }
 };
 
-export async function createSessionFromGameTemplateId(templateId: GameTemplate['id']) {
-    try {
-      const gameData = await fetchGameTemplate(templateId);
+export async function createSessionFromGameTemplateId(
+  templateId: GameTemplate['id']
+) {
+  try {
+    const gameData = await fetchGameTemplate(templateId);
 
-      if (!gameData) throw new Error('Failed to fetch game template data.');
-      
-      const sessionData = {
-        gameid: gameData.gameid,
-        num_points: gameData.num_points,
-        num_players: 0,
-        num_cards: gameData.decks[0].cards.length,
-        is_live: false,
-        locked_player_discard: false
-      };
+    if (!gameData) throw new Error('Failed to fetch game template data.');
 
-      const { data: sessionResult, error: sessionError } = await supabase
-        .from('session')
-        .insert(sessionData)
-        .select('sessionid')
-        .single();
+    const sessionData = {
+      gameid: gameData.gameid,
+      num_points: gameData.num_points,
+      num_players: 0,
+      num_cards: gameData.decks[0].cards.length,
+      is_live: false,
+      locked_player_discard: false,
+    };
 
-      if (sessionError) throw sessionError;
+    const { data: sessionResult, error: sessionError } = await supabase
+      .from('session')
+      .insert(sessionData)
+      .select('sessionid')
+      .single();
 
-      return { error: null, sessionId: sessionResult.sessionid };
-    } catch (error) {
-      console.error('Error creating session from game:', error);
-      return { sessionId: null, error: 'Failed to create session from game' };
-    }
+    if (sessionError) throw sessionError;
+
+    return { error: null, sessionId: sessionResult.sessionid };
+  } catch (error) {
+    console.error('Error creating session from game:', error);
+    return { sessionId: null, error: 'Failed to create session from game' };
+  }
 }
 
-export async function createSession(sessionId: number, sessionCards: SessionCard[]) {
+export async function createSession(
+  sessionId: number,
+  sessionCards: SessionCard[]
+) {
   await insertSessionCards(sessionId, sessionCards);
 }
 
 export async function fetchGameNames(): Promise<GameTemplateNameAndId[] | []> {
-    try {
-      const { data, error } = await supabase
-        .from('game')
-        .select('name, gameid, tags');
+  try {
+    const { data, error } = await supabase
+      .from('game')
+      .select('name, gameid, tags');
 
-      if (error) throw error;
+    if (error) throw error;
 
-      return data.map((game) => ({ ...game, id: game.gameid }));
-    } catch (error) {
-      console.error('Error fetching game names:', error);
-      return [];
-    }
+    return data.map((game) => ({ ...game, id: game.gameid }));
+  } catch (error) {
+    console.error('Error fetching game names:', error);
+    return [];
+  }
 }
 
 export async function fetchGameSession(sessionId: string) {
-    const { data, error } = await supabase
-      .from('session')
-      .select('*')
-      .eq('id', sessionId)
-      .single();
+  const { data, error } = await supabase
+    .from('session')
+    .select('*')
+    .eq('id', sessionId)
+    .single();
 
-    if (error) {
-      console.error('Error fetching game state:', error);
-    }
+  if (error) {
+    console.error('Error fetching game state:', error);
+  }
 
-    return data;
+  return data;
 }
 
 export async function fetchGameData(sessionId: number) {
@@ -223,19 +241,21 @@ export async function fetchGameData(sessionId: number) {
     return { gameData: null, gameId: null };
   }
 
-  return { 
-    gameData: sessionData.game as CustomGameData, 
-    gameId: sessionData.gameid 
+  return {
+    gameData: sessionData.game as CustomGameData,
+    gameId: sessionData.gameid,
   };
 }
 
 export async function fetchDecksAndCards(gameId: number) {
   const { data: decksData, error: decksError } = await supabase
     .from('deck')
-    .select(`
+    .select(
+      `
       *,
       cards:card(*)
-    `)
+    `
+    )
     .eq('gameid', gameId);
 
   if (decksError) {
@@ -244,7 +264,7 @@ export async function fetchDecksAndCards(gameId: number) {
   }
 
   const decks = decksData as DeckData[];
-  const cards = decks.map(deck => deck.cards as CardData[]);
+  const cards = decks.map((deck) => deck.cards as CardData[]);
 
   return { decks, cards };
 }
@@ -264,7 +284,10 @@ export async function fetchSession(sessionId: number) {
   return data;
 }
 
-export async function updateSessionPoints(sessionId: number, newPointCount: number) {
+export async function updateSessionPoints(
+  sessionId: number,
+  newPointCount: number
+) {
   const { error } = await supabase
     .from('session')
     .update({ num_points: newPointCount })
@@ -273,15 +296,19 @@ export async function updateSessionPoints(sessionId: number, newPointCount: numb
   if (error) throw error;
 }
 
-export async function resetGame(gameContext: GameContextType, generateNewDeck: () => SessionCard[]): Promise<void> {
+export async function resetGame(gameContext: GameContextType): Promise<void> {
   try {
     const existingCards = [...gameContext.sessionCards];
 
     // Sort cards by drop_order if deal_all_cards is true
     if (gameContext.gameData.deal_all_cards) {
       existingCards.sort((a, b) => {
-        const cardA = gameContext.cards.flat().find(c => c.cardid === a.cardid);
-        const cardB = gameContext.cards.flat().find(c => c.cardid === b.cardid);
+        const cardA = gameContext.cards
+          .flat()
+          .find((c) => c.cardid === a.cardid);
+        const cardB = gameContext.cards
+          .flat()
+          .find((c) => c.cardid === b.cardid);
         return (cardB?.drop_order || 0) - (cardA?.drop_order || 0);
       });
     }
@@ -289,7 +316,10 @@ export async function resetGame(gameContext: GameContextType, generateNewDeck: (
     // Shuffle the array of existing cards
     for (let i = existingCards.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
-      [existingCards[i], existingCards[j]] = [existingCards[j], existingCards[i]];
+      [existingCards[i], existingCards[j]] = [
+        existingCards[j],
+        existingCards[i],
+      ];
     }
 
     const cardUpdates: {
@@ -305,8 +335,10 @@ export async function resetGame(gameContext: GameContextType, generateNewDeck: (
 
     if (gameContext.gameData.deal_all_cards) {
       // Calculate cards per player (rounded down)
-      const cardsPerPlayer = Math.floor(existingCards.length / gameContext.sessionPlayers.length);
-      
+      const cardsPerPlayer = Math.floor(
+        existingCards.length / gameContext.sessionPlayers.length
+      );
+
       // Deal cards to each player
       for (const player of gameContext.sessionPlayers) {
         for (let i = 0; i < cardsPerPlayer; i++) {
@@ -317,7 +349,7 @@ export async function resetGame(gameContext: GameContextType, generateNewDeck: (
               cardPosition: 0,
               playerid: player.playerid,
               pile_id: null,
-              isRevealed: false
+              isRevealed: false,
             });
             currentCardIndex++;
           }
@@ -334,7 +366,7 @@ export async function resetGame(gameContext: GameContextType, generateNewDeck: (
               cardPosition: 0,
               playerid: player.playerid,
               pile_id: null,
-              isRevealed: false
+              isRevealed: false,
             });
             currentCardIndex++;
           }
@@ -350,27 +382,27 @@ export async function resetGame(gameContext: GameContextType, generateNewDeck: (
         cardPosition: i - currentCardIndex + 1,
         playerid: null,
         pile_id: null,
-        isRevealed: false
+        isRevealed: false,
       });
     }
 
     // Reset session points and hand visibility settings
     const { error: sessionError } = await supabase
       .from('session')
-      .update({ 
+      .update({
         num_points: gameContext.gameData.num_points,
-        hand_hidden: false,           // Reset hand visibility
-        locked_player_discard: false  // Reset locked player discard
+        hand_hidden: false, // Reset hand visibility
+        locked_player_discard: false, // Reset locked player discard
       })
       .eq('sessionid', gameContext.sessionid);
 
     if (sessionError) throw sessionError;
 
     // Reset player points, turns, and card reveal status
-    const finalCardUpdates = cardUpdates.map(update => ({
+    const finalCardUpdates = cardUpdates.map((update) => ({
       ...update,
-      isRevealed: false,  // Ensure all cards are hidden when game resets
-      card_hidden: false  // Reset card hidden state to default
+      isRevealed: false, // Ensure all cards are hidden when game resets
+      card_hidden: false, // Reset card hidden state to default
     }));
 
     // Update all cards in a single operation
@@ -379,9 +411,9 @@ export async function resetGame(gameContext: GameContextType, generateNewDeck: (
     // Reset player points and turns - modified to handle claim_turn
     const { error: playerError } = await supabase
       .from('player')
-      .update({ 
+      .update({
         num_points: gameContext.gameData.starting_num_points || 0,
-        is_turn: gameContext.gameData.claim_turns ? false : false // All players start with is_turn false if claim_turn is true
+        is_turn: gameContext.gameData.claim_turns ? false : false, // All players start with is_turn false if claim_turn is true
       })
       .eq('sessionid', gameContext.sessionid);
 
@@ -391,7 +423,6 @@ export async function resetGame(gameContext: GameContextType, generateNewDeck: (
     if (!gameContext.gameData.claim_turns) {
       await setFirstPlayerTurn(gameContext.sessionid);
     }
-
   } catch (error) {
     console.error('Error resetting game:', error);
     throw error;

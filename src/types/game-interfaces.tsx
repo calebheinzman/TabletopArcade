@@ -112,7 +112,7 @@ export interface SessionPlayer {
   num_points: number;
   player_order: number;
   is_turn: boolean;
-  time_last_action: string; 
+  time_last_action: string;
 }
 
 export interface PlayerAction {

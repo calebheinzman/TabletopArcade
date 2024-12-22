@@ -1,42 +1,26 @@
 'use client';
 
-import { useGame } from '@/components/GameContext';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
+import { GameContextType } from '@/components/GameContext';
 import {
   Dialog,
-  DialogClose,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from '@/components/ui/dialog';
+import { discardAndShuffleCard, updateSessionCards } from '@/lib/supabase/card';
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
+  claimTurn,
+  passTurnToNextPlayer,
+  pushPlayerAction,
+  updatePlayerLastAction,
+} from '@/lib/supabase/player';
+import { CardData, SessionCard } from '@/types/game-interfaces';
 import { useParams } from 'next/navigation';
-import { GameContextType } from '@/components/GameContext';
-import { passTurnToNextPlayer, pushPlayerAction, updatePlayerLastAction, claimTurn } from '@/lib/supabase/player';
 import { useEffect, useState } from 'react';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
-import { updateSessionCards } from '@/lib/supabase/card';
-import { discardAndShuffleCard } from '@/lib/supabase/card';
-import { Input } from '@/components/ui/input';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { PlayerHandHeader } from './player-hand-header';
 import { PlayerHandButtonBar } from './player-hand-button-bar';
 import { PlayerHandCards } from './player-hand-cards';
+import { PlayerHandHeader } from './player-hand-header';
 
 interface TradeCardSelection {
   playerId: number;
@@ -58,20 +42,36 @@ export function PlayerHand({ gameContext }: { gameContext: GameContextType }) {
   const [showRules, setShowRules] = useState(false);
   const [showDiscardPileDialog, setShowDiscardPileDialog] = useState(false);
   const [showTradeDialog, setShowTradeDialog] = useState(false);
-  const [tradeFrom, setTradeFrom] = useState<TradeCardSelection>({ playerId: -1, cardId: null });
-  const [tradeTo, setTradeTo] = useState<TradeCardSelection>({ playerId: -1, cardId: null });
+  const [tradeFrom, setTradeFrom] = useState<TradeCardSelection>({
+    playerId: -1,
+    cardId: null,
+  });
+  const [tradeTo, setTradeTo] = useState<TradeCardSelection>({
+    playerId: -1,
+    cardId: null,
+  });
 
-  const [drawnCard, setDrawnCard] = useState<{ name: string; description: string; } | null>(null);
+  const [drawnCard, setDrawnCard] = useState<{
+    name: string;
+    description: string;
+  } | null>(null);
   const [showPeakDialog, setShowPeakDialog] = useState(false);
-  const [peakTarget, setPeakTarget] = useState<{ playerId: number, cardId: number | null }>({ playerId: -1, cardId: null });
-  const [peakedCard, setPeakedCard] = useState<{ name: string, description: string } | null>(null);
+  const [peakTarget, setPeakTarget] = useState<{
+    playerId: number;
+    cardId: number | null;
+  }>({ playerId: -1, cardId: null });
+  const [peakedCard, setPeakedCard] = useState<{
+    name: string;
+    description: string;
+  } | null>(null);
 
   useEffect(() => {
     if (!playerId || !gameContext?.sessionid) return;
 
     const updateLastActive = () => {
-      updatePlayerLastAction(gameContext.sessionid, playerId)
-        .catch(error => console.error('Error updating last active:', error));
+      updatePlayerLastAction(gameContext.sessionid, playerId).catch((error) =>
+        console.error('Error updating last active:', error)
+      );
     };
 
     updateLastActive();
@@ -111,34 +111,38 @@ export function PlayerHand({ gameContext }: { gameContext: GameContextType }) {
   }
 
   const playerCards = gameContext.sessionCards
-    .filter(card => 
-      card.playerid === playerId && 
-      card.pile_id === null
-    )
-    .map(sessionCard => {
-      const deck = gameContext.decks.find(d => d.deckid === sessionCard.deckid);
-      const cardDetails = deck?.cards.find(c => c.cardid === sessionCard.cardid);
+    .filter((card) => card.playerid === playerId && card.pile_id === null)
+    .map((sessionCard, index) => {
+      const deck = gameContext.decks.find(
+        (d) => d.deckid === sessionCard.deckid
+      );
+      const cardDetails = deck?.cards.find(
+        (c) => c.cardid === sessionCard.cardid
+      );
       return {
-        id: sessionCard.sessioncardid,
+        ...sessionCard,
+        ...cardDetails,
         name: cardDetails?.name || 'Unknown Card',
-        description: cardDetails?.description || '',
-        isRevealed: sessionCard.isRevealed || false,
-        type: cardDetails?.type || '',
-        dropOrder: cardDetails?.drop_order || 0,
-        hidden: sessionCard.card_hidden ?? false
-      };
+        index,
+      } as SessionCard & CardData;
     })
     .sort((a, b) => {
       if (a.type < b.type) return -1;
       if (a.type > b.type) return 1;
-      return a.dropOrder - b.dropOrder;
+      return a.drop_order - b.drop_order;
     });
 
-  const playerNames = gameContext.sessionPlayers
-    .map((player) => player.username)
-    .filter((name) => name !== currentPlayer.username) || [];
+  console.log('PLAYER CARDS', playerCards);
+  const playerNames =
+    gameContext.sessionPlayers
+      .map((player) => player.username)
+      .filter((name) => name !== currentPlayer.username) || [];
 
-  const handleCustomPointsChange = (value: string, setPoints: (n: number) => void, setCustom: (s: string) => void) => {
+  const handleCustomPointsChange = (
+    value: string,
+    setPoints: (n: number) => void,
+    setCustom: (s: string) => void
+  ) => {
     if (/^\d*$/.test(value)) {
       setCustom(value);
       const numValue = parseInt(value);
@@ -181,18 +185,26 @@ export function PlayerHand({ gameContext }: { gameContext: GameContextType }) {
     }
   };
 
-  const handleDiscard = async (playerId: number, cardId: number, pileId?: number, targetPlayerId?: number) => {
+  const handleDiscard = async (
+    playerId: number,
+    cardId: number,
+    pileId?: number,
+    targetPlayerId?: number
+  ) => {
     try {
       if (!gameContext.gameData.can_discard) return;
 
-      if (gameContext.gameData.lock_player_discard && gameContext.session.locked_player_discard) {
+      if (
+        gameContext.gameData.lock_player_discard &&
+        gameContext.session.locked_player_discard
+      ) {
         console.log('Player discarding is currently locked');
         return;
       }
 
-      const cardsInPile = gameContext.sessionCards.filter(card => {
-        if (pileId === undefined) return false; 
-        const pile = gameContext.discardPiles.find(p => p.pile_id === pileId);
+      const cardsInPile = gameContext.sessionCards.filter((card) => {
+        if (pileId === undefined) return false;
+        const pile = gameContext.discardPiles.find((p) => p.pile_id === pileId);
         if (!pile) return false;
 
         if (pile.is_player) {
@@ -203,18 +215,22 @@ export function PlayerHand({ gameContext }: { gameContext: GameContextType }) {
       });
 
       if (pileId !== undefined) {
-        const discardPile = gameContext.discardPiles.find(p => p.pile_id === pileId);
+        const discardPile = gameContext.discardPiles.find(
+          (p) => p.pile_id === pileId
+        );
         if (!discardPile) throw new Error('Discard pile not found');
 
-        const newPlayerId: number | null = discardPile.is_player ? (targetPlayerId ?? null) : null;
+        const newPlayerId: number | null = discardPile.is_player
+          ? (targetPlayerId ?? null)
+          : null;
 
-        const updates = cardsInPile.map(card => ({
+        const updates = cardsInPile.map((card) => ({
           sessionid: gameContext.sessionid,
           sessioncardid: card.sessioncardid,
           cardPosition: card.cardPosition + 1,
           playerid: newPlayerId,
           pile_id: pileId,
-          isRevealed: discardPile.is_face_up
+          isRevealed: discardPile.is_face_up,
         }));
 
         updates.push({
@@ -223,7 +239,7 @@ export function PlayerHand({ gameContext }: { gameContext: GameContextType }) {
           cardPosition: 1,
           playerid: newPlayerId,
           pile_id: pileId,
-          isRevealed: discardPile.is_face_up
+          isRevealed: discardPile.is_face_up,
         });
 
         await updateSessionCards(updates);
@@ -235,11 +251,7 @@ export function PlayerHand({ gameContext }: { gameContext: GameContextType }) {
         );
       }
 
-      await pushPlayerAction(
-        gameContext.sessionid,
-        playerId,
-        `Discarded card`
-      );
+      await pushPlayerAction(gameContext.sessionid, playerId, `Discarded card`);
     } catch (error) {
       console.error('Error discarding card:', error);
     }
@@ -264,7 +276,7 @@ export function PlayerHand({ gameContext }: { gameContext: GameContextType }) {
       await pushPlayerAction(
         gameContext.sessionid,
         playerId,
-        "Ended their turn"
+        'Ended their turn'
       );
     } catch (error) {
       console.error('Error ending turn:', error);
@@ -278,12 +290,16 @@ export function PlayerHand({ gameContext }: { gameContext: GameContextType }) {
       // Only show card dialog for normal draws in hidden hand games
       if (!card_hidden && gameContext.session.hand_hidden) {
         const drawnCard = gameContext.sessionCards
-          .filter(card => card.playerid === playerId && card.pile_id === null)
+          .filter((card) => card.playerid === playerId && card.pile_id === null)
           .sort((a, b) => b.sessioncardid - a.sessioncardid)[0];
 
         if (drawnCard) {
-          const deck = gameContext.decks.find(d => d.deckid === drawnCard.deckid);
-          const cardDetails = deck?.cards.find(c => c.cardid === drawnCard.cardid);
+          const deck = gameContext.decks.find(
+            (d) => d.deckid === drawnCard.deckid
+          );
+          const cardDetails = deck?.cards.find(
+            (c) => c.cardid === drawnCard.cardid
+          );
           if (cardDetails) {
             setDrawnCard({
               name: cardDetails.name || 'Unknown Card',
@@ -296,7 +312,7 @@ export function PlayerHand({ gameContext }: { gameContext: GameContextType }) {
       await pushPlayerAction(
         gameContext.sessionid,
         playerId,
-        card_hidden ? "Drew a hidden card" : "Drew a card"
+        card_hidden ? 'Drew a hidden card' : 'Drew a card'
       );
     } catch (error) {
       console.error('Error drawing card:', error);
@@ -309,52 +325,58 @@ export function PlayerHand({ gameContext }: { gameContext: GameContextType }) {
       await pushPlayerAction(
         gameContext.sessionid,
         playerId,
-        "Claimed their turn"
+        'Claimed their turn'
       );
     } catch (error) {
       console.error('Error claiming turn:', error);
     }
   };
 
-  const anyPlayerHasTurn = gameContext.sessionPlayers.some(player => player.is_turn);
-  const disabled = gameContext.gameData.turn_based 
-    ? (gameContext.gameData.lock_turn && !currentPlayer.is_turn && anyPlayerHasTurn)
+  const anyPlayerHasTurn = gameContext.sessionPlayers.some(
+    (player) => player.is_turn
+  );
+  const disabled = gameContext.gameData.turn_based
+    ? gameContext.gameData.lock_turn &&
+      !currentPlayer.is_turn &&
+      anyPlayerHasTurn
     : false;
-  const atMaxCards = playerCards.length >= gameContext.gameData.max_cards_per_player;
-  const deckCount = gameContext.sessionCards.filter(card => card.cardPosition > 0).length;
+  const atMaxCards =
+    playerCards.length >= gameContext.gameData.max_cards_per_player;
+  const deckCount = gameContext.sessionCards.filter(
+    (card) => card.cardPosition > 0
+  ).length;
   const noDeckCards = deckCount === 0;
 
   const getPlayerDiscardPiles = () => {
-    return gameContext.discardPiles.filter(pile => 
-      pile.is_player && gameContext.sessionCards.some(card => 
-        card.pile_id === pile.pile_id && 
-        card.playerid === playerId
-      )
+    return gameContext.discardPiles.filter(
+      (pile) =>
+        pile.is_player &&
+        gameContext.sessionCards.some(
+          (card) => card.pile_id === pile.pile_id && card.playerid === playerId
+        )
     );
   };
 
-  const canClaimTurn = gameContext.gameData.claim_turns && 
-    !gameContext.sessionPlayers.some(player => player.is_turn) &&
+  const canClaimTurn =
+    gameContext.gameData.claim_turns &&
+    !gameContext.sessionPlayers.some((player) => player.is_turn) &&
     !currentPlayer.is_turn;
 
   const handlePickUpFromDiscard = async (pileId: number) => {
     try {
       const pileCards = gameContext.sessionCards
-        .filter(card => 
-          card.pile_id === pileId && 
-          card.playerid === playerId
-        )
+        .filter((card) => card.pile_id === pileId && card.playerid === playerId)
         .sort((a, b) => a.cardPosition - b.cardPosition);
 
       if (pileCards.length === 0) return;
 
-      const updates = pileCards.map(card => ({
+      const updates = pileCards.map((card) => ({
         sessionid: gameContext.sessionid,
         sessioncardid: card.sessioncardid,
         cardPosition: 0,
         playerid: playerId,
         pile_id: null,
-        isRevealed: false
+        isRevealed: false,
       }));
 
       await updateSessionCards(updates);
@@ -368,23 +390,29 @@ export function PlayerHand({ gameContext }: { gameContext: GameContextType }) {
     }
   };
 
-  const handlePassCard = async (playerId: number, cardId: number, targetPlayerId: number) => {
+  const handlePassCard = async (
+    playerId: number,
+    cardId: number,
+    targetPlayerId: number
+  ) => {
     try {
-      const updates = [{
-        sessionid: gameContext.sessionid,
-        sessioncardid: cardId,
-        cardPosition: 0,
-        playerid: targetPlayerId,
-        pile_id: null,
-        isRevealed: false,
-        card_hidden: false
-      }];
+      const updates = [
+        {
+          sessionid: gameContext.sessionid,
+          sessioncardid: cardId,
+          cardPosition: 0,
+          playerid: targetPlayerId,
+          pile_id: null,
+          isRevealed: false,
+          card_hidden: false,
+        },
+      ];
 
       await updateSessionCards(updates);
       await pushPlayerAction(
         gameContext.sessionid,
         playerId,
-        `Passed a card to ${gameContext.sessionPlayers.find(p => p.playerid === targetPlayerId)?.username}`
+        `Passed a card to ${gameContext.sessionPlayers.find((p) => p.playerid === targetPlayerId)?.username}`
       );
     } catch (error) {
       console.error('Error passing card:', error);
@@ -403,7 +431,7 @@ export function PlayerHand({ gameContext }: { gameContext: GameContextType }) {
           playerid: tradeTo.playerId,
           pile_id: null,
           isRevealed: false,
-          card_hidden: false
+          card_hidden: false,
         },
         {
           sessionid: gameContext.sessionid,
@@ -412,8 +440,8 @@ export function PlayerHand({ gameContext }: { gameContext: GameContextType }) {
           playerid: tradeFrom.playerId,
           pile_id: null,
           isRevealed: false,
-          card_hidden: false
-        }
+          card_hidden: false,
+        },
       ];
 
       await updateSessionCards(updates);
@@ -421,9 +449,13 @@ export function PlayerHand({ gameContext }: { gameContext: GameContextType }) {
         gameContext.sessionid,
         playerId,
         `Traded cards between ${
-          gameContext.sessionPlayers.find(p => p.playerid === tradeFrom.playerId)?.username
+          gameContext.sessionPlayers.find(
+            (p) => p.playerid === tradeFrom.playerId
+          )?.username
         } and ${
-          gameContext.sessionPlayers.find(p => p.playerid === tradeTo.playerId)?.username
+          gameContext.sessionPlayers.find(
+            (p) => p.playerid === tradeTo.playerId
+          )?.username
         }`
       );
       setShowTradeDialog(false);
@@ -438,16 +470,22 @@ export function PlayerHand({ gameContext }: { gameContext: GameContextType }) {
     if (!peakTarget.cardId) return;
 
     try {
-      const sessionCard = gameContext.sessionCards.find(sc => sc.sessioncardid === peakTarget.cardId);
+      const sessionCard = gameContext.sessionCards.find(
+        (sc) => sc.sessioncardid === peakTarget.cardId
+      );
       if (!sessionCard) return;
 
-      const deck = gameContext.decks.find(d => d.deckid === sessionCard.deckid);
-      const cardDetails = deck?.cards.find(c => c.cardid === sessionCard.cardid);
-      
+      const deck = gameContext.decks.find(
+        (d) => d.deckid === sessionCard.deckid
+      );
+      const cardDetails = deck?.cards.find(
+        (c) => c.cardid === sessionCard.cardid
+      );
+
       if (cardDetails) {
         setPeakedCard({
           name: cardDetails.name,
-          description: cardDetails.description
+          description: cardDetails.description,
         });
       }
 
@@ -455,7 +493,9 @@ export function PlayerHand({ gameContext }: { gameContext: GameContextType }) {
         gameContext.sessionid,
         playerId,
         `Peaked at a card from ${
-          gameContext.sessionPlayers.find(p => p.playerid === peakTarget.playerId)?.username
+          gameContext.sessionPlayers.find(
+            (p) => p.playerid === peakTarget.playerId
+          )?.username
         }`
       );
     } catch (error) {
@@ -465,25 +505,24 @@ export function PlayerHand({ gameContext }: { gameContext: GameContextType }) {
 
   const handleToggleHandVisibility = async () => {
     try {
-      const playerCards = gameContext.sessionCards.filter(card => 
-        card.playerid === playerId && 
-        card.pile_id === null
+      const playerCards = gameContext.sessionCards.filter(
+        (card) => card.playerid === playerId && card.pile_id === null
       );
 
-      const updates = playerCards.map(card => ({
+      const updates = playerCards.map((card) => ({
         sessionid: gameContext.sessionid,
         sessioncardid: card.sessioncardid,
         cardPosition: card.cardPosition,
         playerid: playerId,
         pile_id: null,
-        card_hidden: !card.card_hidden
+        card_hidden: !card.card_hidden,
       }));
 
       await updateSessionCards(updates);
       await pushPlayerAction(
         gameContext.sessionid,
         playerId,
-        "Toggled hand visibility"
+        'Toggled hand visibility'
       );
     } catch (error) {
       console.error('Error toggling hand visibility:', error);
@@ -492,15 +531,14 @@ export function PlayerHand({ gameContext }: { gameContext: GameContextType }) {
 
   return (
     <div className="w-full h-full flex flex-col landscape:h-full bg-gray-100">
-      <PlayerHandHeader 
+      <PlayerHandHeader
         currentPlayer={currentPlayer}
         gameRules={gameContext.gameData.game_rules}
         showRules={showRules}
         setShowRules={setShowRules}
       />
-      
+
       <PlayerHandCards
-        gameContext={gameContext}
         playerId={playerId}
         playerCards={playerCards}
         disabled={disabled}
