@@ -1,4 +1,4 @@
-import { SessionCard } from '@/types/game-interfaces';
+import { Session, SessionCard } from '@/types/game-interfaces';
 import { supabase } from './index';
 
 export async function insertSessionCards(
@@ -22,20 +22,20 @@ export async function insertSessionCards(
   }
 }
 
-export async function updateSessionCards(updates: {
-  sessionid: number;
-  sessioncardid: number;
-  cardPosition: number;
-  playerid: number | null;
-  pile_id?: number | null;
-  isRevealed?: boolean;
-  card_hidden?: boolean;
-}[]) {
-  const { error } = await supabase
-    .from('session_cards')
-    .upsert(updates, {
-      onConflict: 'sessionid,sessioncardid'
-    });
+export async function updateSessionCards(
+  updates: {
+    sessionid: number;
+    sessioncardid: number;
+    cardPosition: number;
+    playerid: number | null;
+    pile_id?: number | null;
+    isRevealed?: boolean;
+    card_hidden?: boolean;
+  }[]
+) {
+  const { error } = await supabase.from('session_cards').upsert(updates, {
+    onConflict: 'sessionid,sessioncardid',
+  });
 
   if (error) throw error;
 }
@@ -109,8 +109,8 @@ export async function updateDeckOrder(
 }
 
 export async function discardAndShuffleCard(
-  sessionId: number,
-  sessionCardId: number,
+  sessionId: Session['sessionId'],
+  sessionCardId: SessionCard['sessioncardid'],
   sessionCards: SessionCard[]
 ): Promise<SessionCard[]> {
   try {
@@ -169,9 +169,7 @@ export async function fetchSessionCards(sessionId: number) {
 }
 
 export async function fetchAllDecks() {
-  const { data, error } = await supabase
-    .from('deck')
-    .select(`
+  const { data, error } = await supabase.from('deck').select(`
       *,
       cards:card(*)
     `);

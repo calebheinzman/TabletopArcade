@@ -9,28 +9,12 @@ import { Dialog, DialogTrigger } from '../ui/dialog';
 const PlayerHandCard = ({
   card,
   index,
-  playerId,
   disabled,
-  onReveal,
-  onDiscard,
-  onPassCard,
 }: {
   card: SessionCard & CardData;
   index: number;
   playerId: SessionPlayer['playerid'];
   disabled: boolean;
-  onReveal: (cardId: number) => Promise<void>;
-  onDiscard: (
-    playerId: number,
-    cardId: number,
-    pileId?: number,
-    targetPlayerId?: number
-  ) => Promise<void>;
-  onPassCard: (
-    playerId: number,
-    cardId: number,
-    targetPlayerId: number
-  ) => Promise<void>;
 }) => {
   return (
     <Dialog key={`${card.cardid}-${index}`}>
@@ -94,14 +78,7 @@ const PlayerHandCard = ({
           }
         />
       </DialogTrigger>
-      <PlayerHandCardDialogue
-        playerId={playerId}
-        card={card}
-        disabled={disabled}
-        onReveal={onReveal}
-        onDiscard={onDiscard}
-        onPassCard={onPassCard}
-      />
+      <PlayerHandCardDialogue card={card} disabled={disabled} />
     </Dialog>
   );
 };

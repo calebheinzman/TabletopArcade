@@ -11,6 +11,7 @@ import {
 import {
   fetchInitialPlayers,
   fetchPlayerActions,
+  pushPlayerAction,
   updatePlayerPoints,
 } from '@/lib/supabase/player';
 
@@ -19,7 +20,6 @@ import {
   fetchSessionCards,
   updateCardRevealed,
   updateDeckOrder,
-  updateSessionCards,
 } from '@/lib/supabase/card';
 
 import {
@@ -40,7 +40,13 @@ import {
   SessionCard,
   SessionPlayer,
 } from '@/types/game-interfaces';
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useState,
+} from 'react';
 
 // Types
 export interface GameContextType {
@@ -54,7 +60,10 @@ export interface GameContextType {
   playerActions: PlayerAction[];
   session: Session;
   sessionPlayers: SessionPlayer[];
-  drawCard: (playerId: number, card_hidden: boolean) => Promise<void>;
+  drawCard: (
+    playerId: SessionCard['playerid'],
+    card_hidden: SessionCard['card_hidden']
+  ) => Promise<void>;
   drawPoints: (playerId: number, quantity: number) => Promise<void>;
   givePoints: (
     fromPlayerId: number,
@@ -62,13 +71,18 @@ export interface GameContextType {
     quantity: number
   ) => Promise<void>;
   discardCard: (
-    playerId: number,
-    sessionCardId: number,
-    pileId?: number,
-    targetPlayerId?: number
+    playerId: SessionCard['playerid'],
+    sessionCardId: SessionCard['cardid'],
+    pileId?: SessionCard['pile_id'],
+    targetPlayerId?: SessionPlayer['playerid']
   ) => Promise<void>;
   shuffleDeck: () => Promise<void>;
   revealCard: (playerId: number, sessionCardId: number) => Promise<void>;
+  passCard: (
+    playerId: SessionPlayer['playerid'],
+    sessionCardId: SessionCard['sessioncardid'],
+    targetPlayerId: SessionPlayer['playerid']
+  ) => Promise<void>;
   updateSessionCards: (
     updates: {
       sessionid: number;
@@ -92,7 +106,10 @@ const initialGameContext: GameContextType = {
   playerActions: [],
   session: {} as Session,
   sessionPlayers: [],
-  drawCard: async (playerId: number, card_hidden: boolean) => {},
+  drawCard: async (
+    playerId: SessionCard['playerid'],
+    card_hidden: SessionCard['card_hidden']
+  ) => {},
   drawPoints: async (playerId: number, quantity: number) => {},
   givePoints: async (
     fromPlayerId: number,
@@ -100,12 +117,17 @@ const initialGameContext: GameContextType = {
     quantity: number
   ) => {},
   discardCard: async (
-    playerId: number,
-    sessionCardId: number,
-    pileId?: number,
-    targetPlayerId?: number
+    playerId: SessionCard['playerid'],
+    sessionCardId: SessionCard['cardid'],
+    pileId?: SessionCard['pile_id'],
+    targetPlayerId?: SessionPlayer['playerid']
   ) => {},
   shuffleDeck: async () => {},
+  passCard: async (
+    playerId: SessionPlayer['playerid'],
+    sessionCardId: SessionCard['sessioncardid'],
+    targetPlayerId: SessionPlayer['playerid']
+  ) => {},
   revealCard: async (playerId: number, sessionCardId: number) => {},
   discardPiles: [],
   updateSessionCards: async (updates) => {},
@@ -278,172 +300,185 @@ export function GameProvider({
       sessionCardsSubscription.unsubscribe();
     };
   }, [sessionId]);
+
+  const updateSessionCards: GameContextType['updateSessionCards'] = useCallback(
+    async (updates) => {
+      await updateSessionCards(updates);
+    },
+    []
+  );
+
   console.log('gameContext', gameContext);
 
-  const drawCard = async (playerId: number, card_hidden: boolean = false) => {
-    try {
-      // Only get cards from main deck (positive cardPosition and no pile_id)
-      const topCard = gameContext.sessionCards
-        .filter((card) => card.cardPosition > 0 && !card.pile_id)
-        .sort((a, b) => a.cardPosition - b.cardPosition)[0];
+  const drawCard: GameContextType['drawCard'] = useCallback(
+    async (playerId, card_hidden) => {
+      try {
+        // Only get cards from main deck (positive cardPosition and no pile_id)
+        const topCard = gameContext.sessionCards
+          .filter((card) => card.cardPosition > 0 && !card.pile_id)
+          .sort((a, b) => a.cardPosition - b.cardPosition)[0];
 
-      if (!topCard) {
-        console.error('No cards left in deck');
-        return;
-      }
-
-      // Get remaining deck cards, excluding the top card
-      const deckCards = gameContext.sessionCards
-        .filter(
-          (card) =>
-            card.cardPosition > 1 &&
-            !card.pile_id &&
-            card.sessioncardid !== topCard.sessioncardid
-        )
-        .sort((a, b) => a.cardPosition - b.cardPosition);
-
-      // Create updates array with unique sessioncardids
-      const updates = [
-        // Update for the drawn card
-        {
-          sessionid: gameContext.sessionid,
-          sessioncardid: topCard.sessioncardid,
-          cardPosition: 0,
-          playerid: playerId,
-          pile_id: null,
-          isRevealed: false,
-          card_hidden,
-        },
-        // Updates for remaining deck cards
-        ...deckCards.map((card, index) => ({
-          sessionid: gameContext.sessionid,
-          sessioncardid: card.sessioncardid,
-          cardPosition: index + 1,
-          playerid: null,
-          pile_id: null,
-          isRevealed: false,
-        })),
-      ];
-      console.log('updates', updates);
-      console.log(
-        'gameContext.session.hand_hidden',
-        gameContext.session.hand_hidden
-      );
-      console.log('card_hidden', card_hidden);
-      console.log('playerId', playerId);
-      console.log('gameContext.sessionCards', gameContext.sessionCards);
-      console.log('gameContext.sessionCards[0]', gameContext.sessionCards[0]);
-
-      // Verify no duplicate sessioncardids
-      const sessionCardIds = new Set();
-      const uniqueUpdates = updates.filter((update) => {
-        if (sessionCardIds.has(update.sessioncardid)) {
-          return false;
+        if (!topCard) {
+          console.error('No cards left in deck');
+          return;
         }
-        sessionCardIds.add(update.sessioncardid);
-        return true;
-      });
 
-      await updateSessionCards(uniqueUpdates);
-    } catch (error) {
-      console.error('Error drawing card:', error);
-      throw new Error('Failed to draw card');
-    }
-  };
+        // Get remaining deck cards, excluding the top card
+        const deckCards = gameContext.sessionCards
+          .filter(
+            (card) =>
+              card.cardPosition > 1 &&
+              !card.pile_id &&
+              card.sessioncardid !== topCard.sessioncardid
+          )
+          .sort((a, b) => a.cardPosition - b.cardPosition);
 
-  const drawPoints = async (playerId: number, quantity: number) => {
-    try {
-      const currentPlayer = gameContext.sessionPlayers.find(
-        (player) => player.playerid === playerId
-      );
+        // Create updates array with unique sessioncardids
+        const updates = [
+          // Update for the drawn card
+          {
+            sessionid: gameContext.sessionid,
+            sessioncardid: topCard.sessioncardid,
+            cardPosition: 0,
+            playerid: playerId,
+            pile_id: null,
+            isRevealed: false,
+            card_hidden,
+          },
+          // Updates for remaining deck cards
+          ...deckCards.map((card, index) => ({
+            sessionid: gameContext.sessionid,
+            sessioncardid: card.sessioncardid,
+            cardPosition: index + 1,
+            playerid: null,
+            pile_id: null,
+            isRevealed: false,
+          })),
+        ];
+        console.log('updates', updates);
+        console.log(
+          'gameContext.session.hand_hidden',
+          gameContext.session.hand_hidden
+        );
+        console.log('card_hidden', card_hidden);
+        console.log('playerId', playerId);
+        console.log('gameContext.sessionCards', gameContext.sessionCards);
+        console.log('gameContext.sessionCards[0]', gameContext.sessionCards[0]);
 
-      if (!currentPlayer) {
-        throw new Error('Player not found');
+        // Verify no duplicate sessioncardids
+        const sessionCardIds = new Set();
+        const uniqueUpdates = updates.filter((update) => {
+          if (sessionCardIds.has(update.sessioncardid)) {
+            return false;
+          }
+          sessionCardIds.add(update.sessioncardid);
+          return true;
+        });
+
+        await updateSessionCards(uniqueUpdates);
+      } catch (error) {
+        console.error('Error drawing card:', error);
+        throw new Error('Failed to draw card');
       }
+    },
+    [gameContext, updateSessionCards]
+  );
 
-      if (
-        !gameContext.session.num_points ||
-        gameContext.session.num_points < quantity
-      ) {
-        throw new Error('Not enough points left in the session');
-      }
-
-      const newPlayerPoints = (currentPlayer.num_points || 0) + quantity;
-      const newSessionPoints = gameContext.session.num_points - quantity;
-
-      await Promise.all([
-        updatePlayerPoints(gameContext.sessionid, playerId, newPlayerPoints),
-        updateSessionPoints(gameContext.sessionid, newSessionPoints),
-      ]);
-    } catch (error) {
-      console.error('Error drawing points:', error);
-      throw new Error('Failed to draw points');
-    }
-  };
-
-  const givePoints = async (
-    fromPlayerId: number,
-    toUsername: string,
-    quantity: number
-  ) => {
-    try {
-      const fromPlayer = gameContext.sessionPlayers.find(
-        (player) => player.playerid === fromPlayerId
-      );
-
-      if (!fromPlayer) {
-        throw new Error('Source player not found');
-      }
-
-      if (fromPlayer.num_points < quantity) {
-        throw new Error('Player does not have enough points to give');
-      }
-
-      const newFromPlayerPoints = fromPlayer.num_points - quantity;
-
-      if (toUsername === 'Board') {
-        // Give points back to the board
-        const newSessionPoints =
-          (gameContext.session.num_points || 0) + quantity;
-        await Promise.all([
-          updatePlayerPoints(
-            gameContext.sessionid,
-            fromPlayerId,
-            newFromPlayerPoints
-          ),
-          updateSessionPoints(gameContext.sessionid, newSessionPoints),
-        ]);
-      } else {
-        // Give points to another player
-        const toPlayer = gameContext.sessionPlayers.find(
-          (player) => player.username === toUsername
+  const drawPoints: GameContextType['drawPoints'] = useCallback(
+    async (playerId, quantity) => {
+      try {
+        const currentPlayer = gameContext.sessionPlayers.find(
+          (player) => player.playerid === playerId
         );
 
-        if (!toPlayer) {
-          throw new Error('Recipient player not found');
+        if (!currentPlayer) {
+          throw new Error('Player not found');
         }
 
-        const newToPlayerPoints = (toPlayer.num_points || 0) + quantity;
-        await Promise.all([
-          updatePlayerPoints(
-            gameContext.sessionid,
-            fromPlayerId,
-            newFromPlayerPoints
-          ),
-          updatePlayerPoints(
-            gameContext.sessionid,
-            toPlayer.playerid,
-            newToPlayerPoints
-          ),
-        ]);
-      }
-    } catch (error) {
-      console.error('Error giving points:', fromPlayerId, toUsername, error);
-      throw new Error('Failed to give points');
-    }
-  };
+        if (
+          !gameContext.session.num_points ||
+          gameContext.session.num_points < quantity
+        ) {
+          throw new Error('Not enough points left in the session');
+        }
 
-  const shuffleDeck = async () => {
+        const newPlayerPoints = (currentPlayer.num_points || 0) + quantity;
+        const newSessionPoints = gameContext.session.num_points - quantity;
+
+        await Promise.all([
+          updatePlayerPoints(gameContext.sessionid, playerId, newPlayerPoints),
+          updateSessionPoints(gameContext.sessionid, newSessionPoints),
+        ]);
+      } catch (error) {
+        console.error('Error drawing points:', error);
+        throw new Error('Failed to draw points');
+      }
+    },
+    [gameContext, updatePlayerPoints, updateSessionPoints]
+  );
+
+  const givePoints: GameContextType['givePoints'] = useCallback(
+    async (fromPlayerId, toUsername, quantity) => {
+      try {
+        const fromPlayer = gameContext.sessionPlayers.find(
+          (player) => player.playerid === fromPlayerId
+        );
+
+        if (!fromPlayer) {
+          throw new Error('Source player not found');
+        }
+
+        if (fromPlayer.num_points < quantity) {
+          throw new Error('Player does not have enough points to give');
+        }
+
+        const newFromPlayerPoints = fromPlayer.num_points - quantity;
+
+        if (toUsername === 'Board') {
+          // Give points back to the board
+          const newSessionPoints =
+            (gameContext.session.num_points || 0) + quantity;
+          await Promise.all([
+            updatePlayerPoints(
+              gameContext.sessionid,
+              fromPlayerId,
+              newFromPlayerPoints
+            ),
+            updateSessionPoints(gameContext.sessionid, newSessionPoints),
+          ]);
+        } else {
+          // Give points to another player
+          const toPlayer = gameContext.sessionPlayers.find(
+            (player) => player.username === toUsername
+          );
+
+          if (!toPlayer) {
+            throw new Error('Recipient player not found');
+          }
+
+          const newToPlayerPoints = (toPlayer.num_points || 0) + quantity;
+          await Promise.all([
+            updatePlayerPoints(
+              gameContext.sessionid,
+              fromPlayerId,
+              newFromPlayerPoints
+            ),
+            updatePlayerPoints(
+              gameContext.sessionid,
+              toPlayer.playerid,
+              newToPlayerPoints
+            ),
+          ]);
+        }
+      } catch (error) {
+        console.error('Error giving points:', fromPlayerId, toUsername, error);
+        throw new Error('Failed to give points');
+      }
+    },
+    [gameContext, updatePlayerPoints, updateSessionPoints]
+  );
+
+  const shuffleDeck: GameContextType['shuffleDeck'] = useCallback(async () => {
     try {
       const deckCards = gameContext.sessionCards
         .filter((card) => card.cardPosition > 0)
@@ -467,122 +502,156 @@ export function GameProvider({
       console.error('Error shuffling deck:', error);
       throw new Error('Failed to shuffle deck');
     }
-  };
+  }, [gameContext, updateDeckOrder]);
 
-  const discardCard = async (
-    playerId: number,
-    sessionCardId: number,
-    pileId?: number,
-    targetPlayerId?: number
-  ) => {
-    try {
-      if (pileId !== undefined) {
-        const discardPile = gameContext.discardPiles.find(
-          (p) => p.pile_id === pileId
+  const discardCard: GameContextType['discardCard'] = useCallback(
+    async (playerId, sessionCardId, pileId, targetPlayerId) => {
+      try {
+        if (pileId !== undefined) {
+          const discardPile = gameContext.discardPiles.find(
+            (p) => p.pile_id === pileId
+          );
+          if (!discardPile) throw new Error('Discard pile not found');
+
+          // Get all cards currently in this pile
+          const cardsInPile = gameContext.sessionCards.filter((card) => {
+            if (discardPile.is_player) {
+              // For player piles, match both pile_id and playerid
+              return (
+                card.pile_id === pileId && card.playerid === targetPlayerId
+              );
+            } else {
+              // For board piles, just match pile_id
+              return card.pile_id === pileId;
+            }
+          });
+
+          // Determine the playerid value for the updates
+          const newPlayerId: number | null = discardPile.is_player
+            ? (targetPlayerId ?? null)
+            : null;
+
+          // Update positions of existing cards in pile
+          const updates: {
+            sessionid: number;
+            sessioncardid: number;
+            cardPosition: number;
+            playerid: number | null;
+            pile_id?: number | null;
+            isRevealed?: boolean;
+          }[] = cardsInPile.map((card) => ({
+            sessionid: gameContext.sessionid,
+            sessioncardid: card.sessioncardid,
+            cardPosition: card.cardPosition + 1,
+            playerid: newPlayerId,
+            pile_id: pileId,
+            isRevealed: discardPile.is_face_up,
+          }));
+
+          // Add the new card at position 1
+          updates.push({
+            sessionid: gameContext.sessionid,
+            sessioncardid: sessionCardId,
+            cardPosition: 1,
+            playerid: newPlayerId,
+            pile_id: pileId,
+            isRevealed: discardPile.is_face_up,
+          });
+
+          await updateSessionCards(updates);
+        } else {
+          // Original shuffle behavior for deck
+          await discardAndShuffleCard(
+            gameContext.sessionid,
+            sessionCardId,
+            gameContext.sessionCards
+          );
+        }
+      } catch (error) {
+        console.error('Error discarding card:', error);
+        throw new Error('Failed to discard card');
+      }
+    },
+    [gameContext, updateSessionCards, discardAndShuffleCard]
+  );
+
+  const revealCard: GameContextType['revealCard'] = useCallback(
+    async (playerId, sessionCardId) => {
+      try {
+        // Find the current card to get its revealed state
+        const card = gameContext.sessionCards.find(
+          (c) => c.sessioncardid === sessionCardId
         );
-        if (!discardPile) throw new Error('Discard pile not found');
+        if (!card) throw new Error('Card not found');
 
-        // Get all cards currently in this pile
-        const cardsInPile = gameContext.sessionCards.filter((card) => {
-          if (discardPile.is_player) {
-            // For player piles, match both pile_id and playerid
-            return card.pile_id === pileId && card.playerid === targetPlayerId;
-          } else {
-            // For board piles, just match pile_id
-            return card.pile_id === pileId;
-          }
-        });
-
-        // Determine the playerid value for the updates
-        const newPlayerId: number | null = discardPile.is_player
-          ? (targetPlayerId ?? null)
-          : null;
-
-        // Update positions of existing cards in pile
-        const updates: {
-          sessionid: number;
-          sessioncardid: number;
-          cardPosition: number;
-          playerid: number | null;
-          pile_id?: number | null;
-          isRevealed?: boolean;
-        }[] = cardsInPile.map((card) => ({
-          sessionid: gameContext.sessionid,
-          sessioncardid: card.sessioncardid,
-          cardPosition: card.cardPosition + 1,
-          playerid: newPlayerId,
-          pile_id: pileId,
-          isRevealed: discardPile.is_face_up,
-        }));
-
-        // Add the new card at position 1
-        updates.push({
-          sessionid: gameContext.sessionid,
-          sessioncardid: sessionCardId,
-          cardPosition: 1,
-          playerid: newPlayerId,
-          pile_id: pileId,
-          isRevealed: discardPile.is_face_up,
-        });
-
-        await updateSessionCards(updates);
-      } else {
-        // Original shuffle behavior for deck
-        await discardAndShuffleCard(
+        // Toggle the revealed state
+        await updateCardRevealed(
           gameContext.sessionid,
           sessionCardId,
-          gameContext.sessionCards
+          !card.isRevealed
         );
+      } catch (error) {
+        console.error('Error revealing card:', error);
+        throw new Error('Failed to reveal card');
       }
-    } catch (error) {
-      console.error('Error discarding card:', error);
-      throw new Error('Failed to discard card');
-    }
-  };
+    },
+    [gameContext, updateCardRevealed]
+  );
 
-  const revealCard = async (playerId: number, sessionCardId: number) => {
-    try {
-      // Find the current card to get its revealed state
-      const card = gameContext.sessionCards.find(
-        (c) => c.sessioncardid === sessionCardId
-      );
-      if (!card) throw new Error('Card not found');
+  const pickupFromDiscardPile: GameContextType['pickupFromDiscardPile'] =
+    useCallback(
+      async (playerId, pileId) => {
+        try {
+          // Get all cards from the specified pile for this player
+          const pileCards = gameContext.sessionCards.filter(
+            (card) => card.pile_id === pileId && card.playerid === playerId
+          );
 
-      // Toggle the revealed state
-      await updateCardRevealed(
-        gameContext.sessionid,
-        sessionCardId,
-        !card.isRevealed
-      );
-    } catch (error) {
-      console.error('Error revealing card:', error);
-      throw new Error('Failed to reveal card');
-    }
-  };
+          // Create updates array to move cards to player's hand
+          const updates = pileCards.map((card) => ({
+            sessionid: gameContext.sessionid,
+            sessioncardid: card.sessioncardid,
+            cardPosition: 0,
+            playerid: playerId,
+            pile_id: null,
+            isRevealed: false,
+          }));
 
-  const pickupFromDiscardPile = async (playerId: number, pileId: number) => {
-    try {
-      // Get all cards from the specified pile for this player
-      const pileCards = gameContext.sessionCards.filter(
-        (card) => card.pile_id === pileId && card.playerid === playerId
-      );
+          await updateSessionCards(updates);
+        } catch (error) {
+          console.error('Error picking up cards from discard pile:', error);
+          throw new Error('Failed to pickup cards from discard pile');
+        }
+      },
+      [gameContext]
+    );
 
-      // Create updates array to move cards to player's hand
-      const updates = pileCards.map((card) => ({
-        sessionid: gameContext.sessionid,
-        sessioncardid: card.sessioncardid,
-        cardPosition: 0,
-        playerid: playerId,
-        pile_id: null,
-        isRevealed: false,
-      }));
+  const passCard: GameContextType['passCard'] = useCallback(
+    async (fromPlayerId, cardId, targetPlayerId) => {
+      try {
+        const updates = [
+          {
+            sessionid: gameContext.sessionid,
+            sessioncardid: cardId,
+            cardPosition: 0,
+            playerid: targetPlayerId,
+            pile_id: null,
+            isRevealed: false,
+          },
+        ];
 
-      await updateSessionCards(updates);
-    } catch (error) {
-      console.error('Error picking up cards from discard pile:', error);
-      throw new Error('Failed to pickup cards from discard pile');
-    }
-  };
+        await updateSessionCards(updates);
+        await pushPlayerAction(
+          gameContext.sessionid,
+          fromPlayerId,
+          `Passed a card to ${gameContext.sessionPlayers.find((p) => p.playerid === targetPlayerId)?.username}`
+        );
+      } catch (error) {
+        console.error('Error passing card:', error);
+      }
+    },
+    [updateSessionCards, pushPlayerAction, gameContext]
+  );
 
   const contextValue = {
     ...gameContext,
@@ -592,18 +661,8 @@ export function GameProvider({
     discardCard,
     shuffleDeck,
     revealCard,
-    updateSessionCards: async (
-      updates: {
-        sessionid: number;
-        sessioncardid: number;
-        cardPosition: number;
-        playerid: number | null;
-        pile_id?: number | null;
-        isRevealed?: boolean;
-      }[]
-    ) => {
-      await updateSessionCards(updates);
-    },
+    passCard,
+    updateSessionCards,
     pickupFromDiscardPile,
   };
 

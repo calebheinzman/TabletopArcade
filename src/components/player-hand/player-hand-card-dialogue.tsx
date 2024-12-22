@@ -1,4 +1,3 @@
-import { useGame } from '@/components/GameContext';
 import { Button } from '@/components/ui/button';
 import {
   DialogClose,
@@ -7,35 +6,21 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import usePlayerCard from '@/hooks/usePlayerCard';
 import { CardData, SessionCard } from '@/types/game-interfaces';
 
 interface PlayerHandCardDialogueProps {
-  playerId: number;
   card: SessionCard & CardData;
   disabled: boolean;
-  onReveal: (cardId: number) => Promise<void>;
-  onDiscard: (
-    playerId: number,
-    cardId: number,
-    pileId?: number,
-    targetPlayerId?: number
-  ) => Promise<void>;
-  onPassCard: (
-    playerId: number,
-    cardId: number,
-    targetPlayerId: number
-  ) => Promise<void>;
 }
 
 export function PlayerHandCardDialogue({
-  playerId,
   card,
   disabled,
-  onReveal,
-  onDiscard,
-  onPassCard,
 }: PlayerHandCardDialogueProps) {
-  const gameContext = useGame();
+  const { onRevealCard, onDiscardCard, onPassCard, gameContext } =
+    usePlayerCard(card);
+
   return (
     <DialogContent>
       <DialogHeader>
@@ -45,10 +30,7 @@ export function PlayerHandCardDialogue({
       <div className="flex flex-col gap-4 mt-4">
         {gameContext.gameData.can_reveal && (
           <DialogClose asChild>
-            <Button
-              onClick={() => onReveal(card.sessioncardid)}
-              disabled={disabled}
-            >
+            <Button onClick={onRevealCard} disabled={disabled}>
               {card.isRevealed ? 'Unreveal Card' : 'Reveal on Board'}
             </Button>
           </DialogClose>
@@ -69,15 +51,10 @@ export function PlayerHandCardDialogue({
                         <Button
                           variant="outline"
                           onClick={() =>
-                            onDiscard(
-                              playerId,
-                              card.sessioncardid,
-                              pile.pile_id,
-                              player.playerid
-                            )
+                            onDiscardCard(pile.pile_id, player.playerid)
                           }
                         >
-                          {player.playerid === playerId
+                          {player.playerid === card.playerid
                             ? 'Your Pile'
                             : `${player.username}'s Pile`}
                         </Button>
@@ -88,13 +65,7 @@ export function PlayerHandCardDialogue({
                       <DialogClose key={pile.pile_id} asChild>
                         <Button
                           variant="outline"
-                          onClick={() =>
-                            onDiscard(
-                              playerId,
-                              card.sessioncardid,
-                              pile.pile_id
-                            )
-                          }
+                          onClick={() => onDiscardCard(pile.pile_id)}
                         >
                           {pile.pile_name || `Discard Pile ${pile.pile_id}`}
                           {pile.is_face_up ? ' (Face Up)' : ' (Face Down)'}
@@ -106,10 +77,7 @@ export function PlayerHandCardDialogue({
               </>
             ) : (
               <DialogClose asChild>
-                <Button
-                  variant="outline"
-                  onClick={() => onDiscard(playerId, card.sessioncardid)}
-                >
+                <Button variant="outline" onClick={() => onDiscardCard()}>
                   Discard to Deck
                 </Button>
               </DialogClose>
@@ -121,14 +89,12 @@ export function PlayerHandCardDialogue({
           <div className="flex flex-col gap-2">
             <h4 className="text-sm font-semibold">Pass card to:</h4>
             {gameContext.sessionPlayers
-              .filter((player) => player.playerid !== playerId)
+              .filter((player) => player.playerid !== card.playerid)
               .map((player) => (
                 <DialogClose key={player.playerid} asChild>
                   <Button
                     variant="outline"
-                    onClick={() =>
-                      onPassCard(playerId, card.sessioncardid, player.playerid)
-                    }
+                    onClick={() => onPassCard(player.playerid)}
                     disabled={disabled}
                   >
                     Pass to {player.username}

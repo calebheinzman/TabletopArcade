@@ -75,7 +75,7 @@ const BoardCard = ({
         <PlayingCard
           card={card}
           className={`
-            absolute w-16 h-24 cursor-pointer border-none transition-all duration-200
+            absolute w-16 h-24 md:w-24 md:h-32 lg:w-32 lg:h-40 xl:w-40 xl:h-48 cursor-pointer border-none transition-all duration-200
             ${isHovered ? '-translate-y-2' : ''}
           `}
           style={{
@@ -140,7 +140,7 @@ const BoardCard = ({
             </Button>
           </DialogClose>
 
-          {gameContext.gameData.can_discard && (
+          {gameContext?.gameData?.can_discard && (
             <div className="flex flex-col gap-2">
               {gameContext.discardPiles.length > 0 ? (
                 <>
@@ -203,7 +203,7 @@ const BoardCard = ({
             </div>
           )}
 
-          {gameContext.gameData.pass_cards && (
+          {gameContext?.gameData.pass_cards && (
             <div className="flex flex-col gap-2">
               <h4 className="text-sm font-semibold">Pass card to:</h4>
               {gameContext.sessionPlayers

@@ -1,35 +1,34 @@
 'use client';
 
-import { Suspense } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { createCustomGame } from '@/lib/supabase/session';
-import { CardData, DeckData, DiscardPile } from '@/types/game-interfaces';
-import { X, Info } from 'lucide-react';
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from "@/components/ui/tooltip";
+} from '@/components/ui/tooltip';
+import { createCustomGame } from '@/lib/supabase/session';
+import { CardData, DeckData, DiscardPile } from '@/types/game-interfaces';
+import { Info, X } from 'lucide-react';
+import { Suspense, useRef } from 'react';
 
-import { useRouter, useSearchParams } from 'next/navigation';
-import { useState, KeyboardEvent, useEffect } from 'react';
-import dynamic from 'next/dynamic';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog";
+} from '@/components/ui/dialog';
 import { fetchAllDecks } from '@/lib/supabase/card';
+import MDEditor from '@uiw/react-md-editor';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { KeyboardEvent, useEffect, useState } from 'react';
 import DeckBuilder from '../../components/create-game/deck-builder';
 import DiscardPileBuilder from '../../components/create-game/discard-pile-builder';
-import MDEditor from '@uiw/react-md-editor';
 
 interface CustomCard {
   name: string;
@@ -91,12 +90,18 @@ function CreateCustomGameContent() {
   const [tagList, setTagList] = useState<string[]>([]);
   const [passCards, setPassCards] = useState(false);
   const [claimTurns, setClaimTurns] = useState(false);
-  const [gameRules, setGameRules] = useState('# Game Rules\n\nWrite your rules here...');
+  const [gameRules, setGameRules] = useState(
+    '# Game Rules\n\nWrite your rules here...'
+  );
   const [existingDecks, setExistingDecks] = useState<DeckData[]>([]);
   const [deckSearch, setDeckSearch] = useState('');
   const [discardPiles, setDiscardPiles] = useState<DiscardPile[]>([]);
-  const [currentView, setCurrentView] = useState<'main' | 'deck' | 'discard'>('main');
-  const [selectedDeckForEdit, setSelectedDeckForEdit] = useState<string | null>(null);
+  const [currentView, setCurrentView] = useState<'main' | 'deck' | 'discard'>(
+    'main'
+  );
+  const [selectedDeckForEdit, setSelectedDeckForEdit] = useState<string | null>(
+    null
+  );
   const [dealAllCards, setDealAllCards] = useState(false);
   const [maxCardsPerPlayer, setMaxCardsPerPlayer] = useState(52);
   const [maxPoints, setMaxPoints] = useState(0);
@@ -121,28 +126,33 @@ function CreateCustomGameContent() {
 
   const handleDeckBuilderComplete = (newDeck: Deck, newCards: CardData[]) => {
     if (selectedDeckForEdit) {
-      setDecks(prevDecks => 
-        prevDecks.map(d => d.name === selectedDeckForEdit ? newDeck : d)
+      setDecks((prevDecks) =>
+        prevDecks.map((d) => (d.name === selectedDeckForEdit ? newDeck : d))
       );
-      setCards(prevCards => [
-        ...prevCards.filter(c => c.deckName !== selectedDeckForEdit),
-        ...newCards
+      setCards((prevCards) => [
+        ...prevCards.filter((c) => c.deckName !== selectedDeckForEdit),
+        ...newCards,
       ]);
     } else {
-      setDecks(prevDecks => [...prevDecks, newDeck]);
-      setCards(prevCards => [...prevCards, ...newCards]);
+      setDecks((prevDecks) => [...prevDecks, newDeck]);
+      setCards((prevCards) => [...prevCards, ...newCards]);
     }
     setCurrentView('main');
     setSelectedDeckForEdit(null);
   };
 
-  const handleDiscardPileComplete = (boardPiles: DiscardPile[], playerPiles: DiscardPile[]) => {
+  const handleDiscardPileComplete = (
+    boardPiles: DiscardPile[],
+    playerPiles: DiscardPile[]
+  ) => {
     setDiscardPiles([...boardPiles, ...playerPiles]);
     setCurrentView('main');
   };
 
   const viewDeckDetails = (deckName: string) => {
-    router.push(`/create-custom-game/deck-builder?view=true&deck=${encodeURIComponent(deckName)}`);
+    router.push(
+      `/create-custom-game/deck-builder?view=true&deck=${encodeURIComponent(deckName)}`
+    );
   };
 
   const handleTagInput = (e: KeyboardEvent<HTMLInputElement>) => {
@@ -156,7 +166,7 @@ function CreateCustomGameContent() {
   };
 
   const removeTag = (tagToRemove: string) => {
-    setTagList(tagList.filter(tag => tag !== tagToRemove));
+    setTagList(tagList.filter((tag) => tag !== tagToRemove));
   };
 
   const createGame = async () => {
@@ -202,15 +212,18 @@ function CreateCustomGameContent() {
     const cardData: CardData[][] = decks.map((deck) =>
       cards
         .filter((card) => card.deckName === deck.name)
-        .map((card) => ({
-          name: card.name,
-          count: card.count,
-          description: card.description,
-          deckName: deck.name,
-          type: card.type,
-          front_img_url: '',
-          back_img_url: ''
-        } as CardData))
+        .map(
+          (card) =>
+            ({
+              name: card.name,
+              count: card.count,
+              description: card.description,
+              deckName: deck.name,
+              type: card.type,
+              front_img_url: '',
+              back_img_url: '',
+            }) as CardData
+        )
     );
 
     try {
@@ -233,8 +246,8 @@ function CreateCustomGameContent() {
   };
 
   const deleteDeck = (deckName: string) => {
-    const updatedDecks = decks.filter(d => d.name !== deckName);
-    const updatedCards = cards.filter(c => c.deckName !== deckName);
+    const updatedDecks = decks.filter((d) => d.name !== deckName);
+    const updatedCards = cards.filter((c) => c.deckName !== deckName);
     setDecks(updatedDecks);
     setCards(updatedCards);
   };
@@ -249,34 +262,37 @@ function CreateCustomGameContent() {
     const newDeckName = `${selectedDeck.deckname} Copy ${timestamp}`;
     const newDeck: Deck = { name: newDeckName };
 
-    const newCards: CardData[] = selectedDeck.cards.map((card, index) => ({
-      name: card.name,
-      count: card.count,
-      description: card.description,
-      deckName: newDeckName,
-      type: card.type || '',
-      front_img_url: '',
-      back_img_url: '',
-      drop_order: card.drop_order || index,
-    } as CardData));
+    const newCards: CardData[] = selectedDeck.cards.map(
+      (card, index) =>
+        ({
+          name: card.name,
+          count: card.count,
+          description: card.description,
+          deckName: newDeckName,
+          type: card.type || '',
+          front_img_url: '',
+          back_img_url: '',
+          drop_order: card.drop_order || index,
+        }) as CardData
+    );
 
     setDecks([...decks, newDeck]);
     setCards([...cards, ...newCards]);
   };
 
-  const filteredDecks = existingDecks.filter(deck => 
+  const filteredDecks = existingDecks.filter((deck) =>
     deck.deckname.toLowerCase().includes(deckSearch.toLowerCase())
   );
 
   useEffect(() => {
     const searchParams = new URLSearchParams(window.location.search);
-    
+
     if (searchParams.get('clone') === 'true') {
       // Load data from sessionStorage
       const storedData = sessionStorage.getItem('cloneGameData');
       if (storedData) {
         const gameData = JSON.parse(storedData);
-        
+
         // Set all the state values
         setName(gameData.name);
         setGameRules(gameData.rules);
@@ -309,8 +325,8 @@ function CreateCustomGameContent() {
           setCards([]);
           gameData.decks.forEach((deck: DeckData) => {
             const newDeckName = deck.deckname;
-            setDecks(prevDecks => [...prevDecks, { name: newDeckName }]);
-            
+            setDecks((prevDecks) => [...prevDecks, { name: newDeckName }]);
+
             const newCards = deck.cards.map((card: CardData) => ({
               name: card.name,
               count: card.count,
@@ -319,18 +335,20 @@ function CreateCustomGameContent() {
               type: card.type || '',
               drop_order: card.drop_order || 0,
             }));
-            
-            setCards(prevCards => [...prevCards, ...newCards]);
+
+            setCards((prevCards) => [...prevCards, ...newCards]);
           });
         }
 
         // Handle discard piles
         if (gameData.discardPiles) {
-          setDiscardPiles(gameData.discardPiles.map((pile: DiscardPile) => ({
-            ...pile,
-            pile_id: pile.pile_id || 0,
-            game_id: 0,
-          })));
+          setDiscardPiles(
+            gameData.discardPiles.map((pile: DiscardPile) => ({
+              ...pile,
+              pile_id: pile.pile_id || 0,
+              game_id: 0,
+            }))
+          );
         }
 
         // Clear the stored data
@@ -343,14 +361,16 @@ function CreateCustomGameContent() {
     return (
       <DeckBuilder
         initialDeckName={selectedDeckForEdit || `Deck ${decks.length + 1}`}
-        initialCards={cards.filter(c => c.deckName === selectedDeckForEdit).map(c => ({
-          ...c,
-          deckid: 0,
-          cardid: 0,
-          front_img_url: '',
-          back_img_url: '',
-          drop_order: c.drop_order || 0
-        }))}
+        initialCards={cards
+          .filter((c) => c.deckName === selectedDeckForEdit)
+          .map((c) => ({
+            ...c,
+            deckid: 0,
+            cardid: 0,
+            front_img_url: '',
+            back_img_url: '',
+            drop_order: c.drop_order || 0,
+          }))}
         onComplete={handleDeckBuilderComplete}
         onCancel={() => setCurrentView('main')}
       />
@@ -360,16 +380,21 @@ function CreateCustomGameContent() {
   if (currentView === 'discard') {
     return (
       <DiscardPileBuilder
-        initialBoardPiles={discardPiles.filter(p => !p.is_player)}
-        initialPlayerPiles={discardPiles.filter(p => p.is_player)}
+        initialBoardPiles={discardPiles.filter((p) => !p.is_player)}
+        initialPlayerPiles={discardPiles.filter((p) => p.is_player)}
         onComplete={handleDiscardPileComplete}
         onCancel={() => setCurrentView('main')}
       />
     );
   }
 
+  const ref = useRef();
+
   return (
-    <div className="flex flex-col items-center justify-start min-h-screen bg-gray-100 p-4">
+    <div
+      className="flex flex-col items-center justify-start min-h-screen bg-gray-100 p-4"
+      ref={ref}
+    >
       <Button onClick={() => router.back()} className="absolute top-4 left-4">
         Back
       </Button>
@@ -462,7 +487,8 @@ function CreateCustomGameContent() {
               {decks.length > 0 ? (
                 <>
                   <div className="text-sm text-gray-600">
-                    {decks.length} deck(s) created with {cards.length} total cards
+                    {decks.length} deck(s) created with {cards.length} total
+                    cards
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {decks.map((deck) => (
@@ -478,7 +504,12 @@ function CreateCustomGameContent() {
                           </Button>
                           <h3 className="font-bold">{deck.name}</h3>
                           <p className="text-sm text-gray-600">
-                            {cards.filter(card => card.deckName === deck.name).length} cards
+                            {
+                              cards.filter(
+                                (card) => card.deckName === deck.name
+                              ).length
+                            }{' '}
+                            cards
                           </p>
                           <div className="flex space-x-2 mt-4">
                             <Button
@@ -510,7 +541,10 @@ function CreateCustomGameContent() {
                           Choose Existing Deck
                         </Button>
                       </DialogTrigger>
-                      <DialogContent className="sm:max-w-[600px]">
+                      <DialogContent
+                        className="sm:max-w-[600px]"
+                        container={ref.current}
+                      >
                         <DialogHeader>
                           <DialogTitle>Choose a Deck</DialogTitle>
                         </DialogHeader>
@@ -523,8 +557,8 @@ function CreateCustomGameContent() {
                           />
                           <div className="grid grid-cols-2 gap-4 max-h-[60vh] overflow-y-auto">
                             {filteredDecks.map((deck) => (
-                              <Card 
-                                key={deck.deckid} 
+                              <Card
+                                key={deck.deckid}
                                 className="cursor-pointer hover:bg-accent"
                                 onClick={() => handleDeckSelect(deck)}
                               >
@@ -546,7 +580,9 @@ function CreateCustomGameContent() {
                 <div className="space-y-4">
                   <p className="text-sm text-gray-600">No decks created yet</p>
                   <div className="flex space-x-2">
-                    <Button onClick={() => navigateToDeckBuilder()}>Create First Deck</Button>
+                    <Button onClick={() => navigateToDeckBuilder()}>
+                      Create First Deck
+                    </Button>
                     <Dialog>
                       <DialogTrigger asChild>
                         <Button variant="outline" onClick={loadExistingDecks}>
@@ -559,8 +595,8 @@ function CreateCustomGameContent() {
                         </DialogHeader>
                         <div className="grid grid-cols-2 gap-4 mt-4">
                           {existingDecks.map((deck) => (
-                            <Card 
-                              key={deck.deckid} 
+                            <Card
+                              key={deck.deckid}
                               className="cursor-pointer hover:bg-accent"
                               onClick={() => handleDeckSelect(deck)}
                             >
@@ -588,13 +624,10 @@ function CreateCustomGameContent() {
           </CardHeader>
           <CardContent>
             <div className="space-y-6">
-              <Button 
-                onClick={navigateToDiscardPileBuilder}
-                className="w-full"
-              >
+              <Button onClick={navigateToDiscardPileBuilder} className="w-full">
                 Configure Discard Piles
               </Button>
-              
+
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
                   <Label htmlFor="maxPoints" className="flex items-center mb-2">
@@ -610,7 +643,10 @@ function CreateCustomGameContent() {
                   />
                 </div>
                 <div>
-                  <Label htmlFor="startingPoints" className="flex items-center mb-2">
+                  <Label
+                    htmlFor="startingPoints"
+                    className="flex items-center mb-2"
+                  >
                     Starting Points
                     <InfoTooltip content="The number of points each player starts with" />
                   </Label>
@@ -618,7 +654,9 @@ function CreateCustomGameContent() {
                     id="startingPoints"
                     type="number"
                     value={startingPoints}
-                    onChange={(e) => setStartingPoints(parseInt(e.target.value))}
+                    onChange={(e) =>
+                      setStartingPoints(parseInt(e.target.value))
+                    }
                     min={0}
                   />
                 </div>
@@ -726,7 +764,10 @@ function CreateCustomGameContent() {
           <CardContent>
             <div className="space-y-6">
               <div>
-                <Label htmlFor="startingCards" className="flex items-center mb-2">
+                <Label
+                  htmlFor="startingCards"
+                  className="flex items-center mb-2"
+                >
                   Starting Number of Cards
                   <InfoTooltip content="How many cards each player receives at the start of the game" />
                 </Label>
@@ -737,12 +778,17 @@ function CreateCustomGameContent() {
                   onChange={(e) => setStartingCards(parseInt(e.target.value))}
                   min={1}
                   disabled={dealAllCards}
-                  className={dealAllCards ? "opacity-50 cursor-not-allowed" : ""}
+                  className={
+                    dealAllCards ? 'opacity-50 cursor-not-allowed' : ''
+                  }
                 />
               </div>
 
               <div>
-                <Label htmlFor="maxCardsPerPlayer" className="flex items-center mb-2">
+                <Label
+                  htmlFor="maxCardsPerPlayer"
+                  className="flex items-center mb-2"
+                >
                   Maximum Cards Per Player
                   <InfoTooltip content="The maximum number of cards a player can hold at once" />
                 </Label>
@@ -750,7 +796,9 @@ function CreateCustomGameContent() {
                   id="maxCardsPerPlayer"
                   type="number"
                   value={maxCardsPerPlayer}
-                  onChange={(e) => setMaxCardsPerPlayer(parseInt(e.target.value))}
+                  onChange={(e) =>
+                    setMaxCardsPerPlayer(parseInt(e.target.value))
+                  }
                   min={1}
                 />
               </div>
@@ -828,7 +876,10 @@ function CreateCustomGameContent() {
                     checked={lockPlayerDiscard}
                     onCheckedChange={setLockPlayerDiscard}
                   />
-                  <Label htmlFor="lockPlayerDiscard" className="flex items-center">
+                  <Label
+                    htmlFor="lockPlayerDiscard"
+                    className="flex items-center"
+                  >
                     Lock Player Discard
                     <InfoTooltip content="Allows the host to temporarily prevent players from accessing their discard piles" />
                   </Label>

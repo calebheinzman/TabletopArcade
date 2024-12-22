@@ -2,29 +2,26 @@
 
 'use client';
 
-import { useRouter } from 'next/navigation';
-import React, { useState } from 'react';
-import { Button } from '../ui/button';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@radix-ui/react-dropdown-menu';
-import { SessionPlayer } from '@/types/game-interfaces';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useGame } from '@/components/GameContext';
-import { resetGame } from '@/lib/supabase/session';
-import { supabase } from '@/lib/supabase';
-import { Input } from '../ui/input';
-import { updateSessionCards } from '@/lib/supabase/card';
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogDescription,
-} from "@/components/ui/dialog";
+} from '@/components/ui/dialog';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import { supabase } from '@/lib/supabase';
+import { updateSessionCards } from '@/lib/supabase/card';
+import { SessionPlayer } from '@/types/game-interfaces';
+import { useRouter } from 'next/navigation';
+import React, { useState } from 'react';
+import { Button } from '../ui/button';
+import { Input } from '../ui/input';
 
 interface BoardHeaderProps {
   deckCount: number;
@@ -34,6 +31,7 @@ interface BoardHeaderProps {
   onDiscardCard: (playerId: number) => void;
   onShuffle: () => void;
   onReset: () => void;
+  onFullScreen: () => void;
 }
 
 const BoardHeader: React.FC<BoardHeaderProps> = ({
@@ -44,6 +42,7 @@ const BoardHeader: React.FC<BoardHeaderProps> = ({
   onDiscardCard,
   onShuffle,
   onReset,
+  onFullScreen,
 }) => {
   const router = useRouter();
   const gameContext = useGame();
@@ -56,17 +55,28 @@ const BoardHeader: React.FC<BoardHeaderProps> = ({
   } | null>(null);
 
   const getPlayerCardCount = (playerId: number) => {
-    return gameContext?.sessionCards.filter(card => card.playerid === playerId).length || 0;
+    return (
+      gameContext?.sessionCards.filter((card) => card.playerid === playerId)
+        .length || 0
+    );
   };
 
   const handleDiscard = async (playerId: number) => {
-    const playerCards = gameContext.sessionCards.filter(card => card.playerid === playerId);
+    const playerCards = gameContext.sessionCards.filter(
+      (card) => card.playerid === playerId
+    );
     if (playerCards.length === 0) return;
 
-    const boardPiles = gameContext.discardPiles.filter(pile => !pile.is_player);
+    const boardPiles = gameContext.discardPiles.filter(
+      (pile) => !pile.is_player
+    );
     if (boardPiles.length > 0) {
       // Discard to first available pile
-      await gameContext.discardCard(playerId, playerCards[0].sessioncardid, boardPiles[0].pile_id);
+      await gameContext.discardCard(
+        playerId,
+        playerCards[0].sessioncardid,
+        boardPiles[0].pile_id
+      );
     } else {
       // Discard to deck
       await gameContext.discardCard(playerId, playerCards[0].sessioncardid);
@@ -82,8 +92,8 @@ const BoardHeader: React.FC<BoardHeaderProps> = ({
     if (!gameContext) return;
 
     // Get all cards from deck and discard piles
-    const deckCards = gameContext.sessionCards.filter(card => 
-      card.playerid === 0 || card.pile_id !== null
+    const deckCards = gameContext.sessionCards.filter(
+      (card) => card.playerid === 0 || card.pile_id !== null
     );
 
     if (deckCards.length === 0) return;
@@ -100,7 +110,7 @@ const BoardHeader: React.FC<BoardHeaderProps> = ({
       playerid: null,
       deckid: card.deckid,
       isRevealed: false,
-      pile_id: null
+      pile_id: null,
     }));
 
     try {
@@ -124,8 +134,8 @@ const BoardHeader: React.FC<BoardHeaderProps> = ({
     try {
       const { error } = await supabase
         .from('session')
-        .update({ 
-          locked_player_discard: !gameContext.session.locked_player_discard 
+        .update({
+          locked_player_discard: !gameContext.session.locked_player_discard,
         })
         .eq('sessionid', gameContext.sessionid);
 
@@ -154,8 +164,12 @@ const BoardHeader: React.FC<BoardHeaderProps> = ({
     // Sort cards by drop_order if deal_all_cards is true
     if (gameContext.gameData.deal_all_cards) {
       existingCards.sort((a, b) => {
-        const cardA = gameContext.cards.flat().find(c => c.cardid === a.cardid);
-        const cardB = gameContext.cards.flat().find(c => c.cardid === b.cardid);
+        const cardA = gameContext.cards
+          .flat()
+          .find((c) => c.cardid === a.cardid);
+        const cardB = gameContext.cards
+          .flat()
+          .find((c) => c.cardid === b.cardid);
         return (cardB?.drop_order || 0) - (cardA?.drop_order || 0);
       });
     }
@@ -163,7 +177,10 @@ const BoardHeader: React.FC<BoardHeaderProps> = ({
     // Shuffle the array of existing cards
     for (let i = existingCards.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
-      [existingCards[i], existingCards[j]] = [existingCards[j], existingCards[i]];
+      [existingCards[i], existingCards[j]] = [
+        existingCards[j],
+        existingCards[i],
+      ];
     }
 
     const updates: {
@@ -179,8 +196,10 @@ const BoardHeader: React.FC<BoardHeaderProps> = ({
 
     if (gameContext.gameData.deal_all_cards) {
       // Calculate cards per player (rounded down)
-      const cardsPerPlayer = Math.floor(existingCards.length / gameContext.sessionPlayers.length);
-      
+      const cardsPerPlayer = Math.floor(
+        existingCards.length / gameContext.sessionPlayers.length
+      );
+
       // Deal cards to each player
       for (const player of gameContext.sessionPlayers) {
         for (let i = 0; i < cardsPerPlayer; i++) {
@@ -191,7 +210,7 @@ const BoardHeader: React.FC<BoardHeaderProps> = ({
               cardPosition: 0,
               playerid: player.playerid,
               pile_id: null,
-              isRevealed: false
+              isRevealed: false,
             });
             currentCardIndex++;
           }
@@ -208,7 +227,7 @@ const BoardHeader: React.FC<BoardHeaderProps> = ({
               cardPosition: 0,
               playerid: player.playerid,
               pile_id: null,
-              isRevealed: false
+              isRevealed: false,
             });
             currentCardIndex++;
           }
@@ -224,7 +243,7 @@ const BoardHeader: React.FC<BoardHeaderProps> = ({
         cardPosition: i - currentCardIndex + 1,
         playerid: null,
         pile_id: null,
-        isRevealed: false
+        isRevealed: false,
       });
     }
 
@@ -239,26 +258,26 @@ const BoardHeader: React.FC<BoardHeaderProps> = ({
       // Update session hand_hidden status
       const { error: sessionError } = await supabase
         .from('session')
-        .update({ 
-          hand_hidden: !gameContext.session.hand_hidden 
+        .update({
+          hand_hidden: !gameContext.session.hand_hidden,
         })
         .eq('sessionid', gameContext.sessionid);
 
       if (sessionError) throw sessionError;
 
       // Get all cards assigned to players
-      const playerCards = gameContext.sessionCards.filter(card => 
-        card.playerid !== null && card.playerid !== 0
+      const playerCards = gameContext.sessionCards.filter(
+        (card) => card.playerid !== null && card.playerid !== 0
       );
 
       // Update card_hidden for all player cards
-      const updates = playerCards.map(card => ({
+      const updates = playerCards.map((card) => ({
         sessionid: gameContext.sessionid,
         sessioncardid: card.sessioncardid,
         cardPosition: card.cardPosition,
         playerid: card.playerid,
         pile_id: card.pile_id,
-        card_hidden: !gameContext.session.hand_hidden
+        card_hidden: !gameContext.session.hand_hidden,
       }));
 
       if (updates.length > 0) {
@@ -273,23 +292,25 @@ const BoardHeader: React.FC<BoardHeaderProps> = ({
     if (!gameContext) return;
 
     // Get all player cards
-    const playerCards = gameContext.sessionCards.filter(card => card.playerid !== null && card.playerid !== 0);
-    
+    const playerCards = gameContext.sessionCards.filter(
+      (card) => card.playerid !== null && card.playerid !== 0
+    );
+
     // Count revealed vs hidden cards to determine minority state
-    const revealedCount = playerCards.filter(card => card.isRevealed).length;
+    const revealedCount = playerCards.filter((card) => card.isRevealed).length;
     const hiddenCount = playerCards.length - revealedCount;
-    
+
     // Set all cards to the minority state
     const shouldReveal = revealedCount <= hiddenCount;
 
     // Update all player cards
-    const updates = playerCards.map(card => ({
+    const updates = playerCards.map((card) => ({
       sessionid: gameContext.sessionid,
       sessioncardid: card.sessioncardid,
       cardPosition: card.cardPosition,
       playerid: card.playerid,
       pile_id: card.pile_id,
-      isRevealed: shouldReveal
+      isRevealed: shouldReveal,
     }));
 
     try {
@@ -305,7 +326,7 @@ const BoardHeader: React.FC<BoardHeaderProps> = ({
     try {
       // Store the current number of cards
       const previousCardCount = getPlayerCardCount(playerId);
-      
+
       // Draw the card, passing in the hand_hidden status
       await gameContext.drawCard(playerId, gameContext.session.hand_hidden);
 
@@ -313,13 +334,19 @@ const BoardHeader: React.FC<BoardHeaderProps> = ({
       if (gameContext.session.hand_hidden) {
         // Small delay to ensure the card has been added
         setTimeout(() => {
-          const currentCards = gameContext.sessionCards.filter(card => card.playerid === playerId);
+          const currentCards = gameContext.sessionCards.filter(
+            (card) => card.playerid === playerId
+          );
           if (currentCards.length > previousCardCount) {
             // Get the newest card
             const newCard = currentCards[currentCards.length - 1];
-            const deck = gameContext.decks.find(d => d.deckid === newCard.deckid);
-            const cardDetails = deck?.cards.find(c => c.cardid === newCard.cardid);
-            const player = players.find(p => p.playerid === playerId);
+            const deck = gameContext.decks.find(
+              (d) => d.deckid === newCard.deckid
+            );
+            const cardDetails = deck?.cards.find(
+              (c) => c.cardid === newCard.cardid
+            );
+            const player = players.find((p) => p.playerid === playerId);
 
             if (cardDetails && player) {
               setDrawnCard({
@@ -342,13 +369,21 @@ const BoardHeader: React.FC<BoardHeaderProps> = ({
         <Button onClick={() => router.back()} size="sm" className="self-start">
           Back
         </Button>
-        <Button 
-          onClick={onReset} 
-          size="sm" 
-          variant="destructive" 
+        <Button
+          onClick={onReset}
+          size="sm"
+          variant="destructive"
           className="self-start"
         >
           Reset Game
+        </Button>
+        <Button
+          onClick={onFullScreen}
+          size="sm"
+          variant="default"
+          className="self-start"
+        >
+          FullScreen
         </Button>
         {gameContext.gameData.redeal_cards && (
           <Button
@@ -376,14 +411,17 @@ const BoardHeader: React.FC<BoardHeaderProps> = ({
                     key={player.playerid}
                     onClick={() => handleDrawCard(player.playerid)}
                     size="sm"
-                    disabled={isPlayerAtMaxCards(player.playerid) || deckCount === 0}
+                    disabled={
+                      isPlayerAtMaxCards(player.playerid) || deckCount === 0
+                    }
                     className={
-                      (isPlayerAtMaxCards(player.playerid) || deckCount === 0) 
-                        ? "opacity-50" 
-                        : ""
+                      isPlayerAtMaxCards(player.playerid) || deckCount === 0
+                        ? 'opacity-50'
+                        : ''
                     }
                   >
-                    {player.username} ({getPlayerCardCount(player.playerid)}/{gameContext?.gameData.max_cards_per_player})
+                    {player.username} ({getPlayerCardCount(player.playerid)}/
+                    {gameContext?.gameData.max_cards_per_player})
                   </Button>
                 ))}
               </div>
@@ -472,30 +510,35 @@ const BoardHeader: React.FC<BoardHeaderProps> = ({
         )}
 
         {gameContext.gameData.lock_player_discard && (
-          <Button 
-            size="sm" 
-            variant={gameContext.session.locked_player_discard ? "destructive" : "default"}
+          <Button
+            size="sm"
+            variant={
+              gameContext.session.locked_player_discard
+                ? 'destructive'
+                : 'default'
+            }
             onClick={handleTogglePlayerDiscard}
           >
-            {gameContext.session.locked_player_discard ? "Unlock Player Discard" : "Lock Player Discard"}
+            {gameContext.session.locked_player_discard
+              ? 'Unlock Player Discard'
+              : 'Lock Player Discard'}
           </Button>
         )}
 
         {gameContext.gameData.hide_hand && (
-          <Button 
-            size="sm" 
-            variant={gameContext.session.hand_hidden ? "destructive" : "default"}
+          <Button
+            size="sm"
+            variant={
+              gameContext.session.hand_hidden ? 'destructive' : 'default'
+            }
             onClick={handleToggleHandHidden}
           >
-            {gameContext.session.hand_hidden ? "Show Hands" : "Hide Hands"}
+            {gameContext.session.hand_hidden ? 'Show Hands' : 'Hide Hands'}
           </Button>
         )}
 
         {gameContext.gameData.reveal_hands && (
-          <Button 
-            size="sm" 
-            onClick={handleRevealAllCards}
-          >
+          <Button size="sm" onClick={handleRevealAllCards}>
             Reveal All Hands
           </Button>
         )}
