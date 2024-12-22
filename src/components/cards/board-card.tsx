@@ -8,7 +8,12 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { CardData, SessionCard } from '@/types/game-interfaces';
+import {
+  CardData,
+  DiscardPile,
+  SessionCard,
+  SessionPlayer,
+} from '@/types/game-interfaces';
 import Image from 'next/image';
 import { Button } from '../ui/button';
 import { CardBack, CardFront, PlayingCard } from '../ui/card';
@@ -145,28 +150,30 @@ const BoardCard = ({
               {gameContext.discardPiles.length > 0 ? (
                 <>
                   <h4 className="text-sm font-semibold">Discard to:</h4>
-                  {gameContext.discardPiles.map((pile) => {
+                  {gameContext.discardPiles.map((pile: DiscardPile) => {
                     if (pile.is_player) {
-                      return gameContext.sessionPlayers.map((sessionPlayer) => (
-                        <DialogClose
-                          key={`${pile.pile_id}-${sessionPlayer.playerid}`}
-                          asChild
-                        >
-                          <Button
-                            variant="outline"
-                            onClick={() =>
-                              handleDiscard(
-                                player.playerid,
-                                card.sessioncardid,
-                                pile.pile_id,
-                                sessionPlayer.playerid
-                              )
-                            }
+                      return gameContext.sessionPlayers.map(
+                        (sessionPlayer: SessionPlayer) => (
+                          <DialogClose
+                            key={`${pile.pile_id}-${sessionPlayer.playerid}`}
+                            asChild
                           >
-                            {`${sessionPlayer.username}'s Discard`}
-                          </Button>
-                        </DialogClose>
-                      ));
+                            <Button
+                              variant="outline"
+                              onClick={() =>
+                                handleDiscard(
+                                  player.playerid,
+                                  card.sessioncardid,
+                                  pile.pile_id,
+                                  sessionPlayer.playerid
+                                )
+                              }
+                            >
+                              {`${sessionPlayer.username}'s Discard`}
+                            </Button>
+                          </DialogClose>
+                        )
+                      );
                     } else {
                       return (
                         <DialogClose key={pile.pile_id} asChild>
@@ -208,9 +215,10 @@ const BoardCard = ({
               <h4 className="text-sm font-semibold">Pass card to:</h4>
               {gameContext.sessionPlayers
                 .filter(
-                  (sessionPlayer) => sessionPlayer.playerid !== player.playerid
+                  (sessionPlayer: SessionPlayer) =>
+                    sessionPlayer.playerid !== player.playerid
                 )
-                .map((targetPlayer) => (
+                .map((targetPlayer: SessionPlayer) => (
                   <DialogClose key={targetPlayer.playerid} asChild>
                     <Button
                       variant="outline"

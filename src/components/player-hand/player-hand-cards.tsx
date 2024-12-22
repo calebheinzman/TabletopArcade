@@ -28,9 +28,6 @@ export function PlayerHandCards({
           index={index}
           key={`player-hand-${card.sessioncardid}`}
           playerId={playerId}
-          onDiscard={handleDiscard}
-          onReveal={handleReveal}
-          onPassCard={handlePassCard}
           disabled={disabled}
         />
       ))}
