@@ -14,7 +14,7 @@ import {
 import { createCustomGame } from '@/lib/supabase/session';
 import { CardData, DeckData, DiscardPile } from '@/types/game-interfaces';
 import { Info, X } from 'lucide-react';
-import { Suspense, useRef } from 'react';
+import { Suspense } from 'react';
 
 import {
   Dialog,
@@ -388,13 +388,8 @@ function CreateCustomGameContent() {
     );
   }
 
-  const ref = useRef();
-
   return (
-    <div
-      className="flex flex-col items-center justify-start min-h-screen bg-gray-100 p-4"
-      ref={ref}
-    >
+    <div className="flex flex-col items-center justify-start min-h-screen bg-gray-100 p-4">
       <Button onClick={() => router.back()} className="absolute top-4 left-4">
         Back
       </Button>
