@@ -29,10 +29,12 @@ import {
   updateSessionPoints,
 } from '@/lib/supabase/session';
 
+import { fetchDiscardPiles } from '@/lib/supabase/discard';
 import {
   CardData,
   CustomGameData,
   DeckData,
+  DiscardPile,
   PlayerAction,
   Session,
   SessionCard,
@@ -47,20 +49,37 @@ export interface GameContextType {
   gameData: CustomGameData;
   decks: DeckData[];
   cards: CardData[][];
+  discardPiles: DiscardPile[];
   sessionCards: SessionCard[];
   playerActions: PlayerAction[];
   session: Session;
   sessionPlayers: SessionPlayer[];
-  drawCard: (playerId: number) => Promise<void>;
+  drawCard: (playerId: number, card_hidden: boolean) => Promise<void>;
   drawPoints: (playerId: number, quantity: number) => Promise<void>;
   givePoints: (
     fromPlayerId: number,
     toUsername: string,
     quantity: number
   ) => Promise<void>;
-  discardCard: (playerId: number, sessionCardId: number) => Promise<void>;
+  discardCard: (
+    playerId: number,
+    sessionCardId: number,
+    pileId?: number,
+    targetPlayerId?: number
+  ) => Promise<void>;
   shuffleDeck: () => Promise<void>;
   revealCard: (playerId: number, sessionCardId: number) => Promise<void>;
+  updateSessionCards: (
+    updates: {
+      sessionid: number;
+      sessioncardid: number;
+      cardPosition: number;
+      playerid: number | null;
+      pile_id?: number | null;
+      isRevealed?: boolean;
+    }[]
+  ) => Promise<void>;
+  pickupFromDiscardPile: (playerId: number, pileId: number) => Promise<void>;
 }
 
 const initialGameContext: GameContextType = {
@@ -73,16 +92,24 @@ const initialGameContext: GameContextType = {
   playerActions: [],
   session: {} as Session,
   sessionPlayers: [],
-  drawCard: async (playerId: number) => {},
+  drawCard: async (playerId: number, card_hidden: boolean) => {},
   drawPoints: async (playerId: number, quantity: number) => {},
   givePoints: async (
     fromPlayerId: number,
     toUsername: string,
     quantity: number
   ) => {},
-  discardCard: async (playerId: number, sessionCardId: number) => {},
+  discardCard: async (
+    playerId: number,
+    sessionCardId: number,
+    pileId?: number,
+    targetPlayerId?: number
+  ) => {},
   shuffleDeck: async () => {},
   revealCard: async (playerId: number, sessionCardId: number) => {},
+  discardPiles: [],
+  updateSessionCards: async (updates) => {},
+  pickupFromDiscardPile: async (playerId: number, pileId: number) => {},
 };
 
 // Context
@@ -93,7 +120,7 @@ const handlePlayerUpdate = (
   currentPlayers: SessionPlayer[],
   payload: any
 ): SessionPlayer[] => {
-  let updatedPlayers = [...currentPlayers];
+  const updatedPlayers = [...currentPlayers];
 
   switch (payload.eventType) {
     case 'INSERT':
@@ -154,7 +181,9 @@ export function GameProvider({
           fetchSession(sessionId),
         ]);
 
-        console.log('SESSION CARDS', sessionCards);
+        // Add discardPiles to the Promise.all array
+        const discardPiles = await fetchDiscardPiles(gameId);
+
         if (!mounted) return;
 
         setGameContext((prev) => ({
@@ -167,6 +196,7 @@ export function GameProvider({
           sessionPlayers: players,
           playerActions,
           session: session || ({} as Session),
+          discardPiles,
         }));
       } catch (error) {
         console.error('Error initializing game data:', error);
@@ -250,37 +280,71 @@ export function GameProvider({
   }, [sessionId]);
   console.log('gameContext', gameContext);
 
-  const drawCard = async (playerId: number) => {
+  const drawCard = async (playerId: number, card_hidden: boolean = false) => {
     try {
-      const topCard = gameContext.sessionCards.find(
-        (card) => card.cardPosition === 1
-      );
+      // Only get cards from main deck (positive cardPosition and no pile_id)
+      const topCard = gameContext.sessionCards
+        .filter((card) => card.cardPosition > 0 && !card.pile_id)
+        .sort((a, b) => a.cardPosition - b.cardPosition)[0];
 
       if (!topCard) {
         console.error('No cards left in deck');
         return;
       }
 
+      // Get remaining deck cards, excluding the top card
       const deckCards = gameContext.sessionCards
-        .filter((card) => card.cardPosition > 1)
+        .filter(
+          (card) =>
+            card.cardPosition > 1 &&
+            !card.pile_id &&
+            card.sessioncardid !== topCard.sessioncardid
+        )
         .sort((a, b) => a.cardPosition - b.cardPosition);
 
+      // Create updates array with unique sessioncardids
       const updates = [
+        // Update for the drawn card
         {
           sessionid: gameContext.sessionid,
           sessioncardid: topCard.sessioncardid,
           cardPosition: 0,
           playerid: playerId,
+          pile_id: null,
+          isRevealed: false,
+          card_hidden,
         },
+        // Updates for remaining deck cards
         ...deckCards.map((card, index) => ({
           sessionid: gameContext.sessionid,
           sessioncardid: card.sessioncardid,
           cardPosition: index + 1,
           playerid: null,
+          pile_id: null,
+          isRevealed: false,
         })),
       ];
+      console.log('updates', updates);
+      console.log(
+        'gameContext.session.hand_hidden',
+        gameContext.session.hand_hidden
+      );
+      console.log('card_hidden', card_hidden);
+      console.log('playerId', playerId);
+      console.log('gameContext.sessionCards', gameContext.sessionCards);
+      console.log('gameContext.sessionCards[0]', gameContext.sessionCards[0]);
 
-      await updateSessionCards(updates);
+      // Verify no duplicate sessioncardids
+      const sessionCardIds = new Set();
+      const uniqueUpdates = updates.filter((update) => {
+        if (sessionCardIds.has(update.sessioncardid)) {
+          return false;
+        }
+        sessionCardIds.add(update.sessioncardid);
+        return true;
+      });
+
+      await updateSessionCards(uniqueUpdates);
     } catch (error) {
       console.error('Error drawing card:', error);
       throw new Error('Failed to draw card');
@@ -405,14 +469,71 @@ export function GameProvider({
     }
   };
 
-  const discardCard = async (playerId: number, sessionCardId: number) => {
+  const discardCard = async (
+    playerId: number,
+    sessionCardId: number,
+    pileId?: number,
+    targetPlayerId?: number
+  ) => {
     try {
-      const updatedCards = await discardAndShuffleCard(
-        gameContext.sessionid,
-        sessionCardId,
-        gameContext.sessionCards
-      );
-      console.log('Updated cards after discard and shuffle:', updatedCards);
+      if (pileId !== undefined) {
+        const discardPile = gameContext.discardPiles.find(
+          (p) => p.pile_id === pileId
+        );
+        if (!discardPile) throw new Error('Discard pile not found');
+
+        // Get all cards currently in this pile
+        const cardsInPile = gameContext.sessionCards.filter((card) => {
+          if (discardPile.is_player) {
+            // For player piles, match both pile_id and playerid
+            return card.pile_id === pileId && card.playerid === targetPlayerId;
+          } else {
+            // For board piles, just match pile_id
+            return card.pile_id === pileId;
+          }
+        });
+
+        // Determine the playerid value for the updates
+        const newPlayerId: number | null = discardPile.is_player
+          ? (targetPlayerId ?? null)
+          : null;
+
+        // Update positions of existing cards in pile
+        const updates: {
+          sessionid: number;
+          sessioncardid: number;
+          cardPosition: number;
+          playerid: number | null;
+          pile_id?: number | null;
+          isRevealed?: boolean;
+        }[] = cardsInPile.map((card) => ({
+          sessionid: gameContext.sessionid,
+          sessioncardid: card.sessioncardid,
+          cardPosition: card.cardPosition + 1,
+          playerid: newPlayerId,
+          pile_id: pileId,
+          isRevealed: discardPile.is_face_up,
+        }));
+
+        // Add the new card at position 1
+        updates.push({
+          sessionid: gameContext.sessionid,
+          sessioncardid: sessionCardId,
+          cardPosition: 1,
+          playerid: newPlayerId,
+          pile_id: pileId,
+          isRevealed: discardPile.is_face_up,
+        });
+
+        await updateSessionCards(updates);
+      } else {
+        // Original shuffle behavior for deck
+        await discardAndShuffleCard(
+          gameContext.sessionid,
+          sessionCardId,
+          gameContext.sessionCards
+        );
+      }
     } catch (error) {
       console.error('Error discarding card:', error);
       throw new Error('Failed to discard card');
@@ -439,6 +560,30 @@ export function GameProvider({
     }
   };
 
+  const pickupFromDiscardPile = async (playerId: number, pileId: number) => {
+    try {
+      // Get all cards from the specified pile for this player
+      const pileCards = gameContext.sessionCards.filter(
+        (card) => card.pile_id === pileId && card.playerid === playerId
+      );
+
+      // Create updates array to move cards to player's hand
+      const updates = pileCards.map((card) => ({
+        sessionid: gameContext.sessionid,
+        sessioncardid: card.sessioncardid,
+        cardPosition: 0,
+        playerid: playerId,
+        pile_id: null,
+        isRevealed: false,
+      }));
+
+      await updateSessionCards(updates);
+    } catch (error) {
+      console.error('Error picking up cards from discard pile:', error);
+      throw new Error('Failed to pickup cards from discard pile');
+    }
+  };
+
   const contextValue = {
     ...gameContext,
     drawCard,
@@ -447,6 +592,19 @@ export function GameProvider({
     discardCard,
     shuffleDeck,
     revealCard,
+    updateSessionCards: async (
+      updates: {
+        sessionid: number;
+        sessioncardid: number;
+        cardPosition: number;
+        playerid: number | null;
+        pile_id?: number | null;
+        isRevealed?: boolean;
+      }[]
+    ) => {
+      await updateSessionCards(updates);
+    },
+    pickupFromDiscardPile,
   };
 
   return (

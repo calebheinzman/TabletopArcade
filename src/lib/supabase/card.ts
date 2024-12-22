@@ -22,17 +22,20 @@ export async function insertSessionCards(
   }
 }
 
-export async function updateSessionCards(
-  updates: {
-    sessionid: number;
-    sessioncardid: number;
-    cardPosition: number;
-    playerid: number | null;
-  }[]
-) {
-  const { error } = await supabase.from('session_cards').upsert(updates, {
-    onConflict: 'sessionid,sessioncardid',
-  });
+export async function updateSessionCards(updates: {
+  sessionid: number;
+  sessioncardid: number;
+  cardPosition: number;
+  playerid: number | null;
+  pile_id?: number | null;
+  isRevealed?: boolean;
+  card_hidden?: boolean;
+}[]) {
+  const { error } = await supabase
+    .from('session_cards')
+    .upsert(updates, {
+      onConflict: 'sessionid,sessioncardid'
+    });
 
   if (error) throw error;
 }
@@ -163,4 +166,20 @@ export async function fetchSessionCards(sessionId: number) {
   }
 
   return sessionCards as SessionCard[];
+}
+
+export async function fetchAllDecks() {
+  const { data, error } = await supabase
+    .from('deck')
+    .select(`
+      *,
+      cards:card(*)
+    `);
+
+  if (error) {
+    console.error('Error fetching decks:', error);
+    return [];
+  }
+
+  return data;
 }

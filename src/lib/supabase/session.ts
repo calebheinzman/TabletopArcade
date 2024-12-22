@@ -3,19 +3,20 @@ import {
   CardData,
   CustomGameData,
   DeckData,
+  DiscardPile,
   GameTemplate,
   GameTemplateNameAndId,
   SessionCard,
 } from '@/types/game-interfaces';
-import { initializeSession } from '../defaultGameState';
-import { insertSessionCards } from './card';
-import { supabase } from './index';
+import { insertSessionCards, updateSessionCards } from './card';
+import { supabase } from '.';
 import { setFirstPlayerTurn } from './player';
 
 export async function createCustomGame(
   gameData: CustomGameData,
   decks: DeckData[],
-  cards: CardData[][]
+  cards: CardData[][],
+  discardPiles: DiscardPile[]
 ) {
   try {
     const { data: gameDataResult, error: gameError } = await supabase
@@ -28,10 +29,34 @@ export async function createCustomGame(
 
     const gameId = gameDataResult.gameid;
 
+    // Insert discard piles first to get their IDs
+    let discardPileIds: number[] = [];
+    if (discardPiles && discardPiles.length > 0) {
+      const discardPilesWithGameId = discardPiles.map(
+        ({ pile_id, ...pile }) => ({
+          ...pile,
+          game_id: gameId,
+        })
+      );
+
+      const { data: discardPileData, error: discardPileError } = await supabase
+        .from('discard_pile')
+        .insert(discardPilesWithGameId)
+        .select('pile_id');
+
+      if (discardPileError) throw discardPileError;
+
+      discardPileIds = discardPileData.map((pile) => pile.pile_id);
+    }
+
     for (const deck of decks) {
       const { data: deckDataResult, error: deckError } = await supabase
         .from('deck')
-        .insert({ ...deck, gameid: gameId, num_cards: 0 })
+        .insert({
+          gameid: gameId,
+          deckname: deck.deckname,
+          num_cards: 0,
+        })
         .select('deckid, deckname')
         .single();
 
@@ -39,19 +64,22 @@ export async function createCustomGame(
 
       const deckName = deckDataResult.deckname;
       const deckId = deckDataResult.deckid;
-      if (cards.length > 0) {
-        const deckCards = cards.find((c) => c[0].deckName === deckName);
-        if (deckCards) {
-          const { error: cardError } = await supabase.from('card').insert(
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            deckCards.map(({ deckName, ...card }) => ({
-              ...card,
-              deckid: deckId,
-            }))
-          );
 
-          if (cardError) throw cardError;
-        }
+      // Check if there are cards for this specific deck
+      const deckCards = cards.find(
+        (cardSet) =>
+          cardSet && cardSet.length > 0 && cardSet[0]?.deckName === deckName
+      );
+      if (deckCards && deckCards.length > 0) {
+        const { error: cardError } = await supabase.from('card').insert(
+          deckCards.map(({ deckName, ...card }) => ({
+            ...card,
+            deckid: deckId,
+            drop_order: card.drop_order || 0,
+          }))
+        );
+
+        if (cardError) throw cardError;
       }
     }
 
@@ -85,7 +113,7 @@ export async function createCustomGame(
 
     const { data: sessionCardsData, error: sessionCardsError } = await supabase
       .from('session_cards')
-      .select('*')
+      .select('*, pile_id')
       .in(
         'sessionid',
         sessionData.map((session) => session.sessionid)
@@ -108,30 +136,30 @@ export async function createCustomGame(
   }
 }
 
-export async function fetchGameTemplate(templateId: GameTemplate['id']) {
+export const fetchGameTemplate = async (gameId: number) => {
   try {
+    // Fetch game template
     const { data: gameData, error: gameError } = await supabase
       .from('game')
       .select(
         `
-          *,
-          decks:deck(
-            *,
-            cards:card(*)
-          )
-        `
+        *,
+        decks:deck(*,
+          cards:card(*)
+        ),
+        discard_piles:discard_pile(*)
+      `
       )
-      .eq('gameid', templateId)
+      .eq('gameid', gameId)
       .single();
 
     if (gameError) throw gameError;
-
     return gameData;
   } catch (error) {
     console.error('Error fetching game template:', error);
     return null;
   }
-}
+};
 
 export async function createSessionFromGameTemplateId(
   templateId: GameTemplate['id']
@@ -147,6 +175,7 @@ export async function createSessionFromGameTemplateId(
       num_players: 0,
       num_cards: gameData.decks[0].cards.length,
       is_live: false,
+      locked_player_discard: false,
     };
 
     const { data: sessionResult, error: sessionError } = await supabase
@@ -173,7 +202,9 @@ export async function createSession(
 
 export async function fetchGameNames(): Promise<GameTemplateNameAndId[] | []> {
   try {
-    const { data, error } = await supabase.from('game').select('name, gameid');
+    const { data, error } = await supabase
+      .from('game')
+      .select('name, gameid, tags');
 
     if (error) throw error;
 
@@ -267,37 +298,131 @@ export async function updateSessionPoints(
 
 export async function resetGame(gameContext: GameContextType): Promise<void> {
   try {
-    const newDeck = initializeSession(gameContext);
+    const existingCards = [...gameContext.sessionCards];
 
-    const { error: deleteError } = await supabase
-      .from('session_cards')
-      .delete()
-      .eq('sessionid', gameContext.sessionid);
+    // Sort cards by drop_order if deal_all_cards is true
+    if (gameContext.gameData.deal_all_cards) {
+      existingCards.sort((a, b) => {
+        const cardA = gameContext.cards
+          .flat()
+          .find((c) => c.cardid === a.cardid);
+        const cardB = gameContext.cards
+          .flat()
+          .find((c) => c.cardid === b.cardid);
+        return (cardB?.drop_order || 0) - (cardA?.drop_order || 0);
+      });
+    }
 
-    if (deleteError) throw deleteError;
+    // Shuffle the array of existing cards
+    for (let i = existingCards.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [existingCards[i], existingCards[j]] = [
+        existingCards[j],
+        existingCards[i],
+      ];
+    }
 
-    await insertSessionCards(gameContext.sessionid, newDeck);
+    const cardUpdates: {
+      sessionid: number;
+      sessioncardid: number;
+      cardPosition: number;
+      playerid: number | null;
+      pile_id: null;
+      isRevealed: boolean;
+    }[] = [];
 
-    const { error: playerError } = await supabase
-      .from('player')
-      .update({
-        num_points: gameContext.gameData.starting_num_points || 0,
-        is_turn: false,
-      })
-      .eq('sessionid', gameContext.sessionid);
+    let currentCardIndex = 0;
 
-    if (playerError) throw playerError;
+    if (gameContext.gameData.deal_all_cards) {
+      // Calculate cards per player (rounded down)
+      const cardsPerPlayer = Math.floor(
+        existingCards.length / gameContext.sessionPlayers.length
+      );
 
+      // Deal cards to each player
+      for (const player of gameContext.sessionPlayers) {
+        for (let i = 0; i < cardsPerPlayer; i++) {
+          if (currentCardIndex < existingCards.length) {
+            cardUpdates.push({
+              sessionid: gameContext.sessionid,
+              sessioncardid: existingCards[currentCardIndex].sessioncardid,
+              cardPosition: 0,
+              playerid: player.playerid,
+              pile_id: null,
+              isRevealed: false,
+            });
+            currentCardIndex++;
+          }
+        }
+      }
+    } else if (gameContext.gameData.starting_num_cards > 0) {
+      // Original logic for dealing specific number of cards
+      for (const player of gameContext.sessionPlayers) {
+        for (let i = 0; i < gameContext.gameData.starting_num_cards; i++) {
+          if (currentCardIndex < existingCards.length) {
+            cardUpdates.push({
+              sessionid: gameContext.sessionid,
+              sessioncardid: existingCards[currentCardIndex].sessioncardid,
+              cardPosition: 0,
+              playerid: player.playerid,
+              pile_id: null,
+              isRevealed: false,
+            });
+            currentCardIndex++;
+          }
+        }
+      }
+    }
+
+    // Update remaining cards as deck cards
+    for (let i = currentCardIndex; i < existingCards.length; i++) {
+      cardUpdates.push({
+        sessionid: gameContext.sessionid,
+        sessioncardid: existingCards[i].sessioncardid,
+        cardPosition: i - currentCardIndex + 1,
+        playerid: null,
+        pile_id: null,
+        isRevealed: false,
+      });
+    }
+
+    // Reset session points and hand visibility settings
     const { error: sessionError } = await supabase
       .from('session')
       .update({
         num_points: gameContext.gameData.num_points,
+        hand_hidden: false, // Reset hand visibility
+        locked_player_discard: false, // Reset locked player discard
       })
       .eq('sessionid', gameContext.sessionid);
 
     if (sessionError) throw sessionError;
 
-    await setFirstPlayerTurn(gameContext.sessionid);
+    // Reset player points, turns, and card reveal status
+    const finalCardUpdates = cardUpdates.map((update) => ({
+      ...update,
+      isRevealed: false, // Ensure all cards are hidden when game resets
+      card_hidden: false, // Reset card hidden state to default
+    }));
+
+    // Update all cards in a single operation
+    await updateSessionCards(finalCardUpdates);
+
+    // Reset player points and turns - modified to handle claim_turn
+    const { error: playerError } = await supabase
+      .from('player')
+      .update({
+        num_points: gameContext.gameData.starting_num_points || 0,
+        is_turn: gameContext.gameData.claim_turns ? false : false, // All players start with is_turn false if claim_turn is true
+      })
+      .eq('sessionid', gameContext.sessionid);
+
+    if (playerError) throw playerError;
+
+    // Only set first player turn if claim_turn is false
+    if (!gameContext.gameData.claim_turns) {
+      await setFirstPlayerTurn(gameContext.sessionid);
+    }
   } catch (error) {
     console.error('Error resetting game:', error);
     throw error;

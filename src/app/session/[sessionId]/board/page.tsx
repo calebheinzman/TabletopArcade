@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/button';
 import { pushPlayerAction } from '@/lib/supabase/player';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import BoardDeckDialog from '@/components/board/board-deck-dialog';
+import BoardDiscardPile from '@/components/board/board-discard-pile';
 
 const BoardContent: React.FC = () => {
   const gameContext = useGame();
@@ -39,9 +40,9 @@ const BoardContent: React.FC = () => {
   );
 
   // Handler functions for adjusting points and points
-  const handleDrawCard = async (playerId: number) => {
+  const handleDrawCard = async (playerId: number, card_hidden: boolean) => {
     try {
-      await gameContext.drawCard(playerId);
+      await gameContext.drawCard(playerId, card_hidden);
     } catch (error) {
       console.error('Error drawing card:', error);
     }
@@ -67,16 +68,11 @@ const BoardContent: React.FC = () => {
     }
   };
 
-  const handleDiscardCard = async (playerId: number) => {
-    const playerCard = gameContext.sessionCards.find(
-      card => card.playerid === playerId
-    );
-    if (playerCard) {
-      try {
-        await gameContext.discardCard(playerId, playerCard.sessioncardid);
-      } catch (error) {
-        console.error('Error discarding card:', error);
-      }
+  const handleDiscardCard = async (playerId: number, sessionCardId: number, pileId?: number) => {
+    try {
+      await gameContext.discardCard(playerId, sessionCardId, pileId);
+    } catch (error) {
+      console.error('Error discarding card:', error);
     }
   };
 
@@ -119,7 +115,7 @@ const BoardContent: React.FC = () => {
   return (
     <div className="flex flex-col items-center justify-start min-h-screen bg-gray-100 p-2 sm:p-4">
       {/* Main container for board and action feed */}
-      <div className="w-full max-w-6xl mx-auto flex h-[90vh] gap-4">
+      <div className="w-full max-w-7xl mx-auto flex h-[90vh] gap-4">
         {/* Board and related components */}
         <div className="flex flex-col flex-grow relative">
           {/* Header Section */}
@@ -128,44 +124,62 @@ const BoardContent: React.FC = () => {
             players={sortedPlayers}
             onDrawCard={handleDrawCard}
             onGivePoint={handleDrawPoint}
-            onDiscardCard={handleDiscardCard}
+            onDiscardCard={(playerId) => handleDiscardCard(playerId, 0)}
             onShuffle={handleShuffle}
             onReset={handleReset}
           />
 
-          {/* Game Board */}
-          <div className="relative flex-grow bg-white rounded-lg shadow-xl border border-gray-200 overflow-hidden w-full p-8">
-            {/* Toggle Action Feed Button */}
+          {/* Game Board - Reduced all padding */}
+          <div className="relative flex-grow bg-white rounded-lg shadow-xl border border-gray-200 overflow-hidden w-full p-2">
             <Button
               size="sm"
               variant="outline"
-              className="absolute top-4 right-4 z-10"
+              className="absolute top-2 right-2 z-10"
               onClick={() => setIsActionFeedOpen(!isActionFeedOpen)}
             >
               {isActionFeedOpen ? 'Hide Actions' : 'Show Actions'}
             </Button>
 
-            {/* Add a padding container around the game content */}
-            <div className="p-24 py-32">
-              {/* Central Deck Display */}
-              <BoardDeckDialog
-                deckCount={deckCount}
-                players={sortedPlayers}
-                onDrawCard={handleDrawCard}
-              />
-
+            {/* Minimal padding container */}
+            <div className="p-2">
               {/* Players */}
               <BoardPlayerHands
                 players={sortedPlayers}
                 totalPlayers={sortedPlayers.length}
                 onSelectPlayer={setSelectedPlayerId}
               />
+
+              {/* Central Deck Area - adjusted position */}
+              <div className="absolute top-[52%] left-1/2 transform -translate-x-1/2 -translate-y-1/2">
+                <div className="flex items-center space-x-8">
+                  <BoardDeckDialog
+                    deckCount={deckCount}
+                    players={sortedPlayers}
+                    onDrawCard={handleDrawCard}
+                  />
+                  
+                  {/* Discard Piles */}
+                  <div className="flex space-x-4 items-center">
+                    {gameContext.discardPiles
+                      .filter(pile => !pile.is_player)
+                      .map((pile) => (
+                        <BoardDiscardPile
+                          key={pile.pile_id}
+                          pile={pile}
+                          variant="board"
+                        />
+                      ))}
+                  </div>
+                </div>
+              </div>
             </div>
 
             {/* Game Points Display */}
-            <div className="absolute top-4 left-4 bg-yellow-400 text-black px-4 py-2 rounded-full text-sm sm:text-base font-bold">
-              Points: {gamePoints}
-            </div>
+            {gamePoints > 0 && (
+              <div className="absolute top-4 left-4 bg-yellow-400 text-black px-4 py-2 rounded-full text-sm sm:text-base font-bold">
+                Points: {gamePoints}
+              </div>
+            )}
           </div>
 
           {/* Player Actions Dialog */}

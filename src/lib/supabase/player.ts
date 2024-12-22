@@ -171,3 +171,24 @@ export async function fetchPlayerActions(sessionId: number): Promise<PlayerActio
 
   return data || [];
 }
+
+export async function claimTurn(sessionId: number, playerId: number): Promise<void> {
+  try {
+    // First, set all players' turns to false
+    await supabase
+      .from('player')
+      .update({ is_turn: false })
+      .eq('sessionid', sessionId);
+
+    // Then set the selected player's turn to true
+    const { error } = await supabase
+      .from('player')
+      .update({ is_turn: true })
+      .match({ sessionid: sessionId, playerid: playerId });
+
+    if (error) throw error;
+  } catch (error) {
+    console.error('Error claiming turn:', error);
+    throw error;
+  }
+}

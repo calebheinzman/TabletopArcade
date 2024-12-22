@@ -6,8 +6,9 @@ export interface GameTemplate {
 }
 
 export interface GameTemplateNameAndId {
-  id: GameTemplate['id'];
-  name: GameTemplate['name'];
+  id: string;
+  name: string;
+  tags?: string[];
 }
 
 export interface CustomGameData {
@@ -19,22 +20,24 @@ export interface CustomGameData {
   starting_num_points: number;
   can_discard: boolean;
   can_reveal: boolean;
-  can_give_points: boolean;
-  can_give_cards: boolean;
   can_draw_cards: boolean;
   can_draw_points: boolean;
-  face_up_board_discard_piles_row: number | null;
-  face_up_board_discard_piles_columbs: number | null;
-  face_down_board_discard_piles_row: number | null;
-  face_down_board_discard_piles_columbs: number | null;
-  face_up_player_discard_piles_row: number | null;
-  face_up_player_discard_piles_columbs: number | null;
-  face_down_player_discard_piles_row: number | null;
-  face_down_player_discard_piles_columbs: number | null;
-  is_turn_based: boolean;
+  turn_based: boolean;
   lock_turn: boolean;
   max_cards_per_player: number;
   game_rules: string;
+  redeal_cards: boolean;
+  tags: string | null;
+  pass_cards: boolean;
+  claim_turns: boolean;
+  deal_all_cards: boolean;
+  lock_player_discard: boolean;
+  can_pass_points: boolean;
+  creator_name: string;
+  hide_hand: boolean;
+  reveal_hands: boolean;
+  trade_cards: boolean;
+  peak_cards: boolean;
 }
 
 export interface DeckData {
@@ -52,8 +55,10 @@ export interface CardData {
   count: number;
   description: string;
   deckName: string;
+  type: string;
   front_img_url: string;
   back_img_url: string;
+  drop_order: number;
 }
 
 export interface Player {
@@ -84,6 +89,8 @@ export interface Session {
   num_players: number;
   num_cards: number;
   is_live: boolean;
+  locked_player_discard: boolean;
+  hand_hidden: boolean;
 }
 
 export interface SessionCard {
@@ -94,6 +101,8 @@ export interface SessionCard {
   playerid: number;
   deckid: number;
   isRevealed: boolean;
+  pile_id: number | null;
+  card_hidden: boolean;
 }
 
 export interface SessionPlayer {
@@ -111,4 +120,15 @@ export interface PlayerAction {
   sessionid: number;
   description: string;
   action_id: number;
+}
+
+export interface DiscardPile {
+  pile_id: number;
+  is_player: boolean;
+  is_face_up: boolean;
+  hide_values: boolean;
+  game_id: number;
+  x_pos: number;
+  y_pos: number;
+  pile_name: string;
 }

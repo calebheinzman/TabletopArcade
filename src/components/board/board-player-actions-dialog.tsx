@@ -13,6 +13,8 @@ import {
 } from '@/components/ui/dialog';
 import { FC } from 'react';
 import { useGame } from '@/components/GameContext';
+import { claimTurn } from '@/lib/supabase/player';
+import { pushPlayerAction } from '@/lib/supabase/player';
 
 interface BoardPlayerActionsDialogProps {
   isOpen: boolean;
@@ -25,7 +27,7 @@ interface BoardPlayerActionsDialogProps {
   onIncreasePoint: () => void;
   onDecreasePoint: () => void;
   onEndTurn: (playerId: number) => void;
-  onDrawCard: (playerId: number) => void;
+  onDrawCard: (playerId: number, card_hidden: boolean) => void;
 }
 
 const BoardPlayerActionsDialog: FC<BoardPlayerActionsDialogProps> = ({
@@ -47,6 +49,25 @@ const BoardPlayerActionsDialog: FC<BoardPlayerActionsDialogProps> = ({
   ).length;
   const deckCount = gameContext.sessionCards.filter(card => card.cardPosition > 0).length;
   const atMaxCards = playerCardCount >= (gameContext.gameData.max_cards_per_player || 0);
+  
+  const canAssignTurn = isHost && gameContext.gameData.claim_turns && gameContext.gameData.turn_based;
+  
+  const handleAssignTurn = async () => {
+    try {
+      await claimTurn(gameContext.sessionid, playerId);
+      await pushPlayerAction(
+        gameContext.sessionid,
+        playerId,
+        `Turn assigned to ${playerName} by host`
+      );
+    } catch (error) {
+      console.error('Error assigning turn:', error);
+    }
+  };
+
+  const handleDrawCard = () => {
+    onDrawCard(playerId, gameContext.session.hand_hidden);
+  };
 
   return (
     <Dialog open={isOpen} onOpenChange={isOpen ? onClose : undefined}>
@@ -58,36 +79,38 @@ const BoardPlayerActionsDialog: FC<BoardPlayerActionsDialogProps> = ({
           </DialogDescription>
         </DialogHeader>
         <div className="flex flex-col gap-4 mt-4">
-          {/* Points Control */}
-          <div className="flex items-center justify-between">
-            <span className="font-semibold">Points:</span>
-            <div className="flex items-center gap-2">
-              <Button
-                onClick={onDecreasePoint}
-                disabled={points === 0}
-                size="sm"
-                variant="destructive"
-              >
-                -
-              </Button>
-              <span className="text-sm">{points}</span>
-              <Button
-                onClick={onIncreasePoint}
-                disabled={false}
-                size="sm"
-                variant="default"
-              >
-                +
-              </Button>
+          {/* Points Control - Only show if points are enabled */}
+          {(gameContext.gameData.num_points > 0 && gameContext.session.num_points > 0) && (
+            <div className="flex items-center justify-between">
+              <span className="font-semibold">Points:</span>
+              <div className="flex items-center gap-2">
+                <Button
+                  onClick={onDecreasePoint}
+                  disabled={points === 0}
+                  size="sm"
+                  variant="destructive"
+                >
+                  -
+                </Button>
+                <span className="text-sm">{points}</span>
+                <Button
+                  onClick={onIncreasePoint}
+                  disabled={false}
+                  size="sm"
+                  variant="default"
+                >
+                  +
+                </Button>
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Draw Card Control */}
           <div className="flex items-center justify-between">
             <span className="font-semibold">Cards:</span>
             <div className="flex items-center gap-2">
               <Button
-                onClick={() => onDrawCard(playerId)}
+                onClick={handleDrawCard}
                 disabled={atMaxCards || deckCount === 0}
                 size="sm"
                 variant="default"
@@ -98,15 +121,27 @@ const BoardPlayerActionsDialog: FC<BoardPlayerActionsDialogProps> = ({
           </div>
         </div>
         <DialogFooter className="flex justify-between">
-          {isHost && (
-            <Button 
-              variant="default"
-              onClick={() => onEndTurn(playerId)}
-              disabled={!is_turn}
-            >
-              End Player Turn
-            </Button>
-          )}
+          <div className="flex gap-2">
+            {isHost && gameContext.gameData.turn_based && (
+              <>
+                <Button 
+                  variant="default"
+                  onClick={() => onEndTurn(playerId)}
+                  disabled={!is_turn}
+                >
+                  End Player Turn
+                </Button>
+                {canAssignTurn && (
+                  <Button
+                    variant="secondary"
+                    onClick={handleAssignTurn}
+                  >
+                    Assign Turn
+                  </Button>
+                )}
+              </>
+            )}
+          </div>
           <Button variant="secondary" onClick={onClose}>
             Close
           </Button>
