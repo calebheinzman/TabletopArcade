@@ -536,10 +536,7 @@ function CreateCustomGameContent() {
                           Choose Existing Deck
                         </Button>
                       </DialogTrigger>
-                      <DialogContent
-                        className="sm:max-w-[600px]"
-                        container={ref.current}
-                      >
+                      <DialogContent className="sm:max-w-[600px]">
                         <DialogHeader>
                           <DialogTitle>Choose a Deck</DialogTitle>
                         </DialogHeader>
