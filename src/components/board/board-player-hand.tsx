@@ -42,8 +42,6 @@ const BoardPlayerHand: FC<BoardPlayerHandProps> = ({
     hoveredCardIndex,
     isOverflowing,
     isLargeCard,
-    cardHeight,
-    cardWidth,
     revealedCards,
     playerDiscardPiles,
   } = usePlayerCards(player.playerid, cards);

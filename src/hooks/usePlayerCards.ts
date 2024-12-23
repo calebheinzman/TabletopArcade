@@ -55,9 +55,6 @@ const usePlayerCards = (
     playerCards.length <= 5 &&
     gameContext.discardPiles.length === 0;
 
-  const cardWidth = isLargeCard ? 'w-24' : 'w-14';
-  const cardHeight = isLargeCard ? 'h-32' : 'h-20';
-
   const handleMouseEnter = useCallback((idx: number) => {
     setHoveredCardIndex(idx);
   }, []);
@@ -246,8 +243,6 @@ const usePlayerCards = (
     overlapping,
     baseSpacing,
     isOverflowing,
-    cardWidth,
-    cardHeight,
     isLargeCard,
     revealedCards,
     playerDiscardPiles,

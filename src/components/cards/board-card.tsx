@@ -8,6 +8,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
+import { cn } from '@/lib/utils';
 import {
   CardData,
   DiscardPile,
@@ -15,6 +16,7 @@ import {
   SessionPlayer,
 } from '@/types/game-interfaces';
 import Image from 'next/image';
+import { useFullScreen } from '../FullscreenContext';
 import { Button } from '../ui/button';
 import { CardBack, CardFront, PlayingCard } from '../ui/card';
 
@@ -34,6 +36,7 @@ const BoardCard = ({
   getZIndex,
   isLargeCard,
   baseSpacing,
+  size,
 }: {
   index: number;
   card: SessionCard & CardData;
@@ -59,7 +62,12 @@ const BoardCard = ({
   getZIndex: (index: number) => number;
   isLargeCard: boolean;
   baseSpacing: number;
+  size?: {
+    fullscreen?: Record<'sm' | 'md' | 'lg' | 'xl', string>;
+    normal?: Record<'sm' | 'md' | 'lg' | 'xl', string>;
+  };
 }) => {
+  const { isFullScreen } = useFullScreen();
   const isHovered = hoveredCardIndex === index;
 
   // Adjust positions to create spacing when hovering a card
@@ -74,15 +82,44 @@ const BoardCard = ({
     }
   }
 
+  // Define default sizes and merge with custom sizes
+  const defaultSizes = {
+    fullscreen: {
+      default: 'w-14 h-24',
+      sm: 'sm:w-12 sm:h-16',
+      md: 'md:w-16 md:h-20',
+      lg: 'lg:w-24 lg:h-32',
+      xl: 'xl:w-32 xl:h-40',
+    },
+    normal: {
+      default: 'w-14 h-24',
+      sm: 'sm:w-10 sm:h-14',
+      md: 'md:w-12 md:h-16',
+      lg: 'lg:w-20 lg:h-28',
+      xl: 'xl:w-28 xl:h-36',
+    },
+  };
+
+  const cardSizes = isFullScreen
+    ? { ...defaultSizes.fullscreen, ...(size?.fullscreen ?? {}) }
+    : { ...defaultSizes.normal, ...(size?.normal ?? {}) };
+
   return (
     <Dialog>
       <DialogTrigger asChild>
         <PlayingCard
           card={card}
-          className={`
-            absolute w-16 h-24 md:w-24 md:h-32 lg:w-32 lg:h-40 xl:w-40 xl:h-48 cursor-pointer border-none transition-all duration-200
-            ${isHovered ? '-translate-y-2' : ''}
-          `}
+          className={cn(
+            `
+            absolute cursor-pointer border-none transition-all duration-200
+          `,
+            isHovered && '-translate-y-2',
+            cardSizes.default,
+            cardSizes.sm,
+            cardSizes.md,
+            cardSizes.lg,
+            cardSizes.xl
+          )}
           style={{
             left: `${leftOffset}px`,
             zIndex: getZIndex(index),
