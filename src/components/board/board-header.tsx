@@ -17,33 +17,16 @@ import {
 } from '@/components/ui/popover';
 import { supabase } from '@/lib/supabase';
 import { updateSessionCards } from '@/lib/supabase/card';
-import { SessionPlayer } from '@/types/game-interfaces';
 import { useRouter } from 'next/navigation';
 import React, { useState } from 'react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
+import { useBoardContext } from './board-context';
 
-interface BoardHeaderProps {
-  deckCount: number;
-  players: SessionPlayer[];
-  onDrawCard: (playerId: number, card_hidden: boolean) => void;
-  onGivePoint: (playerId: number, quantity: number) => void;
-  onDiscardCard: (playerId: number) => void;
-  onShuffle: () => void;
-  onReset: () => void;
-  onFullScreen: () => void;
-}
+const BoardHeader: React.FC = () => {
+  const { deckCount, players, onGivePoint, onShuffle, onReset, onFullScreen } =
+    useBoardContext();
 
-const BoardHeader: React.FC<BoardHeaderProps> = ({
-  deckCount,
-  players,
-  onDrawCard,
-  onGivePoint,
-  onDiscardCard,
-  onShuffle,
-  onReset,
-  onFullScreen,
-}) => {
   const router = useRouter();
   const gameContext = useGame();
   const [numPointsToGive, setNumPointsToGive] = useState<number>(1);

@@ -11,47 +11,47 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { claimTurn, pushPlayerAction } from '@/lib/supabase/player';
 import { FC } from 'react';
-import { useGame } from '@/components/GameContext';
-import { claimTurn } from '@/lib/supabase/player';
-import { pushPlayerAction } from '@/lib/supabase/player';
+import { useBoardContext } from './board-context';
 
-interface BoardPlayerActionsDialogProps {
-  isOpen: boolean;
-  playerName: string;
-  points: number;
-  playerId: number;
-  isHost: boolean;
-  is_turn: boolean;
-  onClose: () => void;
-  onIncreasePoint: () => void;
-  onDecreasePoint: () => void;
-  onEndTurn: (playerId: number) => void;
-  onDrawCard: (playerId: number, card_hidden: boolean) => void;
-}
+const BoardPlayerActionsDialog: FC = () => {
+  const {
+    selectedPlayer,
+    selectedPlayerId,
+    isHost,
+    gameContext,
+    onDrawPoint,
+    onGivePoint,
+    onDrawCard,
+    onEndTurn,
+    onSelectPlayer,
+  } = useBoardContext();
 
-const BoardPlayerActionsDialog: FC<BoardPlayerActionsDialogProps> = ({
-  isOpen,
-  playerName,
-  points,
-  playerId,
-  isHost,
-  is_turn,
-  onClose,
-  onIncreasePoint,
-  onDecreasePoint,
-  onEndTurn,
-  onDrawCard,
-}) => {
-  const gameContext = useGame();
-  const playerCardCount = gameContext.sessionCards.filter(card => 
-    card.playerid === playerId
+  if (!selectedPlayer) return null;
+
+  const {
+    username: playerName,
+    num_points: points,
+    playerid: playerId,
+    is_turn,
+  } = selectedPlayer;
+  const isOpen = !!selectedPlayerId;
+
+  const playerCardCount = gameContext.sessionCards.filter(
+    (card) => card.playerid === playerId
   ).length;
-  const deckCount = gameContext.sessionCards.filter(card => card.cardPosition > 0).length;
-  const atMaxCards = playerCardCount >= (gameContext.gameData.max_cards_per_player || 0);
-  
-  const canAssignTurn = isHost && gameContext.gameData.claim_turns && gameContext.gameData.turn_based;
-  
+  const deckCount = gameContext.sessionCards.filter(
+    (card) => card.cardPosition > 0
+  ).length;
+  const atMaxCards =
+    playerCardCount >= (gameContext.gameData.max_cards_per_player || 0);
+
+  const canAssignTurn =
+    isHost &&
+    gameContext.gameData.claim_turns &&
+    gameContext.gameData.turn_based;
+
   const handleAssignTurn = async () => {
     try {
       await claimTurn(gameContext.sessionid, playerId);
@@ -69,41 +69,46 @@ const BoardPlayerActionsDialog: FC<BoardPlayerActionsDialogProps> = ({
     onDrawCard(playerId, gameContext.session.hand_hidden);
   };
 
+  const onClose = () => onSelectPlayer(undefined);
+  const onOpenChange = () => (isOpen ? onClose() : undefined);
+
+  const onIncreasePoint = () => onDrawPoint(selectedPlayer.playerid, 1);
+  const onDecreasePoint = () => onGivePoint(selectedPlayer.playerid, 1);
+
   return (
-    <Dialog open={isOpen} onOpenChange={isOpen ? onClose : undefined}>
+    <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Adjust {playerName}&apos;s Stats</DialogTitle>
-          <DialogDescription>
-            Modify points for {playerName}.
-          </DialogDescription>
+          <DialogDescription>Modify points for {playerName}.</DialogDescription>
         </DialogHeader>
         <div className="flex flex-col gap-4 mt-4">
           {/* Points Control - Only show if points are enabled */}
-          {(gameContext.gameData.num_points > 0 && gameContext.session.num_points > 0) && (
-            <div className="flex items-center justify-between">
-              <span className="font-semibold">Points:</span>
-              <div className="flex items-center gap-2">
-                <Button
-                  onClick={onDecreasePoint}
-                  disabled={points === 0}
-                  size="sm"
-                  variant="destructive"
-                >
-                  -
-                </Button>
-                <span className="text-sm">{points}</span>
-                <Button
-                  onClick={onIncreasePoint}
-                  disabled={false}
-                  size="sm"
-                  variant="default"
-                >
-                  +
-                </Button>
+          {gameContext.gameData.num_points > 0 &&
+            gameContext.session.num_points > 0 && (
+              <div className="flex items-center justify-between">
+                <span className="font-semibold">Points:</span>
+                <div className="flex items-center gap-2">
+                  <Button
+                    onClick={onDecreasePoint}
+                    disabled={points === 0}
+                    size="sm"
+                    variant="destructive"
+                  >
+                    -
+                  </Button>
+                  <span className="text-sm">{points}</span>
+                  <Button
+                    onClick={onIncreasePoint}
+                    disabled={false}
+                    size="sm"
+                    variant="default"
+                  >
+                    +
+                  </Button>
+                </div>
               </div>
-            </div>
-          )}
+            )}
 
           {/* Draw Card Control */}
           <div className="flex items-center justify-between">
@@ -124,7 +129,7 @@ const BoardPlayerActionsDialog: FC<BoardPlayerActionsDialogProps> = ({
           <div className="flex gap-2">
             {isHost && gameContext.gameData.turn_based && (
               <>
-                <Button 
+                <Button
                   variant="default"
                   onClick={() => onEndTurn(playerId)}
                   disabled={!is_turn}
@@ -132,10 +137,7 @@ const BoardPlayerActionsDialog: FC<BoardPlayerActionsDialogProps> = ({
                   End Player Turn
                 </Button>
                 {canAssignTurn && (
-                  <Button
-                    variant="secondary"
-                    onClick={handleAssignTurn}
-                  >
+                  <Button variant="secondary" onClick={handleAssignTurn}>
                     Assign Turn
                   </Button>
                 )}

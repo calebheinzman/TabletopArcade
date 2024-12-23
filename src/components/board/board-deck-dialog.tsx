@@ -9,25 +9,14 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { SessionPlayer } from '@/types/game-interfaces';
 import { FC } from 'react';
-import { useGame } from '@/components/GameContext';
+import { useBoardContext } from './board-context';
 
-interface BoardDeckDialogProps {
-  deckCount: number;
-  players: SessionPlayer[];
-  onDrawCard: (playerId: number, card_hidden: boolean) => void;
-}
+const BoardDeckDialog: FC = () => {
+  const { deckCount, players, onDrawCard, gameContext } = useBoardContext();
 
-const BoardDeckDialog: FC<BoardDeckDialogProps> = ({
-  deckCount,
-  players,
-  onDrawCard,
-}) => {
-  const gameContext = useGame();
-
-  const actualDeckCount = gameContext.sessionCards.filter(card => 
-    card.cardPosition > 0 && !card.pile_id
+  const actualDeckCount = gameContext.sessionCards.filter(
+    (card) => card.cardPosition > 0 && !card.pile_id
   ).length;
 
   const handleDrawCard = (playerId: number) => {
@@ -53,25 +42,29 @@ const BoardDeckDialog: FC<BoardDeckDialogProps> = ({
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Draw Card</DialogTitle>
-          <DialogDescription>
-            Select a player to draw a card
-          </DialogDescription>
+          <DialogDescription>Select a player to draw a card</DialogDescription>
         </DialogHeader>
         <div className="grid gap-2">
           {players.map((player) => {
-            const playerCardCount = gameContext.sessionCards.filter(card => 
-              card.playerid === player.playerid
+            const playerCardCount = gameContext.sessionCards.filter(
+              (card) => card.playerid === player.playerid
             ).length;
-            const atMaxCards = playerCardCount >= (gameContext.gameData.max_cards_per_player || 0);
-            console.log('gameContext.session.hand_hidden', gameContext.session.hand_hidden);
+            const atMaxCards =
+              playerCardCount >=
+              (gameContext.gameData.max_cards_per_player || 0);
+            console.log(
+              'gameContext.session.hand_hidden',
+              gameContext.session.hand_hidden
+            );
             return (
               <Button
                 key={player.playerid}
                 onClick={() => handleDrawCard(player.playerid)}
                 disabled={atMaxCards || actualDeckCount === 0}
-                className={atMaxCards ? "opacity-50" : ""}
+                className={atMaxCards ? 'opacity-50' : ''}
               >
-                {player.username} ({playerCardCount}/{gameContext.gameData.max_cards_per_player})
+                {player.username} ({playerCardCount}/
+                {gameContext.gameData.max_cards_per_player})
               </Button>
             );
           })}

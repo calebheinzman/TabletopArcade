@@ -1,7 +1,6 @@
 'use client';
 
-import { PlayerAction } from '@/types/game-interfaces';
-import { useGame } from '@/components/GameContext';
+import { useBoardContext } from './board-context';
 
 const PLAYER_COLORS = [
   'text-blue-600',
@@ -15,7 +14,10 @@ const PLAYER_COLORS = [
 ];
 
 const BoardActionFeed: React.FC = () => {
-  const { playerActions, sessionPlayers } = useGame();
+  const { isActionFeedOpen, gameContext } = useBoardContext();
+  const { playerActions, sessionPlayers } = gameContext;
+
+  if (!isActionFeedOpen) return null;
 
   // Changed variable name from playerInfo to playerInfoMap
   const playerInfoMap = new Map(
@@ -23,8 +25,8 @@ const BoardActionFeed: React.FC = () => {
       player.playerid,
       {
         name: player.username,
-        color: PLAYER_COLORS[index % PLAYER_COLORS.length]
-      }
+        color: PLAYER_COLORS[index % PLAYER_COLORS.length],
+      },
     ])
   );
 
@@ -35,11 +37,13 @@ const BoardActionFeed: React.FC = () => {
         {playerActions.map((action, index) => {
           const playerInfo = playerInfoMap.get(action.playerid);
           return (
-            <div 
-              key={action.action_id || index} 
+            <div
+              key={action.action_id || index}
               className="text-sm p-2 bg-gray-50 rounded-md"
             >
-              <span className={`font-medium ${playerInfo?.color || 'text-gray-600'}`}>
+              <span
+                className={`font-medium ${playerInfo?.color || 'text-gray-600'}`}
+              >
                 {playerInfo?.name}:
               </span>{' '}
               <span className="text-gray-700">{action.description}</span>
