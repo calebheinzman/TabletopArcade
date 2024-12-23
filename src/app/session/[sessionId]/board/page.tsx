@@ -24,7 +24,7 @@ const BoardContent: React.FC = () => {
         <BoardHeader />
 
         {/* Actions and board */}
-        <div className="w-full h-full flex gap-4 p-4">
+        <div className="w-full h-[95%] flex gap-4 p-4">
           {/* Game Board */}
           <div className="relative flex-grow bg-white rounded-lg shadow-xl border border-gray-200 overflow-hidden w-full p-2">
             <BoardToggleActions />

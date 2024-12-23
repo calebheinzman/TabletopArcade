@@ -309,8 +309,6 @@ export function GameProvider({
     []
   );
 
-  console.log('gameContext', gameContext);
-
   const drawCard: GameContextType['drawCard'] = useCallback(
     async (playerId: number, card_hidden: boolean = false) => {
       try {

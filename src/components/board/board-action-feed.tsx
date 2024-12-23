@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useRef } from 'react';
 import { useBoardContext } from './board-context';
 
 const PLAYER_COLORS = [
@@ -17,9 +18,10 @@ const BoardActionFeed: React.FC = () => {
   const { isActionFeedOpen, gameContext } = useBoardContext();
   const { playerActions, sessionPlayers } = gameContext;
 
-  if (!isActionFeedOpen) return null;
+  // Ref to keep track of the container for scrolling
+  const containerRef = useRef<HTMLDivElement | null>(null);
 
-  // Changed variable name from playerInfo to playerInfoMap
+  // Map player information for display
   const playerInfoMap = new Map(
     sessionPlayers.map((player, index) => [
       player.playerid,
@@ -30,8 +32,20 @@ const BoardActionFeed: React.FC = () => {
     ])
   );
 
+  // Scroll to the bottom whenever playerActions changes
+  useEffect(() => {
+    if (containerRef.current) {
+      containerRef.current.scrollTop = containerRef.current.scrollHeight;
+    }
+  }, [playerActions]);
+
+  if (!isActionFeedOpen) return null;
+
   return (
-    <div className="w-80 bg-white border border-gray-200 shadow-lg rounded-lg overflow-y-auto p-4">
+    <div
+      ref={containerRef}
+      className="w-80 h-full bg-white border border-gray-200 shadow-lg rounded-lg overflow-y-auto p-4"
+    >
       <h3 className="text-lg font-semibold mb-4">Action History</h3>
       <div className="space-y-2">
         {playerActions.map((action, index) => {

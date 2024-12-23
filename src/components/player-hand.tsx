@@ -2,7 +2,6 @@
 
 'use client';
 
-import { useGame } from '@/components/GameContext';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -15,24 +14,27 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
-import { useParams } from 'next/navigation';
-import { GameContextType } from '@/components/GameContext';
-import { passTurnToNextPlayer, pushPlayerAction, updatePlayerLastAction, claimTurn } from '@/lib/supabase/player';
+import { discardAndShuffleCard, updateSessionCards } from '@/lib/supabase/card';
+import {
+  claimTurn,
+  passTurnToNextPlayer,
+  pushPlayerAction,
+  updatePlayerLastAction,
+} from '@/lib/supabase/player';
 import { useEffect, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { updateSessionCards } from '@/lib/supabase/card';
-import { discardAndShuffleCard } from '@/lib/supabase/card';
-import { Input } from '@/components/ui/input';
+import { usePlayer } from './player/player-context';
 
-export function PlayerHand({ gameContext }: { gameContext: GameContextType }) {
-  const params = useParams();
-  const playerId = parseInt(params?.playerId as string);
+export function PlayerHand() {
+  const { player: currentPlayer, gameContext } = usePlayer();
+  const playerId = currentPlayer?.playerid;
 
   // New state variables for handling point quantity and popover visibility
   const [numPointsToDraw, setNumPointsToDraw] = useState(1);
@@ -52,8 +54,9 @@ export function PlayerHand({ gameContext }: { gameContext: GameContextType }) {
     if (!playerId || !gameContext?.sessionid) return;
 
     const updateLastActive = () => {
-      updatePlayerLastAction(gameContext.sessionid, playerId)
-        .catch(error => console.error('Error updating last active:', error));
+      updatePlayerLastAction(gameContext.sessionid, playerId).catch((error) =>
+        console.error('Error updating last active:', error)
+      );
     };
 
     updateLastActive();
@@ -67,48 +70,45 @@ export function PlayerHand({ gameContext }: { gameContext: GameContextType }) {
     return <div>Loading game state...</div>;
   }
 
-  let currentPlayer = null;
-  for (const player of gameContext.sessionPlayers) {
-    if (player.playerid === playerId) {
-      currentPlayer = player;
-      break;
-    }
-  }
-  if (!currentPlayer) {
-    return <div>Error: Player not found</div>;
-  }
-
   const playerCards = gameContext.sessionCards
-    .filter(card => 
-      card.playerid === playerId && 
-      card.pile_id === null  // Only include cards that are not in any pile
+    .filter(
+      (card) => card.playerid === playerId && card.pile_id === null // Only include cards that are not in any pile
     )
-    .map(sessionCard => {
-      const deck = gameContext.decks.find(d => d.deckid === sessionCard.deckid);
-      const cardDetails = deck?.cards.find(c => c.cardid === sessionCard.cardid);
+    .map((sessionCard) => {
+      const deck = gameContext.decks.find(
+        (d) => d.deckid === sessionCard.deckid
+      );
+      const cardDetails = deck?.cards.find(
+        (c) => c.cardid === sessionCard.cardid
+      );
       return {
         id: sessionCard.sessioncardid,
         name: cardDetails?.name || 'Unknown Card',
         description: cardDetails?.description || '',
         isRevealed: sessionCard.isRevealed || false,
         type: cardDetails?.type || '',
-        dropOrder: cardDetails?.drop_order || 0
+        dropOrder: cardDetails?.drop_order || 0,
       };
     })
     .sort((a, b) => {
       // First sort by type
       if (a.type < b.type) return -1;
       if (a.type > b.type) return 1;
-      
+
       // If types are equal, sort by drop_order
       return a.dropOrder - b.dropOrder;
     });
 
-  const playerNames = gameContext.sessionPlayers
-    .map((player) => player.username)
-    .filter((name) => name !== currentPlayer.username) || [];
+  const playerNames =
+    gameContext.sessionPlayers
+      .map((player) => player.username)
+      .filter((name) => name !== currentPlayer.username) || [];
 
-  const handleCustomPointsChange = (value: string, setPoints: (n: number) => void, setCustom: (s: string) => void) => {
+  const handleCustomPointsChange = (
+    value: string,
+    setPoints: (n: number) => void,
+    setCustom: (s: string) => void
+  ) => {
     // Only allow positive numbers
     if (/^\d*$/.test(value)) {
       setCustom(value);
@@ -152,7 +152,12 @@ export function PlayerHand({ gameContext }: { gameContext: GameContextType }) {
     }
   };
 
-  const handleDiscard = async (playerId: number, cardId: number, pileId?: number, targetPlayerId?: number) => {
+  const handleDiscard = async (
+    playerId: number,
+    cardId: number,
+    pileId?: number,
+    targetPlayerId?: number
+  ) => {
     try {
       if (!gameContext.gameData.can_discard) {
         console.log('Discarding is not allowed in this game');
@@ -160,18 +165,21 @@ export function PlayerHand({ gameContext }: { gameContext: GameContextType }) {
       }
 
       // Only check session.locked_player_discard if game setting is enabled
-      if (gameContext.gameData.lock_player_discard && gameContext.session.locked_player_discard) {
+      if (
+        gameContext.gameData.lock_player_discard &&
+        gameContext.session.locked_player_discard
+      ) {
         console.log('Player discarding is currently locked');
         return;
       }
 
       // Get all cards in the target pile (if it exists)
-      const cardsInPile = gameContext.sessionCards.filter(card => {
+      const cardsInPile = gameContext.sessionCards.filter((card) => {
         if (pileId === undefined) {
           return false; // Deck discard
         }
-        
-        const pile = gameContext.discardPiles.find(p => p.pile_id === pileId);
+
+        const pile = gameContext.discardPiles.find((p) => p.pile_id === pileId);
         if (!pile) return false;
 
         if (pile.is_player) {
@@ -184,20 +192,24 @@ export function PlayerHand({ gameContext }: { gameContext: GameContextType }) {
       });
 
       if (pileId !== undefined) {
-        const discardPile = gameContext.discardPiles.find(p => p.pile_id === pileId);
+        const discardPile = gameContext.discardPiles.find(
+          (p) => p.pile_id === pileId
+        );
         if (!discardPile) throw new Error('Discard pile not found');
 
         // Determine the playerid value
-        const newPlayerId: number | null = discardPile.is_player ? (targetPlayerId ?? null) : null;
+        const newPlayerId: number | null = discardPile.is_player
+          ? (targetPlayerId ?? null)
+          : null;
 
         // Update positions of existing cards in pile
-        const updates = cardsInPile.map(card => ({
+        const updates = cardsInPile.map((card) => ({
           sessionid: gameContext.sessionid,
           sessioncardid: card.sessioncardid,
           cardPosition: card.cardPosition + 1,
           playerid: newPlayerId,
           pile_id: pileId,
-          isRevealed: discardPile.is_face_up
+          isRevealed: discardPile.is_face_up,
         }));
 
         // Add the new card at position 1
@@ -207,7 +219,7 @@ export function PlayerHand({ gameContext }: { gameContext: GameContextType }) {
           cardPosition: 1,
           playerid: newPlayerId,
           pile_id: pileId,
-          isRevealed: discardPile.is_face_up
+          isRevealed: discardPile.is_face_up,
         });
 
         await updateSessionCards(updates);
@@ -220,11 +232,7 @@ export function PlayerHand({ gameContext }: { gameContext: GameContextType }) {
         );
       }
 
-      await pushPlayerAction(
-        gameContext.sessionid,
-        playerId,
-        `Discarded card`
-      );
+      await pushPlayerAction(gameContext.sessionid, playerId, `Discarded card`);
     } catch (error) {
       console.error('Error discarding card:', error);
     }
@@ -249,7 +257,7 @@ export function PlayerHand({ gameContext }: { gameContext: GameContextType }) {
       await pushPlayerAction(
         gameContext.sessionid,
         playerId,
-        "Ended their turn"
+        'Ended their turn'
       );
     } catch (error) {
       console.error('Error ending turn:', error);
@@ -259,11 +267,7 @@ export function PlayerHand({ gameContext }: { gameContext: GameContextType }) {
   const handleDrawCard = async () => {
     try {
       await gameContext.drawCard(playerId, false);
-      await pushPlayerAction(
-        gameContext.sessionid,
-        playerId,
-        "Drew a card"
-      );
+      await pushPlayerAction(gameContext.sessionid, playerId, 'Drew a card');
     } catch (error) {
       console.error('Error drawing card:', error);
     }
@@ -275,7 +279,7 @@ export function PlayerHand({ gameContext }: { gameContext: GameContextType }) {
       await pushPlayerAction(
         gameContext.sessionid,
         playerId,
-        "Claimed their turn"
+        'Claimed their turn'
       );
     } catch (error) {
       console.error('Error claiming turn:', error);
@@ -283,45 +287,52 @@ export function PlayerHand({ gameContext }: { gameContext: GameContextType }) {
   };
 
   console.log('playerCards', playerCards);
-  const anyPlayerHasTurn = gameContext.sessionPlayers.some(player => player.is_turn);
-  const disabled = !currentPlayer.is_turn && gameContext.gameData.lock_turn && anyPlayerHasTurn;
-  const atMaxCards = playerCards.length >= gameContext.gameData.max_cards_per_player;
-  const deckCount = gameContext.sessionCards.filter(card => card.cardPosition > 0).length;
+  const anyPlayerHasTurn = gameContext.sessionPlayers.some(
+    (player) => player.is_turn
+  );
+  const disabled =
+    !currentPlayer.is_turn &&
+    gameContext.gameData.lock_turn &&
+    anyPlayerHasTurn;
+  const atMaxCards =
+    playerCards.length >= gameContext.gameData.max_cards_per_player;
+  const deckCount = gameContext.sessionCards.filter(
+    (card) => card.cardPosition > 0
+  ).length;
   const noDeckCards = deckCount === 0;
 
   const getPlayerDiscardPiles = () => {
-    return gameContext.discardPiles.filter(pile => 
-      pile.is_player && gameContext.sessionCards.some(card => 
-        card.pile_id === pile.pile_id && 
-        card.playerid === playerId
-      )
+    return gameContext.discardPiles.filter(
+      (pile) =>
+        pile.is_player &&
+        gameContext.sessionCards.some(
+          (card) => card.pile_id === pile.pile_id && card.playerid === playerId
+        )
     );
   };
 
-  const canClaimTurn = gameContext.gameData.claim_turns && 
-    !gameContext.sessionPlayers.some(player => player.is_turn) &&
+  const canClaimTurn =
+    gameContext.gameData.claim_turns &&
+    !gameContext.sessionPlayers.some((player) => player.is_turn) &&
     !currentPlayer.is_turn;
 
   const handlePickUpFromDiscard = async (pileId: number) => {
     try {
       // Get cards from player's discard pile, sorted by position
       const pileCards = gameContext.sessionCards
-        .filter(card => 
-          card.pile_id === pileId && 
-          card.playerid === playerId
-        )
+        .filter((card) => card.pile_id === pileId && card.playerid === playerId)
         .sort((a, b) => a.cardPosition - b.cardPosition);
 
       if (pileCards.length === 0) return;
 
       // Update all cards to be in player's hand
-      const updates = pileCards.map(card => ({
+      const updates = pileCards.map((card) => ({
         sessionid: gameContext.sessionid,
         sessioncardid: card.sessioncardid,
         cardPosition: 0,
         playerid: playerId,
         pile_id: null,
-        isRevealed: false
+        isRevealed: false,
       }));
 
       await updateSessionCards(updates);
@@ -341,7 +352,7 @@ export function PlayerHand({ gameContext }: { gameContext: GameContextType }) {
         <h2 className="text-2xl font-bold">
           {currentPlayer.username}&apos;s Hand
         </h2>
-        
+
         {gameContext.gameData.game_rules && (
           <Dialog open={showRules} onOpenChange={setShowRules}>
             <DialogTrigger asChild>
@@ -353,7 +364,8 @@ export function PlayerHand({ gameContext }: { gameContext: GameContextType }) {
               </DialogHeader>
               <div className="prose dark:prose-invert mt-4">
                 <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                  {gameContext.gameData.game_rules || 'No rules available for this game.'}
+                  {gameContext.gameData.game_rules ||
+                    'No rules available for this game.'}
                 </ReactMarkdown>
               </div>
             </DialogContent>
@@ -368,7 +380,10 @@ export function PlayerHand({ gameContext }: { gameContext: GameContextType }) {
                 <CardContent className="flex items-center justify-center h-full">
                   <span className="text-lg font-semibold">{card.name}</span>
                   {card.isRevealed && (
-                    <Badge className="absolute top-2 right-2" variant="secondary">
+                    <Badge
+                      className="absolute top-2 right-2"
+                      variant="secondary"
+                    >
                       Revealed
                     </Badge>
                   )}
@@ -391,7 +406,7 @@ export function PlayerHand({ gameContext }: { gameContext: GameContextType }) {
                     </Button>
                   </DialogClose>
                 )}
-                
+
                 {gameContext.gameData.can_discard && (
                   <div className="flex flex-col gap-2">
                     {gameContext.discardPiles.length > 0 ? (
@@ -399,13 +414,25 @@ export function PlayerHand({ gameContext }: { gameContext: GameContextType }) {
                         <h4 className="text-sm font-semibold">Discard to:</h4>
                         {gameContext.discardPiles.map((pile) => {
                           if (pile.is_player) {
-                            return gameContext.sessionPlayers.map(player => (
-                              <DialogClose key={`${pile.pile_id}-${player.playerid}`} asChild>
+                            return gameContext.sessionPlayers.map((player) => (
+                              <DialogClose
+                                key={`${pile.pile_id}-${player.playerid}`}
+                                asChild
+                              >
                                 <Button
                                   variant="outline"
-                                  onClick={() => handleDiscard(playerId, card.id, pile.pile_id, player.playerid)}
+                                  onClick={() =>
+                                    handleDiscard(
+                                      playerId,
+                                      card.id,
+                                      pile.pile_id,
+                                      player.playerid
+                                    )
+                                  }
                                 >
-                                  {player.playerid === playerId ? 'Your Pile' : `${player.username}'s Pile`}
+                                  {player.playerid === playerId
+                                    ? 'Your Pile'
+                                    : `${player.username}'s Pile`}
                                 </Button>
                               </DialogClose>
                             ));
@@ -414,10 +441,19 @@ export function PlayerHand({ gameContext }: { gameContext: GameContextType }) {
                               <DialogClose key={pile.pile_id} asChild>
                                 <Button
                                   variant="outline"
-                                  onClick={() => handleDiscard(playerId, card.id, pile.pile_id)}
+                                  onClick={() =>
+                                    handleDiscard(
+                                      playerId,
+                                      card.id,
+                                      pile.pile_id
+                                    )
+                                  }
                                 >
-                                  {pile.pile_name || `Discard Pile ${pile.pile_id}`}
-                                  {pile.is_face_up ? ' (Face Up)' : ' (Face Down)'}
+                                  {pile.pile_name ||
+                                    `Discard Pile ${pile.pile_id}`}
+                                  {pile.is_face_up
+                                    ? ' (Face Up)'
+                                    : ' (Face Down)'}
                                 </Button>
                               </DialogClose>
                             );
@@ -447,16 +483,13 @@ export function PlayerHand({ gameContext }: { gameContext: GameContextType }) {
         </div>
         <div className="space-x-2">
           {gameContext.gameData.claim_turns && canClaimTurn && (
-            <Button
-              onClick={handleClaimTurn}
-              variant="secondary"
-            >
+            <Button onClick={handleClaimTurn} variant="secondary">
               Claim
             </Button>
           )}
 
           {gameContext.gameData.can_draw_cards && (
-            <Button 
+            <Button
               onClick={handleDrawCard}
               disabled={disabled || atMaxCards || noDeckCards}
             >
@@ -465,7 +498,10 @@ export function PlayerHand({ gameContext }: { gameContext: GameContextType }) {
           )}
 
           {gameContext.gameData.can_draw_points && (
-            <Popover open={drawPointsPopoverOpen} onOpenChange={setDrawPointsPopoverOpen}>
+            <Popover
+              open={drawPointsPopoverOpen}
+              onOpenChange={setDrawPointsPopoverOpen}
+            >
               <PopoverTrigger asChild>
                 <Button
                   disabled={
@@ -515,7 +551,13 @@ export function PlayerHand({ gameContext }: { gameContext: GameContextType }) {
                         type="text"
                         placeholder="Custom amount"
                         value={customDrawPoints}
-                        onChange={(e) => handleCustomPointsChange(e.target.value, setNumPointsToDraw, setCustomDrawPoints)}
+                        onChange={(e) =>
+                          handleCustomPointsChange(
+                            e.target.value,
+                            setNumPointsToDraw,
+                            setCustomDrawPoints
+                          )
+                        }
                         className="w-full"
                       />
                       <Button
@@ -552,14 +594,12 @@ export function PlayerHand({ gameContext }: { gameContext: GameContextType }) {
           )}
 
           {gameContext.gameData.can_pass_points && (
-            <Popover open={givePointsPopoverOpen} onOpenChange={setGivePointsPopoverOpen}>
+            <Popover
+              open={givePointsPopoverOpen}
+              onOpenChange={setGivePointsPopoverOpen}
+            >
               <PopoverTrigger asChild>
-                <Button 
-                  disabled={
-                    disabled ||
-                    currentPlayer.num_points === 0
-                  }
-                >
+                <Button disabled={disabled || currentPlayer.num_points === 0}>
                   Pass Points
                 </Button>
               </PopoverTrigger>
@@ -586,7 +626,13 @@ export function PlayerHand({ gameContext }: { gameContext: GameContextType }) {
                         type="text"
                         placeholder="Custom amount"
                         value={customGivePoints}
-                        onChange={(e) => handleCustomPointsChange(e.target.value, setNumPointsToGive, setCustomGivePoints)}
+                        onChange={(e) =>
+                          handleCustomPointsChange(
+                            e.target.value,
+                            setNumPointsToGive,
+                            setCustomGivePoints
+                          )
+                        }
                         className="w-full"
                       />
                     </div>
@@ -624,81 +670,97 @@ export function PlayerHand({ gameContext }: { gameContext: GameContextType }) {
           )}
 
           {gameContext.gameData.turn_based && (
-            <Button 
+            <Button
               onClick={handleEndTurn}
               disabled={!currentPlayer.is_turn}
-              variant={gameContext.gameData.lock_turn ? "default" : "outline"}
+              variant={gameContext.gameData.lock_turn ? 'default' : 'outline'}
             >
               End Turn
             </Button>
           )}
 
-          {gameContext.gameData.lock_player_discard && !gameContext.session.locked_player_discard && (
-            <>
-              <Dialog open={showDiscardPileDialog} onOpenChange={setShowDiscardPileDialog}>
-                <DialogTrigger asChild>
-                  <Button variant="outline">
-                    View My Discard Piles
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-                  <DialogHeader>
-                    <DialogTitle>Your Discard Piles</DialogTitle>
-                  </DialogHeader>
-                  <div className="space-y-4">
-                    {getPlayerDiscardPiles().map(pile => {
-                      const pileCards = gameContext.sessionCards
-                        .filter(card => card.pile_id === pile.pile_id && card.playerid === playerId)
-                        .sort((a, b) => a.cardPosition - b.cardPosition);
+          {gameContext.gameData.lock_player_discard &&
+            !gameContext.session.locked_player_discard && (
+              <>
+                <Dialog
+                  open={showDiscardPileDialog}
+                  onOpenChange={setShowDiscardPileDialog}
+                >
+                  <DialogTrigger asChild>
+                    <Button variant="outline">View My Discard Piles</Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+                    <DialogHeader>
+                      <DialogTitle>Your Discard Piles</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                      {getPlayerDiscardPiles().map((pile) => {
+                        const pileCards = gameContext.sessionCards
+                          .filter(
+                            (card) =>
+                              card.pile_id === pile.pile_id &&
+                              card.playerid === playerId
+                          )
+                          .sort((a, b) => a.cardPosition - b.cardPosition);
 
-                      return (
-                        <div key={pile.pile_id} className="border rounded-lg p-4">
-                          <div className="flex justify-between items-center mb-2">
-                            <h3 className="font-medium">
-                              {pile.pile_name || `Discard Pile ${pile.pile_id}`} 
-                              ({pileCards.length} cards)
-                            </h3>
-                            <Button 
-                              size="sm"
-                              onClick={() => handlePickUpFromDiscard(pile.pile_id)}
-                              disabled={pileCards.length === 0 || disabled}
-                            >
-                              Pick Up All
-                            </Button>
+                        return (
+                          <div
+                            key={pile.pile_id}
+                            className="border rounded-lg p-4"
+                          >
+                            <div className="flex justify-between items-center mb-2">
+                              <h3 className="font-medium">
+                                {pile.pile_name ||
+                                  `Discard Pile ${pile.pile_id}`}
+                                ({pileCards.length} cards)
+                              </h3>
+                              <Button
+                                size="sm"
+                                onClick={() =>
+                                  handlePickUpFromDiscard(pile.pile_id)
+                                }
+                                disabled={pileCards.length === 0 || disabled}
+                              >
+                                Pick Up All
+                              </Button>
+                            </div>
+                            <div className="space-y-2 max-h-48 overflow-y-auto">
+                              {pileCards.map((card, index) => {
+                                const deck = gameContext.decks.find(
+                                  (d) => d.deckid === card.deckid
+                                );
+                                const cardDetails = deck?.cards.find(
+                                  (c) => c.cardid === card.cardid
+                                );
+
+                                return (
+                                  <div
+                                    key={card.sessioncardid}
+                                    className="flex justify-between items-center p-2 bg-gray-50 rounded"
+                                  >
+                                    <span className="text-sm">
+                                      {cardDetails?.name || 'Unknown Card'}
+                                    </span>
+                                    <span className="text-xs text-gray-500">
+                                      Position: {index + 1}
+                                    </span>
+                                  </div>
+                                );
+                              })}
+                            </div>
                           </div>
-                          <div className="space-y-2 max-h-48 overflow-y-auto">
-                            {pileCards.map((card, index) => {
-                              const deck = gameContext.decks.find(d => d.deckid === card.deckid);
-                              const cardDetails = deck?.cards.find(c => c.cardid === card.cardid);
-                              
-                              return (
-                                <div 
-                                  key={card.sessioncardid}
-                                  className="flex justify-between items-center p-2 bg-gray-50 rounded"
-                                >
-                                  <span className="text-sm">
-                                    {cardDetails?.name || 'Unknown Card'}
-                                  </span>
-                                  <span className="text-xs text-gray-500">
-                                    Position: {index + 1}
-                                  </span>
-                                </div>
-                              );
-                            })}
-                          </div>
+                        );
+                      })}
+                      {getPlayerDiscardPiles().length === 0 && (
+                        <div className="text-center text-gray-500">
+                          No discard piles available
                         </div>
-                      );
-                    })}
-                    {getPlayerDiscardPiles().length === 0 && (
-                      <div className="text-center text-gray-500">
-                        No discard piles available
-                      </div>
-                    )}
-                  </div>
-                </DialogContent>
-              </Dialog>
-            </>
-          )}
+                      )}
+                    </div>
+                  </DialogContent>
+                </Dialog>
+              </>
+            )}
         </div>
       </div>
     </div>

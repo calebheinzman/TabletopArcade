@@ -2,14 +2,13 @@
 
 import { useGame } from '@/components/GameContext';
 import { Button } from '@/components/ui/button';
+import { initializeSession } from '@/lib/defaultGameState';
+import { supabase } from '@/lib/supabase';
+import { setFirstPlayerTurn } from '@/lib/supabase/player';
+import { createSession } from '@/lib/supabase/session';
+import { SessionPlayer } from '@/types/game-interfaces';
 import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { SessionPlayer, SessionCard } from '@/types/game-interfaces';
-import { createSession } from '@/lib/supabase/session';
-import { setFirstPlayerTurn } from '@/lib/supabase/player';
-import { supabase } from '@/lib/supabase';
-import { GameContextType } from '@/components/GameContext';
-import { initializeSession } from '@/lib/defaultGameState';
 
 export default function HostStartPage() {
   const router = useRouter();
@@ -19,7 +18,10 @@ export default function HostStartPage() {
 
   // Monitor changes to gameContext
   useEffect(() => {
-    console.log('HostStartPage: gameContext updated', gameContext?.sessionPlayers);
+    console.log(
+      'HostStartPage: gameContext updated',
+      gameContext?.sessionPlayers
+    );
     if (gameContext?.sessionPlayers) {
       setPlayers(gameContext.sessionPlayers);
     }
@@ -28,31 +30,36 @@ export default function HostStartPage() {
   const startGame = async () => {
     try {
       const deck = initializeSession(gameContext);
-      
+
       if (gameContext.gameData.deal_all_cards) {
         // Sort cards by drop_order (highest first)
         deck.sort((a, b) => {
-          const cardA = gameContext.cards.flat().find(c => c.cardid === a.cardid);
-          const cardB = gameContext.cards.flat().find(c => c.cardid === b.cardid);
+          const cardA = gameContext.cards
+            .flat()
+            .find((c) => c.cardid === a.cardid);
+          const cardB = gameContext.cards
+            .flat()
+            .find((c) => c.cardid === b.cardid);
           return (cardB?.drop_order || 0) - (cardA?.drop_order || 0);
         });
 
         // Calculate cards per player (rounded down)
         const cardsPerPlayer = Math.floor(deck.length / players.length);
-        
+
         deck.forEach((card, index) => {
           if (index < cardsPerPlayer * players.length) {
             const playerIndex = Math.floor(index / cardsPerPlayer);
             card.playerid = players[playerIndex].playerid;
             card.cardPosition = 0;
           } else {
-            card.cardPosition = index - (cardsPerPlayer * players.length) + 1;
+            card.cardPosition = index - cardsPerPlayer * players.length + 1;
             card.playerid = 0;
           }
         });
       } else {
         // Original logic for dealing specific number of cards
-        const totalStartingCards = gameContext.gameData.starting_num_cards * players.length;
+        const totalStartingCards =
+          gameContext.gameData.starting_num_cards * players.length;
         deck.forEach((card, index) => {
           if (index < totalStartingCards) {
             const player = players[index % players.length];
@@ -72,7 +79,7 @@ export default function HostStartPage() {
       if (!gameContext.gameData.claim_turns) {
         await setFirstPlayerTurn(parseInt(sessionId as string));
       }
-      
+
       const { error: updateError } = await supabase
         .from('session')
         .update({ is_live: true })
@@ -107,7 +114,10 @@ export default function HostStartPage() {
           </p>
           <div className="mt-2 space-y-2">
             {players.map((player) => (
-              <div key={player.playerid} className="text-sm bg-gray-50 p-2 rounded">
+              <div
+                key={player.playerid}
+                className="text-sm bg-gray-50 p-2 rounded"
+              >
                 {player.username}
               </div>
             ))}
