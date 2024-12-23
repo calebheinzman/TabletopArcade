@@ -21,7 +21,7 @@ const PlayerHandCard = ({
       <DialogTrigger asChild>
         <PlayingCard
           card={card}
-          className="relative w-48 h-48 cursor-pointer border-none transition-all duration-200"
+          className="relative w-32 h-40 xs:w-24 xs:h-32 md:w-40 md:h-48 lg:w-48 lg:h-54 xl:h-80 xl:w-72 cursor-pointer border-none transition-all duration-200"
           front={
             <CardFront>
               <div className="relative w-full h-full">
