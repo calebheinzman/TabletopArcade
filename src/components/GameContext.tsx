@@ -413,7 +413,7 @@ export function GameProvider({
         throw new Error('Failed to draw points');
       }
     },
-    [gameContext, updatePlayerPoints, updateSessionPoints]
+    [gameContext]
   );
 
   const givePoints: GameContextType['givePoints'] = useCallback(
@@ -474,7 +474,7 @@ export function GameProvider({
         throw new Error('Failed to give points');
       }
     },
-    [gameContext, updatePlayerPoints, updateSessionPoints]
+    [gameContext]
   );
 
   const shuffleDeck: GameContextType['shuffleDeck'] = useCallback(async () => {
@@ -501,7 +501,7 @@ export function GameProvider({
       console.error('Error shuffling deck:', error);
       throw new Error('Failed to shuffle deck');
     }
-  }, [gameContext, updateDeckOrder]);
+  }, [gameContext]);
 
   const discardCard: GameContextType['discardCard'] = useCallback(
     async (playerId, sessionCardId, pileId, targetPlayerId) => {

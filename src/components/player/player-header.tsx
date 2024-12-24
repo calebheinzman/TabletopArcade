@@ -2,9 +2,7 @@
 import RouterBackButton from '../router/router-back-button';
 import { usePlayer } from './player-context';
 
-type Props = {};
-
-const PlayerHeader = (props: Props) => {
+const PlayerHeader = () => {
   const { player } = usePlayer();
 
   return (

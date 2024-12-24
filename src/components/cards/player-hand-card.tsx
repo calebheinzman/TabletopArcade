@@ -30,7 +30,7 @@ const PlayerHandCard = ({
                     src={card.front_img_url}
                     alt={card.name}
                     fill
-                    className="object-cover rounded"
+                    className="object-fill rounded"
                   />
                 ) : (
                   <div className="flex items-center justify-center h-full p-2 bg-black text-white">
@@ -58,7 +58,7 @@ const PlayerHandCard = ({
                     src={card.front_img_url}
                     alt="Revealed"
                     fill
-                    className="object-cover rounded"
+                    className="object-fill rounded"
                   />
                 ) : (
                   <div className="flex items-center justify-center h-full p-2">

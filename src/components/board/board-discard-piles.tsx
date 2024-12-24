@@ -1,9 +1,7 @@
 import { useBoardContext } from './board-context';
 import BoardDiscardPile from './board-discard-pile';
 
-type Props = {};
-
-const BoardDiscardPiles = (props: Props) => {
+const BoardDiscardPiles = () => {
   const { gameContext } = useBoardContext();
   return (
     <div className="flex space-x-4 items-center">

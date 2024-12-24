@@ -1,9 +1,7 @@
 import { Button } from '../ui/button';
 import { useBoardContext } from './board-context';
 
-type Props = {};
-
-const BoardToggleActions = (props: Props) => {
+const BoardToggleActions = () => {
   const { toggleActionFeed, isActionFeedOpen } = useBoardContext();
   return (
     <Button
