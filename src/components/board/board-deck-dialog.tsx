@@ -10,7 +10,7 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { FC } from 'react';
-import { useBoardContext } from './board-context';
+import { useBoardContext } from '../../context/board-context';
 
 const BoardDeckDialog: FC = () => {
   const { deckCount, players, onDrawCard, gameContext } = useBoardContext();

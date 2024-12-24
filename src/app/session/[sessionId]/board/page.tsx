@@ -1,7 +1,6 @@
 'use client';
 
 import BoardActionFeed from '@/components/board/board-action-feed';
-import { BoardProvider } from '@/components/board/board-context';
 import BoardDeckDialog from '@/components/board/board-deck-dialog';
 import BoardDiscardPiles from '@/components/board/board-discard-piles';
 import BoardGamePoints from '@/components/board/board-game-points';
@@ -9,6 +8,7 @@ import BoardHeader from '@/components/board/board-header';
 import BoardPlayerActionsDialog from '@/components/board/board-player-actions-dialog';
 import BoardPlayerHands from '@/components/board/board-player-hands';
 import BoardToggleActions from '@/components/board/board-toggle-actions';
+import { BoardProvider } from '@/context/board-context';
 import React, { useRef } from 'react';
 
 const BoardContent: React.FC = () => {

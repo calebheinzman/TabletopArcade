@@ -1,3 +1,5 @@
+// components/cards/board-card.tsx
+
 'use client';
 
 import {
@@ -8,69 +10,49 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
+import useCardInteractions from '@/hooks/useCardInteractions';
+import usePlayerCard from '@/hooks/usePlayerCard'; // <-- import the new hook
 import { cn } from '@/lib/utils';
-import {
-  CardData,
-  DiscardPile,
-  SessionCard,
-  SessionPlayer,
-} from '@/types/game-interfaces';
+import { CardData, SessionCard, SessionPlayer } from '@/types/game-interfaces';
 import Image from 'next/image';
-import { useFullScreen } from '../FullscreenContext';
+import { useFullScreen } from '../../context/fullscreen-context';
 import { Button } from '../ui/button';
 import { CardBack, CardFront, PlayingCard } from '../ui/card';
 
-const BoardCard = ({
-  index,
-  card,
-  hoveredCardIndex,
-  spacing = 55,
-  handleMouseEnter,
-  handleMouseLeave,
-  handleCardClick,
-  handleReveal,
-  handleDiscard,
-  handlePassCard,
-  gameContext,
-  player,
-  getZIndex,
-  isLargeCard,
-  baseSpacing,
-  size,
-}: {
+interface BoardCardProps {
   index: number;
   card: SessionCard & CardData;
-  hoveredCardIndex: number | null;
-  spacing?: number;
-  handleMouseEnter: (index: number) => void;
-  handleMouseLeave: () => void;
-  handleCardClick: (e: React.MouseEvent, card: SessionCard & CardData) => void;
-  handleReveal: (sessionCardId: number) => void;
-  handleDiscard: (
-    playerId: number,
-    cardId: number,
-    pileId?: number,
-    targetPlayerId?: number
-  ) => void;
-  handlePassCard: (
-    fromPlayerId: number,
-    cardId: number,
-    targetPlayerId: number
-  ) => void;
-  gameContext: any; // Replace `any` with the actual type of `gameContext`
-  player: any; // Replace `any` with the actual type of `player`
-  getZIndex: (index: number) => number;
-  isLargeCard: boolean;
+  player: SessionPlayer;
   baseSpacing: number;
+  isLargeCard: boolean;
   size?: {
     fullscreen?: Record<'sm' | 'md' | 'lg' | 'xl', string>;
     normal?: Record<'sm' | 'md' | 'lg' | 'xl', string>;
   };
+}
+
+const BoardCard: React.FC<BoardCardProps> = ({
+  index,
+  card,
+  player,
+  baseSpacing,
+  isLargeCard,
+  size,
 }) => {
   const { isFullScreen } = useFullScreen();
+  const { onRevealCard, onDiscardCard, onPassCard, gameContext } =
+    usePlayerCard(card); // <-- Use the new hook, passing `card`
+  const {
+    hoveredCardIndex,
+    handleMouseEnter,
+    handleMouseLeave,
+    handleCardClick,
+    getZIndex,
+  } = useCardInteractions(player.playerid, gameContext);
+
   const isHovered = hoveredCardIndex === index;
 
-  // Adjust positions to create spacing when hovering a card
+  // Position logic (unchanged)
   let leftOffset = index * baseSpacing;
   if (hoveredCardIndex !== null) {
     const distance = Math.abs(index - hoveredCardIndex);
@@ -82,6 +64,7 @@ const BoardCard = ({
     }
   }
 
+  // Example default sizing logic (unchanged)...
   // Define default sizes and merge with custom sizes
   const defaultSizes = {
     fullscreen: {
@@ -110,9 +93,7 @@ const BoardCard = ({
         <PlayingCard
           card={card}
           className={cn(
-            `
-            absolute cursor-pointer border-none transition-all duration-200
-          `,
+            'absolute cursor-pointer border-none transition-all duration-200',
             isHovered && '-translate-y-2',
             cardSizes.default,
             cardSizes.sm,
@@ -126,6 +107,7 @@ const BoardCard = ({
           }}
           front={
             <CardFront>
+              {/* Your front face logic, same as before */}
               <div className="relative w-full h-full">
                 {card.front_img_url ? (
                   <>
@@ -153,6 +135,7 @@ const BoardCard = ({
           }
           back={
             <CardBack>
+              {/* Your back face logic, same as before */}
               <div className="relative w-full h-full">
                 {card.back_img_url ? (
                   <Image
@@ -169,60 +152,57 @@ const BoardCard = ({
               </div>
             </CardBack>
           }
+          onMouseEnter={() => handleMouseEnter(index)}
+          onMouseLeave={handleMouseLeave}
+          onClick={(e) => handleCardClick(e, card)}
         />
       </DialogTrigger>
+
+      {/* Dialog / Modal for card actions (reveal, discard, pass, etc.) */}
       <DialogContent>
         <DialogHeader>
           <DialogTitle>{card.name}</DialogTitle>
         </DialogHeader>
+
         <div className="flex flex-col gap-4 mt-4">
           <DialogClose asChild>
-            <Button onClick={() => handleReveal(card.sessioncardid)}>
+            <Button onClick={() => onRevealCard()}>
               {card.isRevealed ? 'Hide Card' : 'Reveal Card'}
             </Button>
           </DialogClose>
 
+          {/* Discard Section */}
           {gameContext?.gameData?.can_discard && (
             <div className="flex flex-col gap-2">
               {gameContext.discardPiles.length > 0 ? (
                 <>
                   <h4 className="text-sm font-semibold">Discard to:</h4>
-                  {gameContext.discardPiles.map((pile: DiscardPile) => {
+                  {gameContext.discardPiles.map((pile) => {
                     if (pile.is_player) {
-                      return gameContext.sessionPlayers.map(
-                        (sessionPlayer: SessionPlayer) => (
-                          <DialogClose
-                            key={`${pile.pile_id}-${sessionPlayer.playerid}`}
-                            asChild
+                      return gameContext.sessionPlayers.map((sessionPlayer) => (
+                        <DialogClose
+                          key={`${pile.pile_id}-${sessionPlayer.playerid}`}
+                          asChild
+                        >
+                          <Button
+                            variant="outline"
+                            onClick={() =>
+                              onDiscardCard(
+                                pile.pile_id,
+                                sessionPlayer.playerid
+                              )
+                            }
                           >
-                            <Button
-                              variant="outline"
-                              onClick={() =>
-                                handleDiscard(
-                                  player.playerid,
-                                  card.sessioncardid,
-                                  pile.pile_id,
-                                  sessionPlayer.playerid
-                                )
-                              }
-                            >
-                              {`${sessionPlayer.username}'s Discard`}
-                            </Button>
-                          </DialogClose>
-                        )
-                      );
+                            {`${sessionPlayer.username}'s Discard`}
+                          </Button>
+                        </DialogClose>
+                      ));
                     } else {
                       return (
                         <DialogClose key={pile.pile_id} asChild>
                           <Button
                             variant="outline"
-                            onClick={() =>
-                              handleDiscard(
-                                player.playerid,
-                                card.sessioncardid,
-                                pile.pile_id
-                              )
-                            }
+                            onClick={() => onDiscardCard(pile.pile_id)}
                           >
                             {pile.pile_name || `Discard Pile ${pile.pile_id}`}
                             {pile.is_face_up ? ' (Face Up)' : ' (Face Down)'}
@@ -233,13 +213,9 @@ const BoardCard = ({
                   })}
                 </>
               ) : (
+                // If no discard piles, discard to deck
                 <DialogClose asChild>
-                  <Button
-                    variant="outline"
-                    onClick={() =>
-                      handleDiscard(player.playerid, card.sessioncardid)
-                    }
-                  >
+                  <Button variant="outline" onClick={() => onDiscardCard()}>
                     Discard to Deck
                   </Button>
                 </DialogClose>
@@ -247,25 +223,19 @@ const BoardCard = ({
             </div>
           )}
 
-          {gameContext?.gameData.pass_cards && (
+          {/* Pass Card Section */}
+          {gameContext?.gameData?.pass_cards && (
             <div className="flex flex-col gap-2">
               <h4 className="text-sm font-semibold">Pass card to:</h4>
               {gameContext.sessionPlayers
                 .filter(
-                  (sessionPlayer: SessionPlayer) =>
-                    sessionPlayer.playerid !== player.playerid
+                  (sessionPlayer) => sessionPlayer.playerid !== player.playerid
                 )
-                .map((targetPlayer: SessionPlayer) => (
+                .map((targetPlayer) => (
                   <DialogClose key={targetPlayer.playerid} asChild>
                     <Button
                       variant="outline"
-                      onClick={() =>
-                        handlePassCard(
-                          player.playerid,
-                          card.sessioncardid,
-                          targetPlayer.playerid
-                        )
-                      }
+                      onClick={() => onPassCard(targetPlayer.playerid)}
                     >
                       Pass to {targetPlayer.username}
                     </Button>

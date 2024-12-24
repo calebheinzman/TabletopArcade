@@ -1,4 +1,4 @@
-import { FullScreenProvider } from '@/components/FullscreenContext';
+import { FullScreenProvider } from '@/context/fullscreen-context';
 import { Inter } from 'next/font/google';
 import './globals.css';
 

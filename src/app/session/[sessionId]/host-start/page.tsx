@@ -1,7 +1,7 @@
 'use client';
 
-import { useGame } from '@/components/GameContext';
 import { Button } from '@/components/ui/button';
+import { useGame } from '@/context/game-context';
 import { initializeSession } from '@/lib/defaultGameState';
 import { supabase } from '@/lib/supabase';
 import { setFirstPlayerTurn } from '@/lib/supabase/player';

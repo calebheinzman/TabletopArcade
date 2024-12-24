@@ -1,4 +1,4 @@
-import { useBoardContext } from './board-context';
+import { useBoardContext } from '../../context/board-context';
 import BoardDiscardPile from './board-discard-pile';
 
 const BoardDiscardPiles = () => {

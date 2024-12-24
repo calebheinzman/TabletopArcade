@@ -1,8 +1,8 @@
 'use client';
 
+import { GameContextType, useGame } from '@/context/game-context';
 import { SessionPlayer } from '@/types/game-interfaces';
 import React, { createContext, ReactNode, useContext, useMemo } from 'react';
-import { GameContextType, useGame } from '../GameContext';
 
 interface PlayerContextProps {
   player: SessionPlayer | null;

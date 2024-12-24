@@ -30,7 +30,7 @@ import {
 import { useEffect, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { usePlayer } from './player/player-context';
+import { usePlayer } from '../context/player-context';
 
 export function PlayerHand() {
   const { player: currentPlayer, gameContext } = usePlayer();

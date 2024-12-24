@@ -16,7 +16,7 @@ import {
 } from '@/lib/supabase/player';
 import { CardData, SessionCard } from '@/types/game-interfaces';
 import { useEffect, useState } from 'react';
-import { usePlayer } from '../player/player-context';
+import { usePlayer } from '../../context/player-context';
 import { PlayerHandButtonBar } from './player-hand-button-bar';
 import { PlayerHandCards } from './player-hand-cards';
 import { PlayerHandHeader } from './player-hand-header';

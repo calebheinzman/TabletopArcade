@@ -1,4 +1,4 @@
-import { GameContextType } from '@/components/GameContext';
+import { GameContextType } from '@/context/game-context';
 import {
   CardData,
   CustomGameData,
@@ -8,8 +8,8 @@ import {
   GameTemplateNameAndId,
   SessionCard,
 } from '@/types/game-interfaces';
-import { insertSessionCards, updateSessionCards } from './card';
 import { supabase } from '.';
+import { insertSessionCards, updateSessionCards } from './card';
 import { setFirstPlayerTurn } from './player';
 
 export async function createCustomGame(

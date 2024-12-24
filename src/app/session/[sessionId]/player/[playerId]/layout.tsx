@@ -1,4 +1,4 @@
-import { PlayerProvider } from '@/components/player/player-context';
+import { PlayerProvider } from '@/context/player-context';
 import { fetchInitialPlayers } from '@/lib/supabase/player';
 import { ReactNode } from 'react';
 

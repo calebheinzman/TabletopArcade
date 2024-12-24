@@ -1,5 +1,5 @@
+import { useBoardContext } from '../../context/board-context';
 import { Button } from '../ui/button';
-import { useBoardContext } from './board-context';
 
 const BoardToggleActions = () => {
   const { toggleActionFeed, isActionFeedOpen } = useBoardContext();

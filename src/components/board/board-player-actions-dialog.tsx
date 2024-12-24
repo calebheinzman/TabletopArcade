@@ -13,7 +13,7 @@ import {
 } from '@/components/ui/dialog';
 import { claimTurn, pushPlayerAction } from '@/lib/supabase/player';
 import { FC } from 'react';
-import { useBoardContext } from './board-context';
+import { useBoardContext } from '../../context/board-context';
 
 const BoardPlayerActionsDialog: FC = () => {
   const {

@@ -2,7 +2,6 @@
 
 'use client';
 
-import { useGame } from '@/components/GameContext';
 import {
   Dialog,
   DialogContent,
@@ -15,13 +14,14 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
+import { useGame } from '@/context/game-context';
 import { supabase } from '@/lib/supabase';
 import { updateSessionCards } from '@/lib/supabase/card';
 import { useRouter } from 'next/navigation';
 import React, { useState } from 'react';
+import { useBoardContext } from '../../context/board-context';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
-import { useBoardContext } from './board-context';
 
 const BoardHeader: React.FC = () => {
   const { deckCount, players, onGivePoint, onShuffle, onReset, onFullScreen } =

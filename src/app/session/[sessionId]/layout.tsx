@@ -1,6 +1,6 @@
 'use client';
 
-import { GameProvider } from '@/components/GameContext';
+import { GameProvider } from '@/context/game-context';
 import { ReactNode, use } from 'react';
 
 interface LayoutProps {
@@ -11,5 +11,7 @@ interface LayoutProps {
 export default function Layout({ children, params }: LayoutProps) {
   const { sessionId } = use(params);
   console.log('Layout sessionId', sessionId);
-  return <GameProvider sessionId={parseInt(sessionId)}>{children}</GameProvider>;
+  return (
+    <GameProvider sessionId={parseInt(sessionId)}>{children}</GameProvider>
+  );
 }
