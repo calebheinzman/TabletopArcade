@@ -1,4 +1,4 @@
-import { GameContextType } from '@/context/game-context';
+import { GameContextType } from '@/providers/game-provider';
 import { SessionCard } from '@/types/game-interfaces';
 
 export function initializeSession(gameContext: GameContextType): SessionCard[] {

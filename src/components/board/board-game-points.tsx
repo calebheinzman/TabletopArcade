@@ -1,4 +1,4 @@
-import { useBoardContext } from '../../context/board-context';
+import { useBoardContext } from '../../providers/board-provider';
 
 const BoardGamePoints = () => {
   const { gamePoints } = useBoardContext();

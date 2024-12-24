@@ -1,6 +1,6 @@
 'use client';
 
-import { GameProvider } from '@/context/game-context';
+import { GameProvider } from '@/providers/game-provider';
 import { ReactNode, use } from 'react';
 
 interface LayoutProps {

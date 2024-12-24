@@ -1,4 +1,4 @@
-import { useGame } from '@/context/game-context';
+import { useGame } from '@/providers/game-provider';
 import { CardData, SessionCard, SessionPlayer } from '@/types/game-interfaces';
 import { useMemo, useState } from 'react';
 

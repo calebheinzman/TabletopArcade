@@ -3,7 +3,7 @@
 'use client';
 
 import { FC } from 'react';
-import { useBoardContext } from '../../context/board-context';
+import { useBoardContext } from '../../providers/board-provider';
 import BoardPlayerHand from './board-player-hand';
 
 const BoardPlayerHands: FC = () => {

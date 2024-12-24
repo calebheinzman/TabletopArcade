@@ -1,6 +1,6 @@
-import { GameContextType, useGame } from '@/context/game-context';
 import { passTurnToNextPlayer, pushPlayerAction } from '@/lib/supabase/player';
 import { resetGame } from '@/lib/supabase/session';
+import { GameContextType, useGame } from '@/providers/game-provider';
 import { Session, SessionPlayer } from '@/types/game-interfaces';
 import React, {
   Dispatch,
@@ -10,7 +10,7 @@ import React, {
   useContext,
   useState,
 } from 'react';
-import { useFullScreen } from './fullscreen-context';
+import { useFullScreen } from './fullscreen-provider';
 
 interface BoardContextProps {
   deckCount: number;

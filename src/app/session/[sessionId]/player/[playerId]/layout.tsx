@@ -1,5 +1,5 @@
-import { PlayerProvider } from '@/context/player-context';
 import { fetchInitialPlayers } from '@/lib/supabase/player';
+import { PlayerProvider } from '@/providers/player-provider';
 import { ReactNode } from 'react';
 
 interface LayoutProps {

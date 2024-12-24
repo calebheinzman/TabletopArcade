@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import { useBoardContext } from '../../context/board-context';
+import { useBoardContext } from '../../providers/board-provider';
 
 const PLAYER_COLORS = [
   'text-blue-600',

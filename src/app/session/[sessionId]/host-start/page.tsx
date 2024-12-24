@@ -1,11 +1,11 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
-import { useGame } from '@/context/game-context';
 import { initializeSession } from '@/lib/defaultGameState';
 import { supabase } from '@/lib/supabase';
 import { setFirstPlayerTurn } from '@/lib/supabase/player';
 import { createSession } from '@/lib/supabase/session';
+import { useGame } from '@/providers/game-provider';
 import { SessionPlayer } from '@/types/game-interfaces';
 import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';

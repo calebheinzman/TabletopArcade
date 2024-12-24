@@ -7,7 +7,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
-import { GameContextType } from '@/context/game-context';
+import { GameContextType } from '@/providers/game-provider';
 import { SessionCard } from '@/types/game-interfaces';
 import { useState } from 'react';
 

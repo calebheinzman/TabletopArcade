@@ -1,7 +1,7 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
-import { useGame } from '@/context/game-context';
+import { useGame } from '@/providers/game-provider';
 import { SessionPlayer } from '@/types/game-interfaces';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';

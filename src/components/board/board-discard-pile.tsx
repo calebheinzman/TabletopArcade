@@ -10,7 +10,7 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { ViewDiscardCards } from '@/components/view-discard-cards';
-import { useGame } from '@/context/game-context';
+import { useGame } from '@/providers/game-provider';
 import { DiscardPile } from '@/types/game-interfaces';
 import React from 'react';
 

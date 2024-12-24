@@ -22,13 +22,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { GameContextType } from '@/context/game-context';
 import { updateSessionCards } from '@/lib/supabase/card';
 import {
   claimTurn,
   passTurnToNextPlayer,
   pushPlayerAction,
 } from '@/lib/supabase/player';
+import { GameContextType } from '@/providers/game-provider';
 import { useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';

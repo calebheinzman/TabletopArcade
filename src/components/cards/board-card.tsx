@@ -15,7 +15,7 @@ import usePlayerCard from '@/hooks/usePlayerCard'; // <-- import the new hook
 import { cn } from '@/lib/utils';
 import { CardData, SessionCard, SessionPlayer } from '@/types/game-interfaces';
 import Image from 'next/image';
-import { useFullScreen } from '../../context/fullscreen-context';
+import { useFullScreen } from '../../providers/fullscreen-provider';
 import { Button } from '../ui/button';
 import { CardBack, CardFront, PlayingCard } from '../ui/card';
 

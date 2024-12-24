@@ -1,6 +1,6 @@
 'use client';
 
-import { GameContextType, useGame } from '@/context/game-context';
+import { GameContextType, useGame } from '@/providers/game-provider';
 import { SessionPlayer } from '@/types/game-interfaces';
 import React, { createContext, ReactNode, useContext, useMemo } from 'react';
 

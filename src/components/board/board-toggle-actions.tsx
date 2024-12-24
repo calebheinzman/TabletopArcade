@@ -1,4 +1,4 @@
-import { useBoardContext } from '../../context/board-context';
+import { useBoardContext } from '../../providers/board-provider';
 import { Button } from '../ui/button';
 
 const BoardToggleActions = () => {

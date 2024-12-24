@@ -1,6 +1,6 @@
-import { useGame } from '@/context/game-context';
 import { discardAndShuffleCard, updateSessionCards } from '@/lib/supabase/card';
 import { pushPlayerAction } from '@/lib/supabase/player';
+import { useGame } from '@/providers/game-provider';
 import { SessionCard } from '@/types/game-interfaces';
 import { useCallback, useState } from 'react';
 

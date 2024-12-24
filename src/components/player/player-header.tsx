@@ -1,5 +1,5 @@
 'use client';
-import { usePlayer } from '../../context/player-context';
+import { usePlayer } from '../../providers/player-provider';
 import RouterBackButton from '../router/router-back-button';
 
 const PlayerHeader = () => {

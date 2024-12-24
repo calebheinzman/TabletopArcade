@@ -14,12 +14,12 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
-import { useGame } from '@/context/game-context';
 import { supabase } from '@/lib/supabase';
 import { updateSessionCards } from '@/lib/supabase/card';
+import { useGame } from '@/providers/game-provider';
 import { useRouter } from 'next/navigation';
 import React, { useState } from 'react';
-import { useBoardContext } from '../../context/board-context';
+import { useBoardContext } from '../../providers/board-provider';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 

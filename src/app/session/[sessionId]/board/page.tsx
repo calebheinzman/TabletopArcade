@@ -8,7 +8,7 @@ import BoardHeader from '@/components/board/board-header';
 import BoardPlayerActionsDialog from '@/components/board/board-player-actions-dialog';
 import BoardPlayerHands from '@/components/board/board-player-hands';
 import BoardToggleActions from '@/components/board/board-toggle-actions';
-import { BoardProvider } from '@/context/board-context';
+import { BoardProvider } from '@/providers/board-provider';
 import React, { useRef } from 'react';
 
 const BoardContent: React.FC = () => {

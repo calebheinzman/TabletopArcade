@@ -1,6 +1,6 @@
 // hooks/usePlayerCard.ts
 
-import { useGame } from '@/context/game-context';
+import { useGame } from '@/providers/game-provider';
 import { CardData, SessionCard, SessionPlayer } from '@/types/game-interfaces';
 
 // Hook to handle player card actions.

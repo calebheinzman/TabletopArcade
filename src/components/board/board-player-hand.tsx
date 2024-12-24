@@ -3,10 +3,10 @@
 'use client';
 
 import BoardDiscardPile from '@/components/board/board-discard-pile';
-import { useGame } from '@/context/game-context';
 import { usePlayerCardsData } from '@/hooks/usePlayerCardsData';
 import usePlayerPosition from '@/hooks/usePlayerPosition';
 import usePlayerStatus from '@/hooks/usePlayerStatus';
+import { useGame } from '@/providers/game-provider';
 import { SessionCard, SessionPlayer } from '@/types/game-interfaces';
 import { FC } from 'react';
 import { TbCards, TbCoin, TbPlugConnectedX } from 'react-icons/tb';
