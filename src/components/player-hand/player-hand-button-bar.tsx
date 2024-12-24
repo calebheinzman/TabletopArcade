@@ -1,34 +1,37 @@
 'use client';
 
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Button } from '@/components/ui/button';
 import {
   Dialog,
-  DialogClose,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog";
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "@/components/ui/popover";
+} from '@/components/ui/popover';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { GameContextType } from "@/components/GameContext";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
-import { useState } from "react";
-import { updateSessionCards } from "@/lib/supabase/card";
-import { pushPlayerAction, claimTurn, passTurnToNextPlayer } from "@/lib/supabase/player";
+} from '@/components/ui/select';
+import { updateSessionCards } from '@/lib/supabase/card';
+import {
+  claimTurn,
+  passTurnToNextPlayer,
+  pushPlayerAction,
+} from '@/lib/supabase/player';
+import { GameContextType } from '@/providers/game-provider';
+import { useState } from 'react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 interface PlayerHandButtonBarProps {
   gameContext: GameContextType;
@@ -59,7 +62,7 @@ export function PlayerHandButtonBar({
   showRules,
   setShowRules,
   handleDrawCard,
-  getPlayerDiscardPiles
+  getPlayerDiscardPiles,
 }: PlayerHandButtonBarProps) {
   const [numPointsToDraw, setNumPointsToDraw] = useState(1);
   const [customDrawPoints, setCustomDrawPoints] = useState<string>('');
@@ -69,13 +72,29 @@ export function PlayerHandButtonBar({
   const [givePointsPopoverOpen, setGivePointsPopoverOpen] = useState(false);
   const [showDiscardPileDialog, setShowDiscardPileDialog] = useState(false);
   const [showTradeDialog, setShowTradeDialog] = useState(false);
-  const [tradeFrom, setTradeFrom] = useState<{ playerId: number, cardId: number | null }>({ playerId: -1, cardId: null });
-  const [tradeTo, setTradeTo] = useState<{ playerId: number, cardId: number | null }>({ playerId: -1, cardId: null });
+  const [tradeFrom, setTradeFrom] = useState<{
+    playerId: number;
+    cardId: number | null;
+  }>({ playerId: -1, cardId: null });
+  const [tradeTo, setTradeTo] = useState<{
+    playerId: number;
+    cardId: number | null;
+  }>({ playerId: -1, cardId: null });
   const [showPeakDialog, setShowPeakDialog] = useState(false);
-  const [peakTarget, setPeakTarget] = useState<{ playerId: number, cardId: number | null }>({ playerId: -1, cardId: null });
-  const [peakedCard, setPeakedCard] = useState<{ name: string, description: string } | null>(null);
+  const [peakTarget, setPeakTarget] = useState<{
+    playerId: number;
+    cardId: number | null;
+  }>({ playerId: -1, cardId: null });
+  const [peakedCard, setPeakedCard] = useState<{
+    name: string;
+    description: string;
+  } | null>(null);
 
-  const handleCustomPointsChange = (value: string, setPoints: (n: number) => void, setCustom: (s: string) => void) => {
+  const handleCustomPointsChange = (
+    value: string,
+    setPoints: (n: number) => void,
+    setCustom: (s: string) => void
+  ) => {
     if (/^\d*$/.test(value)) {
       setCustom(value);
       const numValue = parseInt(value);
@@ -124,7 +143,7 @@ export function PlayerHandButtonBar({
       await pushPlayerAction(
         gameContext.sessionid,
         playerId,
-        "Ended their turn"
+        'Ended their turn'
       );
     } catch (error) {
       console.error('Error ending turn:', error);
@@ -137,7 +156,7 @@ export function PlayerHandButtonBar({
       await pushPlayerAction(
         gameContext.sessionid,
         playerId,
-        "Claimed their turn"
+        'Claimed their turn'
       );
     } catch (error) {
       console.error('Error claiming turn:', error);
@@ -147,21 +166,18 @@ export function PlayerHandButtonBar({
   const handlePickUpFromDiscard = async (pileId: number) => {
     try {
       const pileCards = gameContext.sessionCards
-        .filter(card => 
-          card.pile_id === pileId && 
-          card.playerid === playerId
-        )
+        .filter((card) => card.pile_id === pileId && card.playerid === playerId)
         .sort((a, b) => a.cardPosition - b.cardPosition);
 
       if (pileCards.length === 0) return;
 
-      const updates = pileCards.map(card => ({
+      const updates = pileCards.map((card) => ({
         sessionid: gameContext.sessionid,
         sessioncardid: card.sessioncardid,
         cardPosition: 0,
         playerid: playerId,
         pile_id: null,
-        isRevealed: false
+        isRevealed: false,
       }));
 
       await updateSessionCards(updates);
@@ -179,8 +195,12 @@ export function PlayerHandButtonBar({
     if (!tradeFrom.cardId || !tradeTo.cardId) return;
 
     try {
-      const fromCard = gameContext.sessionCards.find(c => c.sessioncardid === tradeFrom.cardId);
-      const toCard = gameContext.sessionCards.find(c => c.sessioncardid === tradeTo.cardId);
+      const fromCard = gameContext.sessionCards.find(
+        (c) => c.sessioncardid === tradeFrom.cardId
+      );
+      const toCard = gameContext.sessionCards.find(
+        (c) => c.sessioncardid === tradeTo.cardId
+      );
 
       const updates = [
         {
@@ -190,7 +210,7 @@ export function PlayerHandButtonBar({
           playerid: tradeTo.playerId,
           pile_id: null,
           isRevealed: false,
-          card_hidden: toCard?.card_hidden ?? false
+          card_hidden: toCard?.card_hidden ?? false,
         },
         {
           sessionid: gameContext.sessionid,
@@ -199,8 +219,8 @@ export function PlayerHandButtonBar({
           playerid: tradeFrom.playerId,
           pile_id: null,
           isRevealed: false,
-          card_hidden: fromCard?.card_hidden ?? false
-        }
+          card_hidden: fromCard?.card_hidden ?? false,
+        },
       ];
 
       await updateSessionCards(updates);
@@ -208,9 +228,13 @@ export function PlayerHandButtonBar({
         gameContext.sessionid,
         playerId,
         `Traded cards between ${
-          gameContext.sessionPlayers.find(p => p.playerid === tradeFrom.playerId)?.username
+          gameContext.sessionPlayers.find(
+            (p) => p.playerid === tradeFrom.playerId
+          )?.username
         } and ${
-          gameContext.sessionPlayers.find(p => p.playerid === tradeTo.playerId)?.username
+          gameContext.sessionPlayers.find(
+            (p) => p.playerid === tradeTo.playerId
+          )?.username
         }`
       );
       setShowTradeDialog(false);
@@ -225,16 +249,22 @@ export function PlayerHandButtonBar({
     if (!peakTarget.cardId) return;
 
     try {
-      const sessionCard = gameContext.sessionCards.find(sc => sc.sessioncardid === peakTarget.cardId);
+      const sessionCard = gameContext.sessionCards.find(
+        (sc) => sc.sessioncardid === peakTarget.cardId
+      );
       if (!sessionCard) return;
 
-      const deck = gameContext.decks.find(d => d.deckid === sessionCard.deckid);
-      const cardDetails = deck?.cards.find(c => c.cardid === sessionCard.cardid);
-      
+      const deck = gameContext.decks.find(
+        (d) => d.deckid === sessionCard.deckid
+      );
+      const cardDetails = deck?.cards.find(
+        (c) => c.cardid === sessionCard.cardid
+      );
+
       if (cardDetails) {
         setPeakedCard({
           name: cardDetails.name,
-          description: cardDetails.description
+          description: cardDetails.description,
         });
       }
 
@@ -242,7 +272,9 @@ export function PlayerHandButtonBar({
         gameContext.sessionid,
         playerId,
         `Peaked at a card from ${
-          gameContext.sessionPlayers.find(p => p.playerid === peakTarget.playerId)?.username
+          gameContext.sessionPlayers.find(
+            (p) => p.playerid === peakTarget.playerId
+          )?.username
         }`
       );
     } catch (error) {
@@ -252,52 +284,50 @@ export function PlayerHandButtonBar({
 
   const handleToggleHandVisibility = async () => {
     try {
-      const updates = playerCards.map(card => ({
+      const updates = playerCards.map((card) => ({
         sessionid: gameContext.sessionid,
         sessioncardid: card.id,
         cardPosition: 0,
         playerid: playerId,
         pile_id: null,
-        card_hidden: !card.hidden
+        card_hidden: !card.hidden,
       }));
 
       await updateSessionCards(updates);
       await pushPlayerAction(
         gameContext.sessionid,
         playerId,
-        "Toggled hand visibility"
+        'Toggled hand visibility'
       );
     } catch (error) {
       console.error('Error toggling hand visibility:', error);
     }
   };
 
-  const canClaimTurn = gameContext.gameData.claim_turns && 
-    !gameContext.sessionPlayers.some(player => player.is_turn) &&
+  const canClaimTurn =
+    gameContext.gameData.claim_turns &&
+    !gameContext.sessionPlayers.some((player) => player.is_turn) &&
     !currentPlayer.is_turn;
 
   return (
     <div className="fixed bottom-0 w-full bg-white p-2 border-t border-gray-300">
       <div className="flex flex-wrap gap-2 justify-end">
         {gameContext.gameData.claim_turns && canClaimTurn && (
-          <Button
-            onClick={handleClaimTurn}
-            variant="secondary"
-          >
+          <Button onClick={handleClaimTurn} variant="secondary">
             Claim
           </Button>
         )}
 
         {gameContext.gameData.can_draw_cards && (
           <>
-            <Button 
+            <Button
               onClick={() => handleDrawCard(false)}
               disabled={disabled || atMaxCards || noDeckCards}
             >
               Draw Card ({deckCount})
             </Button>
             {gameContext.session.hand_hidden && (
-              <Button 
+              <Button
                 onClick={() => handleDrawCard(true)}
                 disabled={disabled || atMaxCards || noDeckCards}
               >
@@ -309,7 +339,10 @@ export function PlayerHandButtonBar({
 
         {/* Draw Points Button */}
         {gameContext.gameData.can_draw_points && (
-          <Popover open={drawPointsPopoverOpen} onOpenChange={setDrawPointsPopoverOpen}>
+          <Popover
+            open={drawPointsPopoverOpen}
+            onOpenChange={setDrawPointsPopoverOpen}
+          >
             <PopoverTrigger asChild>
               <Button
                 disabled={
@@ -327,14 +360,22 @@ export function PlayerHandButtonBar({
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => setNumPointsToDraw(Math.max(1, numPointsToDraw - 1))}
+                    onClick={() =>
+                      setNumPointsToDraw(Math.max(1, numPointsToDraw - 1))
+                    }
                   >
                     -
                   </Button>
                   <Input
                     type="text"
                     value={customDrawPoints || numPointsToDraw}
-                    onChange={(e) => handleCustomPointsChange(e.target.value, setNumPointsToDraw, setCustomDrawPoints)}
+                    onChange={(e) =>
+                      handleCustomPointsChange(
+                        e.target.value,
+                        setNumPointsToDraw,
+                        setCustomDrawPoints
+                      )
+                    }
                     className="w-20 text-center"
                   />
                   <Button
@@ -353,14 +394,12 @@ export function PlayerHandButtonBar({
 
         {/* Pass Points Button */}
         {gameContext.gameData.can_pass_points && (
-          <Popover open={givePointsPopoverOpen} onOpenChange={setGivePointsPopoverOpen}>
+          <Popover
+            open={givePointsPopoverOpen}
+            onOpenChange={setGivePointsPopoverOpen}
+          >
             <PopoverTrigger asChild>
-              <Button 
-                disabled={
-                  disabled ||
-                  currentPlayer.num_points === 0
-                }
-              >
+              <Button disabled={disabled || currentPlayer.num_points === 0}>
                 Pass Points
               </Button>
             </PopoverTrigger>
@@ -370,21 +409,33 @@ export function PlayerHandButtonBar({
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => setNumPointsToGive(Math.max(1, numPointsToGive - 1))}
+                    onClick={() =>
+                      setNumPointsToGive(Math.max(1, numPointsToGive - 1))
+                    }
                   >
                     -
                   </Button>
                   <Input
                     type="text"
                     value={customGivePoints || numPointsToGive}
-                    onChange={(e) => handleCustomPointsChange(e.target.value, setNumPointsToGive, setCustomGivePoints)}
+                    onChange={(e) =>
+                      handleCustomPointsChange(
+                        e.target.value,
+                        setNumPointsToGive,
+                        setCustomGivePoints
+                      )
+                    }
                     className="w-20 text-center"
                     max={currentPlayer.num_points}
                   />
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => setNumPointsToGive(Math.min(numPointsToGive + 1, currentPlayer.num_points))}
+                    onClick={() =>
+                      setNumPointsToGive(
+                        Math.min(numPointsToGive + 1, currentPlayer.num_points)
+                      )
+                    }
                   >
                     +
                   </Button>
@@ -411,70 +462,87 @@ export function PlayerHandButtonBar({
 
         {/* End Turn Button */}
         {gameContext.gameData.turn_based && (
-          <Button 
+          <Button
             onClick={handleEndTurn}
             disabled={!currentPlayer.is_turn}
-            variant={gameContext.gameData.lock_turn ? "default" : "outline"}
+            variant={gameContext.gameData.lock_turn ? 'default' : 'outline'}
           >
             End Turn
           </Button>
         )}
 
         {/* View Discard Button */}
-        {gameContext.gameData.lock_player_discard && !gameContext.session.locked_player_discard && (
-          <Dialog open={showDiscardPileDialog} onOpenChange={setShowDiscardPileDialog}>
-            <DialogTrigger asChild>
-              <Button variant="outline">
-                View Discard
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-              <DialogHeader>
-                <DialogTitle>Discard Piles</DialogTitle>
-              </DialogHeader>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-                {gameContext.discardPiles
-                  .filter(pile => pile.is_player)
-                  .map((pile) => {
-                    const pileCards = gameContext.sessionCards.filter(card => 
-                      card.pile_id === pile.pile_id && 
-                      card.playerid === playerId  // Only show cards belonging to current player
-                    );
-                    
-                    // Only render if there are cards belonging to this player
-                    if (pileCards.length === 0) return null;
+        {gameContext.gameData.lock_player_discard &&
+          !gameContext.session.locked_player_discard && (
+            <Dialog
+              open={showDiscardPileDialog}
+              onOpenChange={setShowDiscardPileDialog}
+            >
+              <DialogTrigger asChild>
+                <Button variant="outline">View Discard</Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>Discard Piles</DialogTitle>
+                </DialogHeader>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                  {gameContext.discardPiles
+                    .filter((pile) => pile.is_player)
+                    .map((pile) => {
+                      const pileCards = gameContext.sessionCards.filter(
+                        (card) =>
+                          card.pile_id === pile.pile_id &&
+                          card.playerid === playerId // Only show cards belonging to current player
+                      );
 
-                    return (
-                      <div key={pile.pile_id} className="border rounded-lg p-4">
-                        <div className="flex justify-between items-center mb-2">
-                          <h3 className="font-semibold">Your Discard Pile</h3>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handlePickUpFromDiscard(pile.pile_id)}
-                            disabled={pileCards.length === 0}
-                          >
-                            Pick Up
-                          </Button>
+                      // Only render if there are cards belonging to this player
+                      if (pileCards.length === 0) return null;
+
+                      return (
+                        <div
+                          key={pile.pile_id}
+                          className="border rounded-lg p-4"
+                        >
+                          <div className="flex justify-between items-center mb-2">
+                            <h3 className="font-semibold">Your Discard Pile</h3>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() =>
+                                handlePickUpFromDiscard(pile.pile_id)
+                              }
+                              disabled={pileCards.length === 0}
+                            >
+                              Pick Up
+                            </Button>
+                          </div>
+                          <div className="space-y-2">
+                            {pileCards.map((card) => {
+                              const deck = gameContext.decks.find(
+                                (d) => d.deckid === card.deckid
+                              );
+                              const cardDetails = deck?.cards.find(
+                                (c) => c.cardid === card.cardid
+                              );
+                              return (
+                                <div
+                                  key={card.sessioncardid}
+                                  className="text-sm"
+                                >
+                                  {cardDetails?.name || 'Unknown Card'}
+                                </div>
+                              );
+                            })}
+                          </div>
                         </div>
-                        <div className="space-y-2">
-                          {pileCards.map((card) => {
-                            const deck = gameContext.decks.find(d => d.deckid === card.deckid);
-                            const cardDetails = deck?.cards.find(c => c.cardid === card.cardid);
-                            return (
-                              <div key={card.sessioncardid} className="text-sm">
-                                {cardDetails?.name || 'Unknown Card'}
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    );
-                  }).filter(Boolean)}  {/* Remove null entries */}
-              </div>
-            </DialogContent>
-          </Dialog>
-        )}
+                      );
+                    })
+                    .filter(Boolean)}{' '}
+                  {/* Remove null entries */}
+                </div>
+              </DialogContent>
+            </Dialog>
+          )}
 
         {/* Trade Cards Button */}
         {gameContext.gameData.trade_cards && (
@@ -493,32 +561,56 @@ export function PlayerHandButtonBar({
                 {/* First Player Selection */}
                 <div className="space-y-2">
                   <h4>First Player</h4>
-                  <Select onValueChange={(value) => setTradeFrom({ ...tradeFrom, playerId: parseInt(value) })}>
+                  <Select
+                    onValueChange={(value) =>
+                      setTradeFrom({ ...tradeFrom, playerId: parseInt(value) })
+                    }
+                  >
                     <SelectTrigger>
                       <SelectValue placeholder="Select player" />
                     </SelectTrigger>
                     <SelectContent>
                       {gameContext.sessionPlayers.map((player) => (
-                        <SelectItem key={player.playerid} value={player.playerid.toString()}>
+                        <SelectItem
+                          key={player.playerid}
+                          value={player.playerid.toString()}
+                        >
                           {player.username}
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                   {tradeFrom.playerId !== -1 && (
-                    <Select onValueChange={(value) => setTradeFrom({ ...tradeFrom, cardId: parseInt(value) })}>
+                    <Select
+                      onValueChange={(value) =>
+                        setTradeFrom({ ...tradeFrom, cardId: parseInt(value) })
+                      }
+                    >
                       <SelectTrigger>
                         <SelectValue placeholder="Select card" />
                       </SelectTrigger>
                       <SelectContent>
                         {gameContext.sessionCards
-                          .filter(card => card.playerid === tradeFrom.playerId && card.pile_id === null)
+                          .filter(
+                            (card) =>
+                              card.playerid === tradeFrom.playerId &&
+                              card.pile_id === null
+                          )
                           .map((card, index) => {
-                            const deck = gameContext.decks.find(d => d.deckid === card.deckid);
-                            const cardDetails = deck?.cards.find(c => c.cardid === card.cardid);
+                            const deck = gameContext.decks.find(
+                              (d) => d.deckid === card.deckid
+                            );
+                            const cardDetails = deck?.cards.find(
+                              (c) => c.cardid === card.cardid
+                            );
                             return (
-                              <SelectItem key={card.sessioncardid} value={card.sessioncardid.toString()}>
-                                {gameContext.session.hand_hidden ? `Card ${index + 1}` : (cardDetails?.name || 'Unknown Card')}
+                              <SelectItem
+                                key={card.sessioncardid}
+                                value={card.sessioncardid.toString()}
+                              >
+                                {gameContext.session.hand_hidden
+                                  ? `Card ${index + 1}`
+                                  : cardDetails?.name || 'Unknown Card'}
                               </SelectItem>
                             );
                           })}
@@ -530,32 +622,56 @@ export function PlayerHandButtonBar({
                 {/* Second Player Selection */}
                 <div className="space-y-2">
                   <h4>Second Player</h4>
-                  <Select onValueChange={(value) => setTradeTo({ ...tradeTo, playerId: parseInt(value) })}>
+                  <Select
+                    onValueChange={(value) =>
+                      setTradeTo({ ...tradeTo, playerId: parseInt(value) })
+                    }
+                  >
                     <SelectTrigger>
                       <SelectValue placeholder="Select player" />
                     </SelectTrigger>
                     <SelectContent>
                       {gameContext.sessionPlayers.map((player) => (
-                        <SelectItem key={player.playerid} value={player.playerid.toString()}>
+                        <SelectItem
+                          key={player.playerid}
+                          value={player.playerid.toString()}
+                        >
                           {player.username}
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                   {tradeTo.playerId !== -1 && (
-                    <Select onValueChange={(value) => setTradeTo({ ...tradeTo, cardId: parseInt(value) })}>
+                    <Select
+                      onValueChange={(value) =>
+                        setTradeTo({ ...tradeTo, cardId: parseInt(value) })
+                      }
+                    >
                       <SelectTrigger>
                         <SelectValue placeholder="Select card" />
                       </SelectTrigger>
                       <SelectContent>
                         {gameContext.sessionCards
-                          .filter(card => card.playerid === tradeTo.playerId && card.pile_id === null)
+                          .filter(
+                            (card) =>
+                              card.playerid === tradeTo.playerId &&
+                              card.pile_id === null
+                          )
                           .map((card, index) => {
-                            const deck = gameContext.decks.find(d => d.deckid === card.deckid);
-                            const cardDetails = deck?.cards.find(c => c.cardid === card.cardid);
+                            const deck = gameContext.decks.find(
+                              (d) => d.deckid === card.deckid
+                            );
+                            const cardDetails = deck?.cards.find(
+                              (c) => c.cardid === card.cardid
+                            );
                             return (
-                              <SelectItem key={card.sessioncardid} value={card.sessioncardid.toString()}>
-                                {gameContext.session.hand_hidden ? `Card ${index + 1}` : (cardDetails?.name || 'Unknown Card')}
+                              <SelectItem
+                                key={card.sessioncardid}
+                                value={card.sessioncardid.toString()}
+                              >
+                                {gameContext.session.hand_hidden
+                                  ? `Card ${index + 1}`
+                                  : cardDetails?.name || 'Unknown Card'}
                               </SelectItem>
                             );
                           })}
@@ -564,7 +680,7 @@ export function PlayerHandButtonBar({
                   )}
                 </div>
 
-                <Button 
+                <Button
                   onClick={handleTrade}
                   disabled={!tradeFrom.cardId || !tradeTo.cardId}
                 >
@@ -590,15 +706,25 @@ export function PlayerHandButtonBar({
                   </DialogDescription>
                 </DialogHeader>
                 <div className="flex flex-col gap-4 mt-4">
-                  <Select onValueChange={(value) => setPeakTarget({ ...peakTarget, playerId: parseInt(value) })}>
+                  <Select
+                    onValueChange={(value) =>
+                      setPeakTarget({
+                        ...peakTarget,
+                        playerId: parseInt(value),
+                      })
+                    }
+                  >
                     <SelectTrigger>
                       <SelectValue placeholder="Select player" />
                     </SelectTrigger>
                     <SelectContent>
                       {gameContext.sessionPlayers
-                        .filter(player => player.playerid !== playerId)
+                        .filter((player) => player.playerid !== playerId)
                         .map((player) => (
-                          <SelectItem key={player.playerid} value={player.playerid.toString()}>
+                          <SelectItem
+                            key={player.playerid}
+                            value={player.playerid.toString()}
+                          >
                             {player.username}
                           </SelectItem>
                         ))}
@@ -606,15 +732,29 @@ export function PlayerHandButtonBar({
                   </Select>
 
                   {peakTarget.playerId !== -1 && (
-                    <Select onValueChange={(value) => setPeakTarget({ ...peakTarget, cardId: parseInt(value) })}>
+                    <Select
+                      onValueChange={(value) =>
+                        setPeakTarget({
+                          ...peakTarget,
+                          cardId: parseInt(value),
+                        })
+                      }
+                    >
                       <SelectTrigger>
                         <SelectValue placeholder="Select card" />
                       </SelectTrigger>
                       <SelectContent>
                         {gameContext.sessionCards
-                          .filter(card => card.playerid === peakTarget.playerId && card.pile_id === null)
+                          .filter(
+                            (card) =>
+                              card.playerid === peakTarget.playerId &&
+                              card.pile_id === null
+                          )
                           .map((card, index) => (
-                            <SelectItem key={card.sessioncardid} value={card.sessioncardid.toString()}>
+                            <SelectItem
+                              key={card.sessioncardid}
+                              value={card.sessioncardid.toString()}
+                            >
                               Card {index + 1}
                             </SelectItem>
                           ))}
@@ -622,7 +762,7 @@ export function PlayerHandButtonBar({
                     </Select>
                   )}
 
-                  <Button 
+                  <Button
                     onClick={handlePeakCard}
                     disabled={!peakTarget.cardId}
                   >
@@ -632,7 +772,10 @@ export function PlayerHandButtonBar({
               </DialogContent>
             </Dialog>
 
-            <Dialog open={peakedCard !== null} onOpenChange={() => setPeakedCard(null)}>
+            <Dialog
+              open={peakedCard !== null}
+              onOpenChange={() => setPeakedCard(null)}
+            >
               <DialogContent>
                 <DialogHeader>
                   <DialogTitle>Peaked Card</DialogTitle>
@@ -648,11 +791,10 @@ export function PlayerHandButtonBar({
 
         {/* Toggle Hand Visibility Button */}
         {gameContext.session.hand_hidden && (
-          <Button
-            onClick={handleToggleHandVisibility}
-            variant="outline"
-          >
-            {playerCards.some(card => card.hidden) ? 'Unhide Hand' : 'Hide Hand'}
+          <Button onClick={handleToggleHandVisibility} variant="outline">
+            {playerCards.some((card) => card.hidden)
+              ? 'Unhide Hand'
+              : 'Hide Hand'}
           </Button>
         )}
 
@@ -661,9 +803,7 @@ export function PlayerHandButtonBar({
           {gameContext.gameData.game_rules && (
             <Dialog open={showRules} onOpenChange={setShowRules}>
               <DialogTrigger asChild>
-                <Button variant="outline">
-                  Game Rules
-                </Button>
+                <Button variant="outline">Game Rules</Button>
               </DialogTrigger>
               <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
                 <DialogHeader>
@@ -671,7 +811,8 @@ export function PlayerHandButtonBar({
                 </DialogHeader>
                 <div className="prose dark:prose-invert mt-4">
                   <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                    {gameContext.gameData.game_rules || 'No rules available for this game.'}
+                    {gameContext.gameData.game_rules ||
+                      'No rules available for this game.'}
                   </ReactMarkdown>
                 </div>
               </DialogContent>

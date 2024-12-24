@@ -1,6 +1,6 @@
-import { useGame } from '@/components/GameContext';
 import { discardAndShuffleCard, updateSessionCards } from '@/lib/supabase/card';
 import { pushPlayerAction } from '@/lib/supabase/player';
+import { useGame } from '@/providers/game-provider';
 import { CardData, SessionCard, SessionPlayer } from '@/types/game-interfaces';
 import { useCallback, useMemo, useState } from 'react';
 
@@ -54,9 +54,6 @@ const usePlayerCards = (
     !isOverflowing &&
     playerCards.length <= 5 &&
     gameContext.discardPiles.length === 0;
-
-  const cardWidth = isLargeCard ? 'w-24' : 'w-14';
-  const cardHeight = isLargeCard ? 'h-32' : 'h-20';
 
   const handleMouseEnter = useCallback((idx: number) => {
     setHoveredCardIndex(idx);
@@ -246,8 +243,6 @@ const usePlayerCards = (
     overlapping,
     baseSpacing,
     isOverflowing,
-    cardWidth,
-    cardHeight,
     isLargeCard,
     revealedCards,
     playerDiscardPiles,

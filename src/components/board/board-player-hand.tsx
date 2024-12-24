@@ -1,14 +1,16 @@
+// components/Board/board-player-hand.tsx
+
 'use client';
 
 import BoardDiscardPile from '@/components/board/board-discard-pile';
-import usePlayerCards from '@/hooks/usePlayerCards';
+import { usePlayerCardsData } from '@/hooks/usePlayerCardsData';
 import usePlayerPosition from '@/hooks/usePlayerPosition';
 import usePlayerStatus from '@/hooks/usePlayerStatus';
+import { useGame } from '@/providers/game-provider';
 import { SessionCard, SessionPlayer } from '@/types/game-interfaces';
 import { FC } from 'react';
 import { TbCards, TbCoin, TbPlugConnectedX } from 'react-icons/tb';
 import BoardCard from '../cards/board-card';
-import { useGame } from '../GameContext';
 
 interface BoardPlayerHandProps {
   player: SessionPlayer;
@@ -28,31 +30,23 @@ const BoardPlayerHand: FC<BoardPlayerHandProps> = ({
   const gameContext = useGame();
   const position = usePlayerPosition(index, totalPlayers);
   const { active } = usePlayerStatus({ player });
+
+  // 1. Data logic for this player’s cards
   const {
     playerCards,
-    handleCardClick,
-    handleReveal,
-    handleMouseEnter,
-    handleMouseLeave,
-    getCardStyle,
-    handleDiscard,
-    handlePassCard,
-    getZIndex,
-    baseSpacing,
-    hoveredCardIndex,
     isOverflowing,
     isLargeCard,
-    cardHeight,
-    cardWidth,
+    baseSpacing,
     revealedCards,
     playerDiscardPiles,
-  } = usePlayerCards(player.playerid, cards);
+  } = usePlayerCardsData(player.playerid, cards, gameContext);
 
   return (
     <div
       className="flex flex-col items-center text-center absolute transform -translate-x-1/2 -translate-y-1/2"
       style={position}
     >
+      {/* ------------------------------ */}
       {/* Player Info */}
       <div
         onClick={() => onSelect(player.playerid)}
@@ -64,12 +58,12 @@ const BoardPlayerHand: FC<BoardPlayerHandProps> = ({
       >
         <div
           className={`text-sm font-semibold flex flex-col gap-1 ${
-            active && active ? 'text-green-600' : 'text-red-600'
+            active ? 'text-green-600' : 'text-red-600'
           }`}
         >
           <div className="flex items-center justify-center">
             {player.username}
-            {(!active || !active) && (
+            {!active && (
               <div className="ml-1 mr-1">
                 <TbPlugConnectedX size={14} />
               </div>
@@ -88,71 +82,51 @@ const BoardPlayerHand: FC<BoardPlayerHandProps> = ({
         </div>
       </div>
 
+      {/* ------------------------------ */}
+      {/* Main Hand */}
       {playerCards.length > 0 && (
         <div className="relative flex flex-col justify-center items-center mt-1 mb-2">
-          {/* Main hand - adjust positioning based on player location */}
           <div
             className="relative"
             style={{
-              width: `${
-                isOverflowing
-                  ? (playerCards.length - 1) * 8 + 48 + 80 // 80px total padding
-                  : playerCards.length * baseSpacing
-              }px`,
+              width: isOverflowing
+                ? `${(playerCards.length - 1) * 8 + 48 + 80}px`
+                : `${playerCards.length * baseSpacing}px`,
               height: '80px',
               left: isOverflowing
                 ? position.left && position.left.toString().includes('-')
-                  ? '-80px' // For left side of board
+                  ? '-80px'
                   : position.top === '50%'
-                    ? '0px' // For top/bottom of board
-                    : '80px' // For right side of board
+                    ? '0px'
+                    : '80px'
                 : '0px',
               transform: 'none',
             }}
           >
             {playerCards.map((card, cardIndex) => (
               <BoardCard
-                key={`card-${card.sessioncardid}-not-revealed`}
+                key={`card-${card.sessioncardid}-hand`}
                 index={cardIndex}
                 card={card}
-                hoveredCardIndex={hoveredCardIndex}
-                spacing={baseSpacing}
-                handleMouseEnter={handleMouseEnter}
-                handleMouseLeave={handleMouseLeave}
-                handleCardClick={handleCardClick}
-                handleReveal={handleReveal}
-                handleDiscard={handleDiscard}
-                handlePassCard={handlePassCard}
-                gameContext={gameContext}
                 player={player}
-                getZIndex={getZIndex}
                 isLargeCard={isLargeCard}
                 baseSpacing={baseSpacing}
               />
             ))}
           </div>
 
-          {/* Revealed cards section when overflowing */}
+          {/* ------------------------------ */}
+          {/* Revealed Cards (when overflowing) */}
           {isOverflowing && revealedCards.length > 0 && (
             <div className="mt-4 flex flex-wrap gap-2 justify-center max-w-[300px]">
               {playerCards
-                .filter((card) => revealedCards.includes(card.sessioncardid))
+                .filter((c) => revealedCards.includes(c.sessioncardid))
                 .map((card, cardIndex) => (
                   <BoardCard
                     key={`card-${card.sessioncardid}-revealed`}
                     index={cardIndex}
                     card={card}
-                    hoveredCardIndex={hoveredCardIndex}
-                    spacing={baseSpacing}
-                    handleMouseEnter={handleMouseEnter}
-                    handleMouseLeave={handleMouseLeave}
-                    handleCardClick={handleCardClick}
-                    handleReveal={handleReveal}
-                    handleDiscard={handleDiscard}
-                    handlePassCard={handlePassCard}
-                    gameContext={gameContext}
                     player={player}
-                    getZIndex={getZIndex}
                     isLargeCard={isLargeCard}
                     baseSpacing={baseSpacing}
                   />
@@ -162,6 +136,8 @@ const BoardPlayerHand: FC<BoardPlayerHandProps> = ({
         </div>
       )}
 
+      {/* ------------------------------ */}
+      {/* Discard Piles */}
       {playerDiscardPiles.length > 0 && (
         <div
           className={`${playerCards.length === 0 ? 'mt-1' : 'mt-2'}`}

@@ -2,7 +2,6 @@
 
 'use client';
 
-import { useGame } from '@/components/GameContext';
 import {
   Dialog,
   DialogContent,
@@ -17,33 +16,17 @@ import {
 } from '@/components/ui/popover';
 import { supabase } from '@/lib/supabase';
 import { updateSessionCards } from '@/lib/supabase/card';
-import { SessionPlayer } from '@/types/game-interfaces';
+import { useGame } from '@/providers/game-provider';
 import { useRouter } from 'next/navigation';
 import React, { useState } from 'react';
+import { useBoardContext } from '../../providers/board-provider';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 
-interface BoardHeaderProps {
-  deckCount: number;
-  players: SessionPlayer[];
-  onDrawCard: (playerId: number, card_hidden: boolean) => void;
-  onGivePoint: (playerId: number, quantity: number) => void;
-  onDiscardCard: (playerId: number) => void;
-  onShuffle: () => void;
-  onReset: () => void;
-  onFullScreen: () => void;
-}
+const BoardHeader: React.FC = () => {
+  const { deckCount, players, onGivePoint, onShuffle, onReset, onFullScreen } =
+    useBoardContext();
 
-const BoardHeader: React.FC<BoardHeaderProps> = ({
-  deckCount,
-  players,
-  onDrawCard,
-  onGivePoint,
-  onDiscardCard,
-  onShuffle,
-  onReset,
-  onFullScreen,
-}) => {
   const router = useRouter();
   const gameContext = useGame();
   const [numPointsToGive, setNumPointsToGive] = useState<number>(1);

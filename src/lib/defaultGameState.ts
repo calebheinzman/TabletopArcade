@@ -1,13 +1,13 @@
-import { GameContextType } from '@/components/GameContext';
+import { GameContextType } from '@/providers/game-provider';
 import { SessionCard } from '@/types/game-interfaces';
 
 export function initializeSession(gameContext: GameContextType): SessionCard[] {
   const deck: SessionCard[] = [];
   let cardId = 1;
 
-  gameContext.decks.forEach(deckData => {
+  gameContext.decks.forEach((deckData) => {
     const cards = deckData.cards;
-    cards.forEach(card => {
+    cards.forEach((card) => {
       for (let i = 0; i < card.count; i++) {
         deck.push({
           sessionid: gameContext.sessionid,
@@ -18,7 +18,7 @@ export function initializeSession(gameContext: GameContextType): SessionCard[] {
           playerid: 0,
           isRevealed: false,
           pile_id: null,
-          card_hidden: false
+          card_hidden: false,
         });
       }
     });

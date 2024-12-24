@@ -1,6 +1,5 @@
 'use client';
 
-import { GameContextType } from '@/components/GameContext';
 import {
   Dialog,
   DialogContent,
@@ -16,8 +15,8 @@ import {
   updatePlayerLastAction,
 } from '@/lib/supabase/player';
 import { CardData, SessionCard } from '@/types/game-interfaces';
-import { useParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import { usePlayer } from '../../providers/player-provider';
 import { PlayerHandButtonBar } from './player-hand-button-bar';
 import { PlayerHandCards } from './player-hand-cards';
 import { PlayerHandHeader } from './player-hand-header';
@@ -27,10 +26,10 @@ interface TradeCardSelection {
   cardId: number | null;
 }
 
-export function PlayerHand({ gameContext }: { gameContext: GameContextType }) {
-  const params = useParams();
-  const playerId = parseInt(params?.playerId as string);
-
+export function PlayerHand() {
+  const { player: currentPlayer, gameContext } = usePlayer();
+  const playerId = currentPlayer?.playerid;
+  console.log('PLAYER ID', playerId);
   const [numPointsToDraw, setNumPointsToDraw] = useState(1);
   const [customDrawPoints, setCustomDrawPoints] = useState<string>('');
   const [drawPointsPopoverOpen, setDrawPointsPopoverOpen] = useState(false);
@@ -97,17 +96,6 @@ export function PlayerHand({ gameContext }: { gameContext: GameContextType }) {
 
   if (!gameContext || !playerId) {
     return <div>Loading game state...</div>;
-  }
-
-  let currentPlayer = null;
-  for (const player of gameContext.sessionPlayers) {
-    if (player.playerid === playerId) {
-      currentPlayer = player;
-      break;
-    }
-  }
-  if (!currentPlayer) {
-    return <div>Error: Player not found</div>;
   }
 
   const playerCards = gameContext.sessionCards

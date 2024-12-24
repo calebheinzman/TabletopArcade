@@ -1,6 +1,5 @@
 'use client';
 
-import usePlayerCards from '@/hooks/usePlayerCards';
 import { CardData, SessionCard } from '@/types/game-interfaces';
 import PlayerHandCard from '../cards/player-hand-card';
 
@@ -15,13 +14,8 @@ export function PlayerHandCards({
   playerCards,
   disabled,
 }: PlayerHandCardsProps) {
-  const { handleReveal, handleDiscard, handlePassCard } = usePlayerCards(
-    playerId,
-    playerCards
-  );
-
   return (
-    <div className="flex flex-wrap gap-4 mb-8 justify-center">
+    <div className="flex flex-wrap gap-2 justify-center overflow-auto max-h-[70vh]">
       {playerCards.map((card, index) => (
         <PlayerHandCard
           card={card}
